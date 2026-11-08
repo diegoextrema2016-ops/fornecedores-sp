@@ -43,23 +43,13 @@ create table if not exists public.suppliers (
   owner_id            uuid references public.profiles(id) on delete set null,
   name                text not null check (char_length(name) between 2 and 120),
   slug                text not null unique,
-  responsible         text not null default '',
-  email               text not null default '',
   description         text not null default '' check (char_length(description) <= 600),
   category_id         uuid references public.categories(id) on delete restrict,
   subcategory_id      uuid references public.subcategories(id) on delete set null,
   supplier_type       text check (supplier_type in ('fabricante', 'distribuidor', 'atacadista', 'varejista')),
-  whatsapp            text,           -- somente dígitos, com DDI quando possível (ex.: 5511987654321)
-  whatsapp_url        text,           -- link de WhatsApp quando não há número (usado pelo ícone se whatsapp estiver vazio)
-  instagram           text,           -- handle sem @
-  site                text,
-  address             text not null default '',
-  number              text not null default '',
-  complement          text not null default '',
   bairro              text not null default '',   -- slug da região (ex.: 25-de-marco, bras, pari)
   city                text not null default 'São Paulo',
   state               char(2) not null default 'SP',
-  cep                 text not null default '',
   sale_wholesale      boolean not null default false,
   sale_retail         boolean not null default false,
   sale_resellers      boolean not null default false,
@@ -82,6 +72,48 @@ create index if not exists suppliers_bairro_idx on public.suppliers(bairro);
 create index if not exists suppliers_status_idx on public.suppliers(approval_status);
 create index if not exists suppliers_search_idx on public.suppliers
   using gin (to_tsvector('portuguese', coalesce(name,'') || ' ' || coalesce(description,'')));
+
+-- ---------- Contatos (protegidos: só dono, admin e assinante ativo leem) ----------
+create table if not exists public.supplier_contacts (
+  supplier_id uuid primary key references public.suppliers(id) on delete cascade,
+  responsible text not null default '',
+  email       text not null default '',
+  whatsapp    text,           -- somente dígitos, com DDI quando possível (ex.: 5511987654321)
+  whatsapp_url text,          -- link de WhatsApp quando não há número
+  instagram   text,           -- handle sem @
+  site        text,
+  address     text not null default '',
+  number      text not null default '',
+  complement  text not null default '',
+  cep         text not null default ''
+);
+
+-- ---------- Assinaturas (Pix confirmado manualmente pelo admin) ----------
+create table if not exists public.subscriptions (
+  id           uuid primary key default gen_random_uuid(),
+  user_id      uuid not null references public.profiles(id) on delete cascade,
+  plan         text not null default 'anual',
+  amount       numeric(10,2) not null,
+  starts_at    timestamptz not null default now(),
+  expires_at   timestamptz not null,
+  status       text not null default 'pending' check (status in ('pending', 'active', 'cancelled')),
+  payment_note text not null default '',   -- ex.: data do Pix conferido
+  created_at   timestamptz not null default now()
+);
+create index if not exists subscriptions_user_idx on public.subscriptions(user_id);
+
+create or replace function public.has_active_subscription()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1 from public.subscriptions s
+    where s.user_id = auth.uid() and s.status = 'active' and s.expires_at > now()
+  );
+$$;
 
 create table if not exists public.supplier_photos (
   id          uuid primary key default gen_random_uuid(),
@@ -167,6 +199,8 @@ alter table public.subcategories   enable row level security;
 alter table public.suppliers       enable row level security;
 alter table public.supplier_photos enable row level security;
 alter table public.favorites       enable row level security;
+alter table public.supplier_contacts enable row level security;
+alter table public.subscriptions enable row level security;
 
 -- Perfis: cada um vê e edita o próprio nome; ninguém muda o próprio tipo.
 create policy "profiles_select_own_or_admin" on public.profiles
@@ -210,6 +244,28 @@ create policy "photos_owner_write" on public.supplier_photos
   for all using (exists (select 1 from public.suppliers s where s.id = supplier_id and s.owner_id = auth.uid()))
   with check (exists (select 1 from public.suppliers s where s.id = supplier_id and s.owner_id = auth.uid()));
 create policy "photos_admin_all" on public.supplier_photos
+  for all using (public.is_admin()) with check (public.is_admin());
+
+-- Contatos: dono do fornecedor, admin e assinante ativo. Visitante comum não lê.
+create policy "contacts_read_subscribers" on public.supplier_contacts
+  for select using (
+    public.is_admin()
+    or public.has_active_subscription()
+    or exists (select 1 from public.suppliers s where s.id = supplier_id and s.owner_id = auth.uid())
+  );
+create policy "contacts_write_owner_admin" on public.supplier_contacts
+  for all using (
+    public.is_admin()
+    or exists (select 1 from public.suppliers s where s.id = supplier_id and s.owner_id = auth.uid())
+  ) with check (
+    public.is_admin()
+    or exists (select 1 from public.suppliers s where s.id = supplier_id and s.owner_id = auth.uid())
+  );
+
+-- Assinaturas: cada um vê as próprias; só admin cria ou confirma.
+create policy "subscriptions_read_own_or_admin" on public.subscriptions
+  for select using (user_id = auth.uid() or public.is_admin());
+create policy "subscriptions_admin_write" on public.subscriptions
   for all using (public.is_admin()) with check (public.is_admin());
 
 -- Favoritos: somente o próprio usuário.
