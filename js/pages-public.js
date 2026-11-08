@@ -43,6 +43,20 @@ function wireFavorites(root) {
 }
 
 // ---------- Início ----------
+// Borrão para quem não tem assinatura: o conteúdo fica embaçado e um aviso leva aos planos.
+// Visual apenas; a proteção real dos contatos fica no banco (RLS).
+function blurGate(html) {
+  if (canSeeContacts()) return html;
+  return `<div class="blur-gate">
+    <div class="card blur-banner">
+      <p><strong>Assine para ver os contatos dos fornecedores</strong></p>
+      <p class="small muted">WhatsApp, Instagram e endereço completos são liberados após o pagamento via Pix.</p>
+      <button class="btn btn-primary" type="button" data-action="unlock">Ver planos de acesso</button>
+    </div>
+    <div class="blur-content" aria-hidden="true">${html}</div>
+  </div>`;
+}
+
 export function home() {
   const counts = countByCategory();
   const featured = store.suppliers.approved().filter((s) => s.featured);
@@ -236,9 +250,9 @@ function listingPage({ title, description, crumbs, heading, intro, fixed, base, 
             <p class="muted" role="status" aria-live="polite">${formatCount(p.total)} ${p.total === 1 ? 'fornecedor encontrado' : 'fornecedores encontrados'}</p>
           </div>
           ${p.items.length
-            ? `<div class="grid grid-3">${p.items.map((s) => supplierCard(s, {
+            ? `${blurGate(`<div class="grid grid-3">${p.items.map((s) => supplierCard(s, {
               categoryName: catName[s.category], regionName: regName[s.bairro], favorite: favs.includes(s.id),
-            })).join('')}</div>
+            })).join('')}</div>`)}
                ${pagination(p, makeHref)}`
             : emptyState('Nenhum fornecedor encontrado', 'Tente outros termos ou remova alguns filtros.',
               `<a class="btn btn-secondary" href="${e(base)}">Limpar filtros</a>`)}
@@ -391,7 +405,7 @@ export function supplierPage({ slug }) {
           <p class="tags">${saleLabels(s).map((l) => `<span class="tag">${e(l)}</span>`).join('') || '<span class="muted">Tipo de venda não informado</span>'}</p>
           ${s.tags?.length ? `<p class="tags">${s.tags.map((t) => `<span class="tag tag-soft">${e(t)}</span>`).join('')}</p>` : ''}
         </section>
-        <section class="card">
+        ${blurGate(`<section class="card">
           <h2>Contato e localização</h2>
           <dl class="info-list">
             <dt>Endereço</dt><dd>${e(fullAddress || 'Não informado')}</dd>
@@ -400,7 +414,7 @@ export function supplierPage({ slug }) {
             <dt>Site</dt><dd>${links.site ? (unlocked ? `<a href="${e(links.site)}" target="_blank" rel="noopener noreferrer">${e(s.site)}</a>` : 'Disponível para assinantes') : 'Não informado'}</dd>
             <dt>Envio</dt><dd>${s.shipsOtherCities ? 'Envia para outras cidades' : 'Somente retirada/local'}</dd>
           </dl>
-        </section>
+        </section>`)}
       </div>
       ${photosCarousel(s)}
       <p class="muted small">Informações fornecidas pelo próprio fornecedor. Confirme preços, pedido mínimo e disponibilidade diretamente com a loja.</p>
@@ -488,7 +502,7 @@ export function favoritesPage() {
         ? 'Seus favoritos ficam salvos na sua conta neste navegador.'
         : 'Você não está logado. Os favoritos ficam salvos apenas neste navegador e não são sincronizados com uma conta.'}</p>
       ${list.length
-        ? `<div class="grid grid-3">${list.map((s) => supplierCard(s, { categoryName: catName[s.category], regionName: regName[s.bairro], favorite: true })).join('')}</div>`
+        ? blurGate(`<div class="grid grid-3">${list.map((s) => supplierCard(s, { categoryName: catName[s.category], regionName: regName[s.bairro], favorite: true })).join('')}</div>`)
         : emptyState('Nenhum favorito ainda', 'Toque no coração de um fornecedor para salvá-lo aqui.',
           '<a class="btn btn-primary" href="#/fornecedores">Ver fornecedores</a>')}
     </section>`,
