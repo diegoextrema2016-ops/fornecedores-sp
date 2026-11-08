@@ -7,7 +7,7 @@ export const SITE = {
   tagline: 'Os melhores fornecedores de São Paulo em um só lugar.',
   description:
     'Encontre fornecedores de atacado e varejo na 25 de Março, Brás, Pari e outros polos comerciais de São Paulo.',
-  url: 'https://www.exemplo.com.br', // troque pelo domínio real (usado em SEO, sitemap e Open Graph)
+  url: 'https://fornecedoresdesp.com.br', // domínio do site (usado em SEO, sitemap e Open Graph)
   locale: 'pt_BR',
   contactEmail: 'contato@exemplo.com.br', // placeholder
   whatsappDefaultMessage:

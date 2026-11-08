@@ -9,7 +9,7 @@ Portal de fornecedores de atacado e varejo de São Paulo (25 de Março, Brás, P
 ## Publicação na Vercel (passo a passo)
 
 ### Antes de subir
-1. **Domínio:** troque `www.exemplo.com.br` pelo seu domínio real em `index.html`, `robots.txt`, `sitemap.xml` e em `js/config.js` (`SITE.url` e `SITE.contactEmail`).
+1. **Domínio:** o site está configurado para `fornecedoresdesp.com.br` em `index.html`, `robots.txt`, `sitemap.xml` e `js/config.js` (`SITE.url`). Se o domínio mudar, troque nesses arquivos.
 2. **Senha do administrador:** o site guarda só o hash SHA-256 em `ADMIN.passwordSha256` (`js/config.js`). Como o código fica público no GitHub, use uma senha forte e **nunca** escreva a senha em texto neste README ou no código. Para trocar, veja a seção 4 abaixo.
 3. Leia a seção **"Importante: o que este site faz e não faz"** logo abaixo, as seções 10 (limitações) e 11 (conformidade).
 

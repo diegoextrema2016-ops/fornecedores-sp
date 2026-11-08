@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 Disallow: /admin
-Sitemap: https://www.exemplo.com.br/sitemap.xml
+Sitemap: https://fornecedoresdesp.com.br/sitemap.xml
