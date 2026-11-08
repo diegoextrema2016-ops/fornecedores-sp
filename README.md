@@ -75,7 +75,7 @@ fornecedores-sp/
 | Chave | Para que serve |
 |---|---|
 | `SITE.name`, `SITE.shortName`, `SITE.tagline`, `SITE.url` | Nome, subtítulo e domínio (usados em SEO e links). |
-| `SITE.contactEmail` | **Placeholder hoje (`contato@exemplo.com.br`).** Troque pelo e-mail real antes do lançamento. |
+| `SITE.contactEmail` | E-mail de contato exibido no site (`fornecedorespoficial@gmail.com`). |
 | `SITE.googleMapsApiKey` | Opcional. Com uma chave da Google Maps Embed API, o mapa aparece embutido. Sem chave, a página usa links. |
 | `SUPABASE.url`, `SUPABASE.anonKey` | Projeto e chave **publicável** (anon). **Nunca** coloque a `service_role` aqui. |
 | `SUPABASE.imageBucket` | Bucket de imagens (`supplier-images`). |
@@ -196,7 +196,6 @@ Os testes automatizados rodam com `npm test` (Node.js 18 ou superior, sem depend
 
 ## Checklist antes do lançamento
 
-- [ ] Trocar `SITE.contactEmail` pelo e-mail real.
 - [ ] Conectar o domínio `fornecedoresdesp.com.br` na Vercel e confirmar o HTTPS.
 - [ ] Confirmar "Confirm email" e a Site URL no Supabase.
 - [ ] Testar cadastro, login, aprovação e Pix com o Supabase real.

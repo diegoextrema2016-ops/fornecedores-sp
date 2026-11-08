@@ -9,7 +9,7 @@ export const SITE = {
     'Encontre fornecedores de atacado e varejo na 25 de Março, Brás, Pari e outros polos comerciais de São Paulo.',
   url: 'https://fornecedoresdesp.com.br', // domínio do site (usado em SEO, sitemap, Open Graph e links de e-mail)
   locale: 'pt_BR',
-  contactEmail: 'contato@exemplo.com.br', // placeholder: troque pelo e-mail real
+  contactEmail: 'fornecedorespoficial@gmail.com',
   whatsappDefaultMessage:
     'Olá! Encontrei o fornecedor no Fornecedores Atacado SP e gostaria de mais informações.',
   // Opcional: chave da Google Maps Embed API. Deixe vazio para usar apenas links do Google Maps (sem chave).
