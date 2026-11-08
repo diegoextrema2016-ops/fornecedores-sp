@@ -46,6 +46,7 @@ function wireFavorites(root) {
 export function home() {
   const counts = countByCategory();
   const featured = store.suppliers.approved().filter((s) => s.featured);
+  const blurred = !canSeeContacts();
   const popular = ['Eletrônicos', 'Moda feminina', 'Tênis', 'Acessórios', 'Perfumes'];
   return {
     title: `${SITE.name} | Fornecedores de São Paulo`,
@@ -82,12 +83,17 @@ export function home() {
     ${featured.length ? `
     <section class="section container">
       <div class="section-head"><div><h2>Conheça fornecedores em destaque.</h2><p class="muted">Seleção feita pela equipe do portal.</p></div></div>
-      <div class="carousel-wrap featured-wrap" data-carousel>
-        ${featured.length > 1 ? '<button class="carousel-arrow carousel-prev" type="button" data-carousel-prev aria-label="Anterior">&#8249;</button>' : ''}
+      <div class="carousel-wrap featured-wrap${blurred ? ' is-blurred' : ''}" data-carousel>
+        ${featured.length > 1 && !blurred ? '<button class="carousel-arrow carousel-prev" type="button" data-carousel-prev aria-label="Anterior">&#8249;</button>' : ''}
         <div class="carousel-track featured-track">${featured.map((s) => `<div class="featured-item">${supplierCard(s, {
           categoryName: catName[s.category], regionName: regName[s.bairro], favorite: store.favorites.has(s.id, favKey()),
         })}</div>`).join('')}</div>
-        ${featured.length > 1 ? '<button class="carousel-arrow carousel-next" type="button" data-carousel-next aria-label="Próximo">&#8250;</button>' : ''}
+        ${featured.length > 1 && !blurred ? '<button class="carousel-arrow carousel-next" type="button" data-carousel-next aria-label="Próximo">&#8250;</button>' : ''}
+        ${blurred ? `<div class="blur-cta">
+          <p><strong>Assine para ver os fornecedores em destaque</strong></p>
+          <p class="small muted">Contatos completos, WhatsApp e endereço liberados após o pagamento via Pix.</p>
+          <button class="btn btn-primary" type="button" data-action="unlock">Ver planos de acesso</button>
+        </div>` : ''}
       </div>
     </section>` : ''}
 
