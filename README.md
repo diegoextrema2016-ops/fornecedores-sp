@@ -275,3 +275,12 @@ Como é um site estático, pode ser publicado em qualquer hospedagem de arquivos
 - [ ] Testar em celular Android e iPhone.
 - [ ] Integrar o pagamento real e trocar `PAYMENT_MODE`.
 - [ ] Revisar preço, cancelamento e reembolso com um advogado.
+
+---
+
+## Migrações do banco (Supabase)
+
+Ordem para um projeto novo ou já existente:
+
+1. `supabase/schema.sql` (estrutura base, uma única vez em projeto novo).
+2. `supabase/migration-002-fase1.sql` (perfil automático no cadastro, regiões no banco e pedidos de pagamento Pix). É aditiva e pode ser rodada mais de uma vez.
