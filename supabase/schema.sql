@@ -46,6 +46,7 @@ create table if not exists public.suppliers (
   description         text not null default '' check (char_length(description) <= 600),
   category_id         uuid references public.categories(id) on delete restrict,
   subcategory_id      uuid references public.subcategories(id) on delete set null,
+  subcategory         text not null default '',
   supplier_type       text check (supplier_type in ('fabricante', 'distribuidor', 'atacadista', 'varejista')),
   bairro              text not null default '',   -- slug da região (ex.: 25-de-marco, bras, pari)
   city                text not null default 'São Paulo',
@@ -213,7 +214,7 @@ create policy "profiles_admin_all" on public.profiles
 
 -- Categorias: todos leem as ativas; só admin escreve.
 create policy "categories_public_read" on public.categories
-  for select using (status = 'active' or public.is_admin());
+  for select using (true);
 create policy "categories_admin_write" on public.categories
   for all using (public.is_admin()) with check (public.is_admin());
 

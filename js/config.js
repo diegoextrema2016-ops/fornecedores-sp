@@ -1,4 +1,4 @@
-// Configuração central do site. Edite aqui: nome, cores de marca (no CSS), chaves e contatos.
+// Configuração central do site. Edite aqui: nome, chaves públicas, planos e contatos.
 // NUNCA coloque chaves secretas (service_role do Supabase, senhas de banco) neste arquivo.
 
 export const SITE = {
@@ -7,9 +7,9 @@ export const SITE = {
   tagline: 'Os melhores fornecedores de São Paulo em um só lugar.',
   description:
     'Encontre fornecedores de atacado e varejo na 25 de Março, Brás, Pari e outros polos comerciais de São Paulo.',
-  url: 'https://fornecedoresdesp.com.br', // domínio do site (usado em SEO, sitemap e Open Graph)
+  url: 'https://fornecedoresdesp.com.br', // domínio do site (usado em SEO, sitemap, Open Graph e links de e-mail)
   locale: 'pt_BR',
-  contactEmail: 'contato@exemplo.com.br', // placeholder
+  contactEmail: 'contato@exemplo.com.br', // placeholder: troque pelo e-mail real
   whatsappDefaultMessage:
     'Olá! Encontrei o fornecedor no Fornecedores Atacado SP e gostaria de mais informações.',
   // Opcional: chave da Google Maps Embed API. Deixe vazio para usar apenas links do Google Maps (sem chave).
@@ -17,28 +17,17 @@ export const SITE = {
   pageSize: 12,
 };
 
-// Modo de dados.
-//  - 'local'    : dados guardados no navegador (localStorage). Use para demonstração e testes.
-//  - 'supabase' : (preparado, ainda não implementado nesta versão) ver README.md, seção "Banco de dados".
-export const DATA_MODE = 'local';
-
+// Banco de dados e autenticação (Supabase). A chave publicável é segura no navegador:
+// quem protege os dados são as regras de acesso (RLS) configuradas no banco.
 export const SUPABASE = {
   url: 'https://fzjiixiqezvvfeybydie.supabase.co',
-  // Chave publicável (publishable). É segura no navegador porque as regras de acesso (RLS) protegem os dados.
   anonKey: 'sb_publishable_Ax9dowVsMkcsX2JjGS8aBQ_p537TLK7',
-};
-
-// Administrador de demonstração.
-// Senha do administrador guardada como SHA-256 (não em texto puro).
-// Para trocar: gere o hash da nova senha e cole aqui.
-// Em produção, a autenticação deve ser feita pelo Supabase Auth, não aqui.
-export const ADMIN = {
-  email: 'admin@spfornecedores.local',
-  passwordSha256: '81c1d0cb3a6b323b9fd0ebe332f86bc33bdfebd76b63679671d7a65029e93ace',
+  // Bucket público de imagens (logos e fotos). Deve existir no projeto (ver supabase/schema.sql).
+  imageBucket: 'supplier-images',
 };
 
 // Planos de acesso aos contatos (WhatsApp, Instagram, endereço completo).
-// Ajuste nomes, valores e prazos aqui. O preço é exibido ao cliente antes do pagamento.
+// O preço é exibido ao cliente antes do pagamento.
 export const PLANS = [
   {
     id: 'anual',
@@ -50,7 +39,7 @@ export const PLANS = [
 ];
 
 // Pagamento por Pix estático (QR code e código "copia e cola").
-// Sem integração automática: o acesso é liberado depois que o pagamento é conferido.
+// Sem integração automática: o administrador confere o Pix e libera o acesso no banco.
 export const PIX = {
   keyType: 'CPF',
   key: '11568638485',
@@ -58,6 +47,3 @@ export const PIX = {
   city: 'SAO PAULO',
   qrImage: 'img/pix-29-90.png', // QR do valor de R$ 29,90; regere se o preço mudar
 };
-
-// 'pix' = mostra o Pix ao cliente. 'simulacao' = libera o acesso sem pagamento (apenas para testes).
-export const PAYMENT_MODE = 'pix';

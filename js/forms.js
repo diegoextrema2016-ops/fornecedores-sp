@@ -97,7 +97,7 @@ export function supplierFormHtml(s = {}, { admin = false, loggedEmail = '' } = {
         ${field('logo', 'Logo (JPG, PNG ou WebP; é reduzida automaticamente)', `<input id="logo" name="logo" type="file" accept="image/jpeg,image/png,image/webp">`)}
         ${field('photos', `Fotos da loja (até ${MAX_PHOTOS}; são reduzidas automaticamente)`, `<input id="photos" name="photos" type="file" accept="image/jpeg,image/png,image/webp" multiple>`)}
       </div>
-      <p class="muted small">Imagens são guardadas no navegador nesta versão. Em produção, vão para o Supabase Storage.</p>
+      <p class="muted small">As imagens são enviadas ao armazenamento do site e reduzidas automaticamente.</p>
     </fieldset>
 
     ${admin ? `

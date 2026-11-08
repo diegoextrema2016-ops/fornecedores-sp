@@ -1,20 +1,30 @@
 // Painel administrativo. Acesso protegido pelo router (exige sessão de administrador).
+// Todas as gravações vão ao Supabase; o banco também confere se quem grava é administrador.
 import { SITE } from './config.js';
-import { CATEGORIES, REGIONS } from './data.js';
 import { store } from './store.js';
 import { escapeHtml as e, formatDate, formatCount, slugify } from './utils.js';
 import { toast, confirmDialog, emptyState, pagination } from './ui.js';
 import { supplierFormHtml, checkSupplierForm, readImages, LIMITS } from './forms.js';
 import { parseCsv, planImport, applyImport } from './import.js';
 import { paginate } from './search.js';
+import { readLocalBackup, parseBackup, importBackup } from './backup.js';
 
-// Nomes lidos do store na hora (inclui categorias criadas pelo admin ou importadas).
-const CAT_FALLBACK = Object.fromEntries(CATEGORIES.map((c) => [c.slug, c.name]));
-const catName = new Proxy({}, { get: (_t, slug) => store.categories.get(String(slug))?.name || CAT_FALLBACK[slug] });
-// Nomes lidos do store na hora (inclui bairros e cidades criados pelo admin).
-const REG_FALLBACK = Object.fromEntries(REGIONS.map((r) => [r.slug, r.name]));
-const regName = new Proxy({}, { get: (_t, slug) => store.regions.get(String(slug))?.name || REG_FALLBACK[slug] });
+const catName = (slug) => store.categories.get(String(slug))?.name || slug;
+const regName = (slug) => store.regions.get(String(slug))?.name || slug;
 const STATUS_LABEL = { pending: 'Pendente', approved: 'Aprovado', rejected: 'Rejeitado' };
+const USER_TYPES = ['comprador', 'fornecedor', 'moderador'];
+
+// Executa uma ação que grava no banco: mostra sucesso ou o motivo da falha.
+async function attempt(action, okMessage) {
+  try {
+    await action();
+    if (okMessage) toast(okMessage);
+    return true;
+  } catch (err) {
+    toast(err.message || 'Não foi possível concluir. Tente de novo.', 'error');
+    return false;
+  }
+}
 
 // Casca comum do painel: barra lateral + conteúdo.
 export function adminLayout(active, title, body) {
@@ -34,6 +44,7 @@ export function adminLayout(active, title, body) {
         ${link('#/admin/categorias', 'categories', 'Categorias')}
         ${link('#/admin/regioes', 'regions', 'Bairros e cidades')}
         ${link('#/admin/usuarios', 'users', 'Usuários')}
+        ${link('#/admin/migracao', 'backup', 'Backup e migração')}
         <a href="#/sair">Sair</a>
       </aside>
       <section class="admin-main">
@@ -70,7 +81,7 @@ export function adminDashboard() {
       <section class="card">
         <h2>Categorias com mais visualizações</h2>
         <p class="muted small">Soma das visualizações dos fornecedores aprovados de cada categoria.</p>
-        ${topCats.length ? `<ol class="plain-list">${topCats.map(([slug, n]) => `<li>${e(catName[slug] || slug)} <span class="muted small">· ${formatCount(n)}</span></li>`).join('')}</ol>`
+        ${topCats.length ? `<ol class="plain-list">${topCats.map(([slug, n]) => `<li>${e(catName(slug))} <span class="muted small">· ${formatCount(n)}</span></li>`).join('')}</ol>`
           : '<p class="muted">Sem dados ainda.</p>'}
       </section>
     </div>`);
@@ -82,7 +93,7 @@ export function adminSuppliers(query, { preset = '' } = {}) {
   const search = (query.get('busca') || '').toLowerCase();
   let list = store.suppliers.list();
   if (status !== 'all') list = list.filter((s) => s.status === status);
-  if (search) list = list.filter((s) => `${s.name} ${s.email} ${s.responsible}`.toLowerCase().includes(search));
+  if (search) list = list.filter((s) => `${s.name} ${s.email || ''} ${s.responsible || ''}`.toLowerCase().includes(search));
   list.sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
   // 50 fornecedores por página
   const p = paginate(list, Number(query.get('pagina')) || 1, 50);
@@ -116,9 +127,9 @@ export function adminSuppliers(query, { preset = '' } = {}) {
           <tr data-row="${e(s.id)}">
             <td><input type="checkbox" data-select="${e(s.id)}" aria-label="Selecionar ${e(s.name)}"></td>
             <td><strong>${e(s.name)}</strong><div class="muted small">${e(s.email || '')}${s.isDemo ? ' · demo' : ''}</div></td>
-            <td>${e(store.categories.get(s.category)?.name || catName[s.category] || s.category)}</td>
-            <td>${e(regName[s.bairro] || s.bairro)}</td>
-            <td><span class="badge badge-${s.status}">${STATUS_LABEL[s.status]}</span></td>
+            <td>${e(catName(s.category))}</td>
+            <td>${e(regName(s.bairro) || s.bairro)}</td>
+            <td><span class="badge badge-${s.status}">${STATUS_LABEL[s.status] || s.status}</span></td>
             <td><label class="switch"><input type="checkbox" data-flag="verified" data-id="${e(s.id)}" ${s.verified ? 'checked' : ''}><span class="sr-only">Verificado</span></label></td>
             <td><label class="switch"><input type="checkbox" data-flag="featured" data-id="${e(s.id)}" ${s.featured ? 'checked' : ''}><span class="sr-only">Destaque</span></label></td>
             <td class="row-actions">
@@ -189,55 +200,61 @@ export function mountAdminSuppliers(root, rerender) {
     const label = root.querySelector('[data-bulk-count]');
     if (label) label.textContent = `${n} selecionado${n === 1 ? '' : 's'}`;
   };
-  root.addEventListener('change', (ev) => {
-    if (ev.target.matches('[data-row-cat]')) {
-      const s = store.suppliers.get(ev.target.dataset.rowCat);
-      if (s) {
-        store.suppliers.save({ ...s, category: ev.target.value }, { asAdmin: true });
-        toast(`Categoria de "${s.name}" atualizada.`);
-      }
-    } else if (ev.target.matches('[data-select-all]')) {
-      root.querySelectorAll('[data-select]').forEach((c) => (c.checked = ev.target.checked));
-      updateCount();
-    } else if (ev.target.matches('[data-select]')) {
-      updateCount();
-    }
-  });
-  root.addEventListener('click', async (ev) => {
-    if (!ev.target.closest('[data-bulk-apply]')) return;
-    const slug = root.querySelector('[data-bulk-category]').value;
-    const ids = [...root.querySelectorAll('[data-select]:checked')].map((c) => c.dataset.select);
-    if (!slug) return toast('Escolha a categoria de destino.', 'error');
-    if (!ids.length) return toast('Marque pelo menos um fornecedor.', 'error');
-    const ok = await confirmDialog({
-      title: 'Mudar categoria?',
-      text: `${ids.length} fornecedor(es) serão movidos para "${store.categories.get(slug)?.name || slug}".`,
-      confirmLabel: 'Mudar',
-    });
-    if (!ok) return;
-    for (const id of ids) {
-      const s = store.suppliers.get(id);
-      if (s) store.suppliers.save({ ...s, category: slug }, { asAdmin: true });
-    }
-    toast(`${ids.length} fornecedor(es) movidos.`);
-    rerender();
-  });
+
   root.addEventListener('change', async (ev) => {
-    const file = ev.target.closest('[data-import-file]');
-    if (!file) return;
-    const preview = root.querySelector('[data-import-preview]');
-    const f = file.files?.[0];
-    if (!f) return;
-    const rows = parseCsv(await f.text());
-    if (!rows.length) {
-      pendingPlan = null;
-      preview.innerHTML = '<p class="muted small">Nenhuma linha encontrada. Confira o arquivo e o cabeçalho.</p>';
-      return;
+    const t = ev.target;
+    if (t.matches('[data-row-cat]')) {
+      const s = store.suppliers.get(t.dataset.rowCat);
+      if (s) {
+        await attempt(() => store.suppliers.save({ ...s, category: t.value }, { asAdmin: true }), `Categoria de "${s.name}" atualizada.`);
+        rerender();
+      }
+    } else if (t.matches('[data-select-all]')) {
+      root.querySelectorAll('[data-select]').forEach((c) => (c.checked = t.checked));
+      updateCount();
+    } else if (t.matches('[data-select]')) {
+      updateCount();
+    } else if (t.matches('[data-flag]')) {
+      await attempt(
+        () => store.suppliers.setFlag(t.dataset.id, t.dataset.flag, t.checked),
+        t.dataset.flag === 'verified' ? 'Selo de verificado atualizado.' : 'Destaque atualizado.',
+      );
+    } else if (t.closest('[data-import-file]')) {
+      const f = t.files?.[0];
+      const preview = root.querySelector('[data-import-preview]');
+      if (!f) return;
+      const rows = parseCsv(await f.text());
+      if (!rows.length) {
+        pendingPlan = null;
+        preview.innerHTML = '<p class="muted small">Nenhuma linha encontrada. Confira o arquivo e o cabeçalho.</p>';
+        return;
+      }
+      pendingPlan = planImport(rows, store.suppliers.list());
+      preview.innerHTML = importSummaryHtml(pendingPlan);
     }
-    pendingPlan = planImport(rows, store.suppliers.list());
-    preview.innerHTML = importSummaryHtml(pendingPlan);
   });
+
   root.addEventListener('click', async (ev) => {
+    if (ev.target.closest('[data-bulk-apply]')) {
+      const slug = root.querySelector('[data-bulk-category]').value;
+      const ids = [...root.querySelectorAll('[data-select]:checked')].map((c) => c.dataset.select);
+      if (!slug) return toast('Escolha a categoria de destino.', 'error');
+      if (!ids.length) return toast('Marque pelo menos um fornecedor.', 'error');
+      const ok = await confirmDialog({
+        title: 'Mudar categoria?',
+        text: `${ids.length} fornecedor(es) serão movidos para "${catName(slug)}".`,
+        confirmLabel: 'Mudar',
+      });
+      if (!ok) return;
+      await attempt(async () => {
+        for (const id of ids) {
+          const s = store.suppliers.get(id);
+          if (s) await store.suppliers.save({ ...s, category: slug }, { asAdmin: true });
+        }
+      }, `${ids.length} fornecedor(es) movidos.`);
+      return rerender();
+    }
+
     if (ev.target.closest('[data-import-run]') && pendingPlan) {
       const ok = await confirmDialog({
         title: 'Importar fornecedores?',
@@ -245,12 +262,38 @@ export function mountAdminSuppliers(root, rerender) {
         confirmLabel: 'Importar',
       });
       if (!ok) return;
-      const res = applyImport(store, pendingPlan.records);
+      const plan = pendingPlan;
       pendingPlan = null;
-      toast(`${res.imported} fornecedores importados${res.categoriesCreated ? `, ${res.categoriesCreated} categorias criadas` : ''}.`);
+      let res = null;
+      await attempt(async () => { res = await applyImport(store, plan.records); },
+        null);
+      if (res) toast(`${res.imported} fornecedores importados${res.categoriesCreated ? `, ${res.categoriesCreated} categorias criadas` : ''}.`);
       return rerender();
     }
+
+    const st = ev.target.closest('[data-status]');
+    if (st) {
+      await attempt(() => store.suppliers.setStatus(st.dataset.id, st.dataset.status),
+        st.dataset.status === 'approved' ? 'Fornecedor aprovado e publicado.' : 'Cadastro rejeitado.');
+      return rerender();
+    }
+
+    const del = ev.target.closest('[data-delete]');
+    if (del) {
+      const s = store.suppliers.get(del.dataset.delete);
+      const ok = await confirmDialog({
+        title: 'Excluir fornecedor?',
+        text: `"${s?.name}" será removido permanentemente do site.`,
+        confirmLabel: 'Excluir',
+        danger: true,
+      });
+      if (ok) {
+        await attempt(() => store.suppliers.remove(del.dataset.delete), 'Fornecedor excluído.');
+        rerender();
+      }
+    }
   });
+
   root.querySelector('[data-admin-search]')?.addEventListener('submit', (ev) => {
     ev.preventDefault();
     const busca = new FormData(ev.currentTarget).get('busca')?.toString().trim() || '';
@@ -258,35 +301,6 @@ export function mountAdminSuppliers(root, rerender) {
     current.set('busca', busca);
     current.delete('pagina');
     location.hash = `${location.hash.split('?')[0]}?${current.toString()}`;
-  });
-  root.addEventListener('click', async (ev) => {
-    const st = ev.target.closest('[data-status]');
-    if (st) {
-      store.suppliers.setStatus(st.dataset.id, st.dataset.status);
-      toast(st.dataset.status === 'approved' ? 'Fornecedor aprovado e publicado.' : 'Cadastro rejeitado.');
-      return rerender();
-    }
-    const del = ev.target.closest('[data-delete]');
-    if (del) {
-      const s = store.suppliers.get(del.dataset.delete);
-      const ok = await confirmDialog({
-        title: 'Excluir fornecedor?',
-        text: `"${s?.name}" será removido permanentemente deste navegador.`,
-        confirmLabel: 'Excluir',
-        danger: true,
-      });
-      if (ok) {
-        store.suppliers.remove(del.dataset.delete);
-        toast('Fornecedor excluído.');
-        rerender();
-      }
-    }
-  });
-  root.addEventListener('change', (ev) => {
-    const flag = ev.target.closest('[data-flag]');
-    if (!flag) return;
-    store.suppliers.setFlag(flag.dataset.id, flag.dataset.flag, flag.checked);
-    toast(flag.dataset.flag === 'verified' ? 'Selo de verificado atualizado.' : 'Destaque atualizado.');
   });
 }
 
@@ -307,11 +321,13 @@ export function mountAdminSupplierForm(root, id) {
     ev.preventDefault();
     const data = checkSupplierForm(form);
     if (!data) return;
+    const button = form.querySelector('button[type="submit"]');
+    button.disabled = true;
     try {
       const existing = id ? store.suppliers.get(id) : null;
       const newLogo = await readImages(form.elements.logo.files, { maxBytes: LIMITS.MAX_LOGO_BYTES, max: 1 });
       const newPhotos = await readImages(form.elements.photos.files, { maxBytes: LIMITS.MAX_PHOTO_BYTES, max: LIMITS.MAX_PHOTOS });
-      const saved = store.suppliers.save({
+      const saved = await store.suppliers.save({
         ...(existing || {}),
         ...data,
         id: existing?.id,
@@ -323,6 +339,7 @@ export function mountAdminSupplierForm(root, id) {
       location.hash = saved.status === 'approved' ? `#/fornecedor/${saved.slug}` : '#/admin/fornecedores';
     } catch (err) {
       toast(err.message || 'Erro ao salvar.', 'error');
+      button.disabled = false;
     }
   });
 }
@@ -374,7 +391,7 @@ export function mountAdminCategories(root, rerender) {
     title.textContent = 'Nova categoria';
     cancel.hidden = true;
   };
-  form.addEventListener('submit', (ev) => {
+  form.addEventListener('submit', async (ev) => {
     ev.preventDefault();
     const f = form.elements;
     const name = f.name.value.trim();
@@ -387,16 +404,15 @@ export function mountAdminCategories(root, rerender) {
       form.querySelector('#err-name').textContent = 'Já existe uma categoria com esse nome.';
       return;
     }
-    store.categories.save({
+    const ok = await attempt(() => store.categories.save({
       slug,
       name,
       icon: f.icon.value.trim() || '📦',
       description: f.description.value.trim(),
       subcategories: f.subcategories.value.split(',').map((s) => s.trim()).filter(Boolean),
       status: f.active.checked ? 'active' : 'inactive',
-    });
-    toast('Categoria salva.');
-    rerender();
+    }), 'Categoria salva.');
+    if (ok) rerender();
   });
   cancel.addEventListener('click', reset);
   root.addEventListener('click', async (ev) => {
@@ -417,7 +433,7 @@ export function mountAdminCategories(root, rerender) {
     }
     if (toggle) {
       const c = store.categories.get(toggle.dataset.catToggle);
-      store.categories.save({ ...c, status: c.status === 'inactive' ? 'active' : 'inactive' });
+      await attempt(() => store.categories.save({ ...c, status: c.status === 'inactive' ? 'active' : 'inactive' }), 'Situação atualizada.');
       rerender();
     }
     if (del) {
@@ -426,12 +442,13 @@ export function mountAdminCategories(root, rerender) {
       if (inUse) {
         return toast(`Esta categoria tem ${formatCount(inUse)} fornecedor(es). Troque a categoria deles antes de excluir.`, 'error');
       }
-      const ok = await confirmDialog({ title: 'Excluir categoria?', text: `"${store.categories.get(slug)?.name || slug}" será removida. Esta ação não pode ser desfeita.`, confirmLabel: 'Excluir', danger: true });
+      const ok = await confirmDialog({ title: 'Excluir categoria?', text: `"${catName(slug)}" será removida. Esta ação não pode ser desfeita.`, confirmLabel: 'Excluir', danger: true });
       if (!ok) return;
-      const result = store.categories.remove(slug);
-      if (!result.ok) return toast(result.reason, 'error');
-      toast('Categoria excluída.');
-      rerender();
+      const done = await attempt(async () => {
+        const result = await store.categories.remove(slug);
+        if (!result.ok) throw new Error(result.reason);
+      }, 'Categoria excluída.');
+      if (done) rerender();
     }
   });
 }
@@ -478,7 +495,7 @@ export function mountAdminRegions(root, rerender) {
     title.textContent = 'Novo bairro ou cidade';
     cancel.hidden = true;
   };
-  form.addEventListener('submit', (ev) => {
+  form.addEventListener('submit', async (ev) => {
     ev.preventDefault();
     const f = form.elements;
     const name = f.name.value.trim();
@@ -491,9 +508,8 @@ export function mountAdminRegions(root, rerender) {
       form.querySelector('#err-reg-name').textContent = 'Já existe com esse nome.';
       return;
     }
-    store.regions.save({ slug, name, description: f.description.value.trim() });
-    toast('Salvo.');
-    rerender();
+    const ok = await attempt(() => store.regions.save({ slug, name, description: f.description.value.trim() }), 'Salvo.');
+    if (ok) rerender();
   });
   cancel.addEventListener('click', reset);
   root.addEventListener('click', async (ev) => {
@@ -514,15 +530,16 @@ export function mountAdminRegions(root, rerender) {
       if (inUse) return toast(`Esta região tem ${formatCount(inUse)} fornecedor(es). Troque-os antes de excluir.`, 'error');
       const ok = await confirmDialog({
         title: 'Excluir bairro ou cidade?',
-        text: `"${store.regions.get(slug)?.name || slug}" será removida. Esta ação não pode ser desfeita.`,
+        text: `"${regName(slug)}" será removida. Esta ação não pode ser desfeita.`,
         confirmLabel: 'Excluir',
         danger: true,
       });
       if (!ok) return;
-      const result = store.regions.remove(slug);
-      if (!result.ok) return toast(result.reason, 'error');
-      toast('Excluído.');
-      rerender();
+      const done = await attempt(async () => {
+        const result = await store.regions.remove(slug);
+        if (!result.ok) throw new Error(result.reason);
+      }, 'Excluído.');
+      if (done) rerender();
     }
   });
 }
@@ -533,7 +550,7 @@ export function adminUsers() {
   return adminLayout('users', 'Usuários', users.length ? `
     <div class="table-wrap">
       <table class="table">
-        <thead><tr><th>Nome</th><th>E-mail</th><th>Tipo</th><th>Cadastro</th><th>Ações</th></tr></thead>
+        <thead><tr><th>Nome</th><th>E-mail</th><th>Tipo</th><th>Cadastro</th></tr></thead>
         <tbody>
           ${users.map((u) => `
             <tr>
@@ -541,35 +558,115 @@ export function adminUsers() {
               <td>${e(u.email)}</td>
               <td>
                 <select data-user-type="${e(u.id)}" aria-label="Tipo de ${e(u.name)}">
-                  ${['comprador', 'fornecedor', 'moderador'].map((t) => `<option value="${t}" ${u.type === t ? 'selected' : ''}>${t}</option>`).join('')}
+                  ${[...USER_TYPES, ...(u.type === 'admin' ? ['admin'] : [])]
+                    .map((t) => `<option value="${t}" ${u.type === t ? 'selected' : ''}>${t === 'admin' ? 'administrador' : t}</option>`).join('')}
                 </select>
               </td>
               <td>${formatDate(u.createdAt)}</td>
-              <td><button class="btn btn-sm btn-danger" data-user-del="${e(u.id)}">Remover</button></td>
             </tr>`).join('')}
         </tbody>
       </table>
     </div>
-    <p class="muted small">Contas de visitantes criadas neste navegador. Em produção, use o Supabase Auth.</p>`
+    <p class="muted small">Contas criadas pelo cadastro do site. Para apagar uma conta, use o painel de autenticação do Supabase.</p>`
     : emptyState('Nenhum usuário cadastrado', 'As contas criadas no site aparecerão aqui.'));
 }
 
 export function mountAdminUsers(root, rerender) {
-  root.addEventListener('change', (ev) => {
+  root.addEventListener('change', async (ev) => {
     const sel = ev.target.closest('[data-user-type]');
     if (!sel) return;
-    store.users.setType(sel.dataset.userType, sel.value);
-    toast('Tipo de usuário atualizado.');
+    const ok = await attempt(() => store.users.setType(sel.dataset.userType, sel.value), 'Tipo de usuário atualizado.');
+    if (ok) rerender();
   });
+}
+
+// ---------- Backup e migração ----------
+export function adminBackup() {
+  const backup = readLocalBackupSafe();
+  const local = backup
+    ? `<p>Encontrei <strong>${formatCount(backup.suppliers.length)}</strong> fornecedores, <strong>${formatCount(backup.categories.length)}</strong> categorias e <strong>${formatCount(backup.regions.length)}</strong> bairros guardados <em>neste navegador</em>, da versão anterior do site.</p>
+       <button class="btn btn-primary" type="button" data-backup-download>Baixar backup (JSON)</button>
+       <p class="muted small">Guarde o arquivo. Depois, abra o site publicado, entre como administrador, vá em Backup e migração e restaure o arquivo lá.</p>`
+    : '<p class="muted">Não há dados antigos guardados neste navegador. Esta área só serve para migrar os cadastros feitos na versão anterior.</p>';
+  return adminLayout('backup', 'Backup e migração', `
+    <section class="card">
+      <h2>1. Backup deste navegador</h2>
+      ${local}
+    </section>
+    <section class="card">
+      <h2>2. Restaurar backup no banco</h2>
+      <p class="muted">Escolha o arquivo JSON gerado no passo 1. Os fornecedores entram com o mesmo status que tinham. Contas e favoritos não são importados.</p>
+      <input type="file" accept="application/json,.json" data-backup-file>
+      <div data-backup-preview></div>
+    </section>`);
+}
+
+function readLocalBackupSafe() {
+  try {
+    return readLocalBackup(window.localStorage);
+  } catch {
+    return null;
+  }
+}
+
+export function mountAdminBackup(root) {
+  let pending = null;
   root.addEventListener('click', async (ev) => {
-    const del = ev.target.closest('[data-user-del]');
-    if (!del) return;
-    const ok = await confirmDialog({ title: 'Remover usuário?', text: 'A conta será apagada deste navegador.', confirmLabel: 'Remover', danger: true });
-    if (ok) {
-      store.users.remove(del.dataset.userDel);
-      toast('Usuário removido.');
-      rerender();
+    if (ev.target.closest('[data-backup-download]')) {
+      const backup = readLocalBackupSafe();
+      if (!backup) return toast('Não há dados para exportar.', 'error');
+      const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `backup-fornecedores-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      return;
     }
+    if (ev.target.closest('[data-backup-run]') && pending) {
+      const ok = await confirmDialog({
+        title: 'Restaurar backup?',
+        text: `${pending.suppliers.length} fornecedores serão gravados no banco. Fornecedores com o mesmo nome e a mesma cidade podem ficar duplicados.`,
+        confirmLabel: 'Restaurar',
+      });
+      if (!ok) return;
+      const data = pending;
+      pending = null;
+      const preview = root.querySelector('[data-backup-preview]');
+      preview.innerHTML = '<p class="muted">Gravando no banco... não feche esta página.</p>';
+      try {
+        const res = await importBackup(store, data);
+        preview.innerHTML = `
+          <p><strong>${formatCount(res.suppliers)}</strong> fornecedores, <strong>${formatCount(res.categories)}</strong> categorias e <strong>${formatCount(res.regions)}</strong> bairros gravados.</p>
+          ${res.errors.length ? `<p class="small">Não foi possível gravar ${formatCount(res.errors.length)} item(ns):</p><ul class="small">${res.errors.map((m) => `<li>${e(m)}</li>`).join('')}</ul>` : ''}
+          <a class="btn btn-secondary" href="#/admin/fornecedores">Ver fornecedores</a>`;
+      } catch (err) {
+        preview.innerHTML = '';
+        toast(err.message || 'Falha ao gravar o backup.', 'error');
+      }
+    }
+  });
+  root.addEventListener('change', async (ev) => {
+    const input = ev.target.closest('[data-backup-file]');
+    if (!input) return;
+    const preview = root.querySelector('[data-backup-preview]');
+    const f = input.files?.[0];
+    if (!f) return;
+    const parsed = parseBackup(await f.text());
+    if (!parsed.ok) {
+      pending = null;
+      preview.innerHTML = `<p class="notice notice-warn">${e(parsed.reason)}</p>`;
+      return;
+    }
+    pending = parsed.data;
+    preview.innerHTML = `
+      <div class="import-summary">
+        <p><strong>${formatCount(pending.suppliers.length)}</strong> fornecedores, <strong>${formatCount(pending.categories.length)}</strong> categorias e <strong>${formatCount(pending.regions.length)}</strong> bairros prontos para gravar.</p>
+        <button class="btn btn-primary" type="button" data-backup-run>Gravar no banco</button>
+      </div>`;
   });
 }
 

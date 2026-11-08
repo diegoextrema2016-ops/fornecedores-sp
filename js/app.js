@@ -1,14 +1,11 @@
 // Ponto de entrada: roteamento por hash (#/rota?query), proteção das rotas do painel e renderização.
 import { SITE } from './config.js';
-import { store, createStore } from './store.js';
+import { store } from './store.js';
 import { header, footer, toast } from './ui.js';
 import * as pub from './pages-public.js';
 import * as acc from './pages-account.js';
 import * as adm from './pages-admin.js';
 import { openPaywall } from './paywall.js';
-
-const storeInstance = store || createStore(window.localStorage);
-storeInstance.init();
 
 const main = document.getElementById('main');
 const headerHost = document.getElementById('header');
@@ -44,6 +41,7 @@ const routes = [
   [/^\/admin\/categorias$/, () => withMount(adm.adminCategories(), (r) => adm.mountAdminCategories(r, render)), { admin: true }],
   [/^\/admin\/regioes$/, () => withMount(adm.adminRegions(), (r) => adm.mountAdminRegions(r, render)), { admin: true }],
   [/^\/admin\/usuarios$/, () => withMount(adm.adminUsers(), (r) => adm.mountAdminUsers(r, render)), { admin: true }],
+  [/^\/admin\/migracao$/, () => withMount(adm.adminBackup(), (r) => adm.mountAdminBackup(r, render)), { admin: true }],
 ];
 
 // Acrescenta uma função de montagem (eventos) a uma página já gerada.
@@ -62,8 +60,31 @@ function setMeta(page) {
   document.querySelector('meta[name="description"]')?.setAttribute('content', page.description || SITE.description);
 }
 
-function render() {
+// Evita que uma renderização antiga sobrescreva a mais recente (cliques rápidos ou atualizações em sequência).
+let renderId = 0;
+
+async function render() {
+  const id = ++renderId;
   const { path, query } = parseHash();
+
+  try {
+    await store.refresh();
+  } catch (err) {
+    if (id !== renderId) return;
+    headerHost.innerHTML = header({ session: null, route: '/' });
+    footerHost.innerHTML = footer();
+    main.innerHTML = `<section class="container section-tight narrow">
+      <div class="card">
+        <h1>Não foi possível carregar o site</h1>
+        <p>Verifique sua conexão com a internet e tente de novo.</p>
+        <p class="muted small">${String(err?.message || err)}</p>
+        <button class="btn btn-primary" type="button" onclick="location.reload()">Tentar novamente</button>
+      </div>
+    </section>`;
+    return;
+  }
+  if (id !== renderId) return;
+
   let route = null;
   let match = null;
   for (const r of routes) {
@@ -134,8 +155,11 @@ window.addEventListener('scroll', () => {
   document.getElementById('site-header')?.classList.toggle('is-scrolled', window.scrollY > 8);
 }, { passive: true });
 
+// Erros de gravação em segundo plano (ex.: favorito) aparecem como aviso.
+window.addEventListener('spf:error', (ev) => toast(ev.detail, 'error'));
+
 window.addEventListener('hashchange', render);
 render();
 
 // Acesso no console para depuração (não expõe segredos).
-window.SPF = { store: storeInstance, render };
+window.SPF = { store, render };

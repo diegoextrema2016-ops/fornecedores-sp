@@ -17,7 +17,6 @@ const catName = new Proxy({}, { get: (_t, slug) => store.categories.get(String(s
 const REG_FALLBACK = Object.fromEntries(REGIONS.map((r) => [r.slug, r.name]));
 const regName = new Proxy({}, { get: (_t, slug) => store.regions.get(String(slug))?.name || REG_FALLBACK[slug] });
 const ctx = { categoryNames: catName, regionNames: regName };
-const favKey = () => store.session.get()?.email || 'guest';
 
 function allCategories() {
   return store.categories.list({ includeInactive: false });
@@ -34,7 +33,7 @@ function wireFavorites(root) {
   root.addEventListener('click', (ev) => {
     const btn = ev.target.closest('[data-action="fav"]');
     if (!btn) return;
-    const on = store.favorites.toggle(btn.dataset.id, favKey());
+    const on = store.favorites.toggle(btn.dataset.id);
     btn.classList.toggle('is-on', on);
     btn.setAttribute('aria-pressed', String(on));
     btn.setAttribute('aria-label', on ? 'Remover dos favoritos' : 'Salvar nos favoritos');
@@ -100,7 +99,7 @@ export function home() {
       <div class="carousel-wrap featured-wrap${blurred ? ' is-blurred' : ''}" data-carousel>
         ${featured.length > 1 && !blurred ? '<button class="carousel-arrow carousel-prev" type="button" data-carousel-prev aria-label="Anterior">&#8249;</button>' : ''}
         <div class="carousel-track featured-track">${featured.map((s) => `<div class="featured-item">${supplierCard(s, {
-          categoryName: catName[s.category], regionName: regName[s.bairro], favorite: store.favorites.has(s.id, favKey()),
+          categoryName: catName[s.category], regionName: regName[s.bairro], favorite: store.favorites.has(s.id),
         })}</div>`).join('')}</div>
         ${featured.length > 1 && !blurred ? '<button class="carousel-arrow carousel-next" type="button" data-carousel-next aria-label="Próximo">&#8250;</button>' : ''}
         ${blurred ? `<div class="blur-cta">
@@ -227,7 +226,7 @@ function listingPage({ title, description, crumbs, heading, intro, fixed, base, 
 
   const rows = sortSuppliers(filterSuppliers(store.suppliers.approved(), effective, ctx), sort);
   const p = paginate(rows, page, SITE.pageSize);
-  const favs = store.favorites.list(favKey());
+  const favs = store.favorites.list();
   const makeHref = (n) => hrefWith(base, query, { pagina: n === 1 ? null : String(n) });
 
   return {
@@ -358,7 +357,7 @@ export function supplierPage({ slug }) {
   const unlocked = canSeeContacts();
   const links = supplierMapLinks(s);
   const wa = whatsappTarget(s, `${SITE.whatsappDefaultMessage} (${s.name})`);
-  const fav = store.favorites.has(s.id, favKey());
+  const fav = store.favorites.has(s.id);
   const fullAddress = unlocked
     ? [s.address && `${s.address}${s.number ? `, ${s.number}` : ''}`, s.complement, s.bairro && regName[s.bairro], s.city, s.state, s.cep].filter(Boolean).join(' · ')
     : [s.bairro && regName[s.bairro], s.city].filter(Boolean).join(' · ') + ' · endereço completo para assinantes';
@@ -389,7 +388,7 @@ export function supplierPage({ slug }) {
       </header>
 
       <div class="profile-actions">
-        ${unlocked && wa ? `<a class="btn btn-whatsapp btn-lg" href="${e(wa)}" target="_blank" rel="noopener noreferrer">${icon.wa} Conversar pelo WhatsApp</a>` : (s.whatsapp || s.whatsappUrl ? '<button class="btn btn-primary btn-lg" type="button" data-action="unlock">Ver contato completo</button>' : '<span class="btn btn-disabled btn-lg">WhatsApp não cadastrado</span>')}
+        ${unlocked && wa ? `<a class="btn btn-whatsapp btn-lg" href="${e(wa)}" target="_blank" rel="noopener noreferrer">${icon.wa} Conversar pelo WhatsApp</a>` : (unlocked ? '<span class="btn btn-disabled btn-lg">WhatsApp não cadastrado</span>' : '<button class="btn btn-primary btn-lg" type="button" data-action="unlock">Ver contato completo</button>')}
         ${unlocked && links.ig ? `<a class="btn btn-secondary" href="${e(links.ig)}" target="_blank" rel="noopener noreferrer">Ver Instagram</a>` : ''}
         ${unlocked && links.maps ? `<a class="btn btn-secondary" href="${e(links.maps)}" target="_blank" rel="noopener noreferrer">${icon.pin} Como chegar</a>` : ''}
         <button class="btn btn-ghost" type="button" data-action="share">Compartilhar</button>
@@ -434,7 +433,7 @@ export function supplierPage({ slug }) {
       });
       root.querySelector('[data-action="fav-profile"]')?.addEventListener('click', (ev) => {
         const btn = ev.currentTarget;
-        const on = store.favorites.toggle(s.id, favKey());
+        const on = store.favorites.toggle(s.id);
         btn.classList.toggle('is-on', on);
         btn.setAttribute('aria-pressed', String(on));
         btn.lastChild.textContent = on ? ' Salvo' : ' Favoritar';
@@ -488,7 +487,7 @@ export function mapPage() {
 
 // ---------- Favoritos ----------
 export function favoritesPage() {
-  const ids = store.favorites.list(favKey());
+  const ids = store.favorites.list();
   const list = ids.map((id) => store.suppliers.get(id)).filter((s) => s && s.status === 'approved');
   const loggedIn = Boolean(store.session.get());
   return {
@@ -571,9 +570,9 @@ export function privacyPage() {
   return legalPage('Política de privacidade', `
     <p>Esta é uma política de modelo. Revise com um profissional jurídico antes de publicar (LGPD).</p>
     <h2>Dados coletados</h2>
-    <p>Nome, e-mail e senha (armazenada apenas como resumo criptográfico) de contas; dados informados em cadastros de fornecedores; e os favoritos salvos no seu navegador.</p>
+    <p>Nome e e-mail de contas; a senha é guardada pelo serviço de autenticação, nunca em texto puro; dados informados em cadastros de fornecedores; pedidos de assinatura; e os favoritos.</p>
     <h2>Armazenamento</h2>
-    <p>No modo de demonstração, os dados ficam no seu próprio navegador (localStorage). Em produção, os dados devem ser armazenados em banco com controle de acesso.</p>
+    <p>Os dados ficam em banco de dados hospedado no Supabase, com regras de acesso por usuário. Os contatos completos dos fornecedores só são liberados a administradores, donos do cadastro e assinantes ativos. Os favoritos de quem não tem conta ficam apenas neste navegador.</p>
     <h2>Seus direitos</h2>
     <p>Você pode solicitar acesso, correção ou exclusão dos seus dados pelo contato do portal.</p>`);
 }

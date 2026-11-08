@@ -1,316 +1,364 @@
-// Camada de dados do modo 'local'. Guarda tudo no navegador (localStorage).
-// A interface de acesso (métodos) foi pensada para ser trocada por Supabase depois, sem mudar as páginas.
-// O storage é injetado, para que os testes possam usar um storage falso no Node.
+// Camada de dados do site. A fonte da verdade é o Supabase (Postgres, Auth e Storage).
+//
+// Como funciona:
+//  - refresh() carrega do banco tudo o que este visitante pode ver (o próprio banco aplica as regras de acesso).
+//    Isso roda antes de cada página, então as telas leem de uma cópia em memória, de forma síncrona.
+//  - As escritas (salvar, aprovar, categorias...) vão ao banco primeiro. Só depois a cópia local é atualizada.
+//  - Única exceção: os favoritos de quem ainda não tem conta ficam neste navegador (preferência, não dado de negócio).
+//    Ao entrar na conta, são copiados para o banco.
+import { api, imagePathFromUrl } from './api.js';
+import { SITE } from './config.js';
+import { slugify } from './utils.js';
+import * as M from './mapping.js';
 
-import { CATEGORIES, DEMO_SUPPLIERS, REGIONS } from './data.js';
-import { slugify, uid } from './utils.js';
+const GUEST_FAV_KEY = 'spf:v2:guest-favorites';
+const PENDING_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
-const KEYS = {
-  suppliers: 'spf:v1:suppliers',
-  demoCleaned: 'spf:v1:demo-limpo',
-  categories: 'spf:v1:categories',
-  regions: 'spf:v1:regions',
-  users: 'spf:v1:users',
-  favorites: 'spf:v1:favorites',
-  session: 'spf:v1:session',
-  subscriptions: 'spf:v1:subscriptions',
+// Cópia em memória, recarregada por refresh().
+const state = {
+  session: null,        // { id, email, name, type, role: 'admin' | 'user' } ou null
+  categories: [],
+  regions: [],
+  suppliers: [],        // o que o banco devolve a este visitante (aprovados; e tudo, para o administrador)
+  favorites: [],        // ids dos fornecedores favoritos
+  subscriptions: [],    // assinaturas deste usuário, da mais recente para a mais antiga
+  users: [],            // contas (somente administrador)
 };
 
-function readJson(storage, key, fallback) {
+// Avisa a interface sobre erros de escrita que não bloqueiam a tela (ex.: falha ao salvar favorito).
+function emitError(message) {
+  if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('spf:error', { detail: message }));
+}
+
+function guestFavorites() {
   try {
-    const raw = storage.getItem(key);
-    return raw == null ? fallback : JSON.parse(raw);
+    const list = JSON.parse(localStorage.getItem(GUEST_FAV_KEY) || '[]');
+    return Array.isArray(list) ? list : [];
   } catch {
-    return fallback;
+    return [];
   }
 }
 
-function writeJson(storage, key, value) {
-  storage.setItem(key, JSON.stringify(value));
+function setGuestFavorites(list) {
+  try {
+    localStorage.setItem(GUEST_FAV_KEY, JSON.stringify(list));
+  } catch {
+    // Armazenamento bloqueado (navegação privada, por exemplo): o favorito vale só nesta tela.
+  }
 }
 
-export function createStore(storage, { seedSuppliers = DEMO_SUPPLIERS, seedCategories = CATEGORIES, seedRegions = REGIONS } = {}) {
-  // ---------- Inicialização ----------
-  function init() {
-    const hadSuppliers = storage.getItem(KEYS.suppliers) != null;
-    if (!hadSuppliers) {
-      writeJson(storage, KEYS.suppliers, seedSuppliers.map((s) => withDefaults(s)));
+const categorySlugMap = () => new Map(state.categories.map((c) => [c.id, c.slug]));
+const categoryIdBySlug = (slug) => state.categories.find((c) => c.slug === slug)?.id || null;
+
+// Substitui o item com a mesma chave ou acrescenta.
+function upsertBy(list, item, key) {
+  const i = list.findIndex((x) => x[key] === item[key]);
+  if (i >= 0) list[i] = item;
+  else list.push(item);
+}
+
+// Assinatura que vale agora: a ativa com vencimento mais distante; senão, a mais recente.
+function bestSubscription() {
+  const now = Date.now();
+  const active = state.subscriptions
+    .filter((s) => s.status === 'active' && new Date(s.expiresAt).getTime() > now)
+    .sort((a, b) => new Date(b.expiresAt) - new Date(a.expiresAt))[0];
+  return active || state.subscriptions[0] || null;
+}
+
+// Envia uma imagem nova (data URL vinda do formulário) ao Storage. URLs já existentes são mantidas.
+async function persistImage(value, supplierId, name) {
+  if (!value) return '';
+  if (!String(value).startsWith('data:')) return value;
+  const blob = await (await fetch(value)).blob();
+  const ext = blob.type.includes('png') ? 'png' : blob.type.includes('jpeg') ? 'jpg' : 'webp';
+  const path = `${state.session.id}/${supplierId}/${name}-${Date.now()}.${ext}`;
+  return api.uploadImage(path, blob);
+}
+
+// ---------- Carregamento ----------
+let inFlight = null;
+
+function refresh() {
+  if (!inFlight) inFlight = doRefresh().finally(() => { inFlight = null; });
+  return inFlight;
+}
+
+async function doRefresh() {
+  const user = await api.currentUser();
+  const catalog = await api.loadCatalog();
+  const categories = catalog.categories.map((c) =>
+    M.categoryFromRow(c, catalog.subcategories.filter((s) => s.category_id === c.id)));
+  const slugMap = new Map(categories.map((c) => [c.id, c.slug]));
+  const suppliers = (await api.loadSuppliers()).map((r) => M.supplierFromRow(r, slugMap));
+
+  let session = null;
+  let favorites = guestFavorites();
+  let subscriptions = [];
+  let users = [];
+
+  if (user) {
+    const profile = await api.loadProfile(user.id);
+    const base = profile
+      ? M.userFromRow(profile)
+      : { id: user.id, name: user.user_metadata?.name || user.email, email: user.email, type: 'comprador' };
+    session = { ...base, role: base.type === 'admin' ? 'admin' : 'user' };
+    favorites = await api.loadFavorites(user.id);
+    const guest = guestFavorites();
+    if (guest.length) {
+      await api.addFavorites(user.id, guest);
+      setGuestFavorites([]);
+      favorites = [...new Set([...favorites, ...guest])];
     }
-    // Uma única vez: tira os fornecedores de demonstração de navegadores que já tinham dados.
-    if (storage.getItem(KEYS.demoCleaned) == null) {
-      if (hadSuppliers) {
-        const current = readJson(storage, KEYS.suppliers, []);
-        writeJson(storage, KEYS.suppliers, current.filter((s) => !s.isDemo));
-      }
-      writeJson(storage, KEYS.demoCleaned, true);
-    }
-    if (storage.getItem(KEYS.categories) == null) {
-      writeJson(storage, KEYS.categories, seedCategories.map((c) => ({ subcategories: [], status: 'active', ...c })));
-    }
-    if (storage.getItem(KEYS.regions) == null) {
-      writeJson(storage, KEYS.regions, seedRegions.map((r) => ({ description: '', ...r })));
-    }
-    if (storage.getItem(KEYS.users) == null) writeJson(storage, KEYS.users, []);
-    if (storage.getItem(KEYS.favorites) == null) writeJson(storage, KEYS.favorites, {});
+    subscriptions = (await api.loadSubscriptions(user.id)).map(M.subscriptionFromRow);
+    if (session.role === 'admin') users = (await api.loadUsers()).map(M.userFromRow);
   }
 
-  function withDefaults(s) {
-    return {
-      id: s.id || uid('sup'),
-      slug: s.slug || slugify(s.name),
-      status: 'pending',
-      verified: false,
-      featured: false,
-      views: 0,
-      createdAt: new Date().toISOString(),
-      saleWholesale: false,
-      saleRetail: false,
-      saleResellers: false,
-      shipsOtherCities: false,
-      tags: [],
-      photos: [],
-      isDemo: false,
-      ...s,
-    };
-  }
+  Object.assign(state, { session, categories, suppliers, favorites, subscriptions, users, regions: catalog.regions.map(M.regionFromRow) });
+}
 
-  // ---------- Fornecedores ----------
-  const suppliers = {
-    list({ status } = {}) {
-      const all = readJson(storage, KEYS.suppliers, []);
-      return status ? all.filter((s) => s.status === status) : all;
-    },
-    approved() {
-      return this.list({ status: 'approved' });
-    },
-    get(id) {
-      return this.list().find((s) => s.id === id) || null;
-    },
-    findBySlug(slug) {
-      return this.list().find((s) => s.slug === slug) || null;
-    },
-    // Cria (sem id) ou atualiza (com id). Cadastros públicos entram como "pending".
-    save(data, { asAdmin = false } = {}) {
-      const all = readJson(storage, KEYS.suppliers, []);
-      const idx = data.id ? all.findIndex((s) => s.id === data.id) : -1;
-      if (idx >= 0) {
-        const merged = { ...all[idx], ...data };
-        if (!asAdmin) {
-          // Usuário comum não altera status nem flags.
-          merged.status = all[idx].status;
-          merged.verified = all[idx].verified;
-          merged.featured = all[idx].featured;
-        }
-        merged.slug = uniqueSlug(all, merged.slug || slugify(merged.name), merged.id);
-        all[idx] = merged;
-        writeJson(storage, KEYS.suppliers, all);
-        return merged;
-      }
-      const created = withDefaults({
-        ...data,
-        status: asAdmin && data.status ? data.status : 'pending',
+// ---------- Autenticação ----------
+const auth = {
+  async signUp({ name, email, password }) {
+    try {
+      return await api.signUp({ name: name.trim(), email: email.trim().toLowerCase(), password, redirectTo: SITE.url });
+    } catch (err) {
+      throw new Error(M.authErrorMessage(err));
+    }
+  },
+  async signIn(email, password) {
+    try {
+      await api.signIn(email.trim().toLowerCase(), password);
+    } catch (err) {
+      throw new Error(M.authErrorMessage(err));
+    }
+  },
+  async signOut() {
+    try {
+      await api.signOut();
+    } catch (err) {
+      throw new Error(M.authErrorMessage(err));
+    }
+  },
+};
+
+// ---------- Fornecedores ----------
+async function saveSupplier(data, { asAdmin = false } = {}) {
+  if (!state.session) throw new Error('Entre na sua conta para salvar fornecedores.');
+  const existing = data.id ? state.suppliers.find((s) => s.id === data.id) : null;
+  if (data.id && !existing) throw new Error('Fornecedor não encontrado.');
+
+  const id = existing ? existing.id : crypto.randomUUID();
+  const merged = { ...(existing || {}), ...data, id };
+  const categoryId = categoryIdBySlug(merged.category);
+  if (merged.category && !categoryId) throw new Error('Categoria inexistente. Crie a categoria antes de usá-la.');
+  const slug = M.uniqueSlug(state.suppliers, merged.slug || slugify(merged.name), id);
+
+  const logo = await persistImage(merged.logo, id, 'logo');
+  const photoUrls = [];
+  let n = 0;
+  for (const p of merged.photos || []) photoUrls.push(await persistImage(p, id, `foto-${++n}`));
+
+  // Imagens antigas que saíram do cadastro são apagadas (sem bloquear o salvamento se falhar).
+  const dropped = [...(existing?.photos || []), existing?.logo]
+    .filter((u) => u && u !== logo && !photoUrls.includes(u))
+    .map(imagePathFromUrl)
+    .filter(Boolean);
+
+  const supplierRow = M.supplierToRow({ ...merged, slug, logo }, { categoryId, asAdmin });
+  const saved = existing
+    ? await api.updateSupplier(id, supplierRow)
+    : await api.insertSupplier({ id, ...supplierRow });
+  const contactRow = M.contactToRow(merged, id);
+  await api.upsertContact(contactRow);
+  await api.replacePhotos(id, photoUrls);
+  await api.removeImages(dropped);
+
+  const app = M.supplierFromRow({
+    ...saved,
+    supplier_contacts: [contactRow],
+    supplier_photos: photoUrls.map((url, position) => ({ url, position })),
+  }, categorySlugMap());
+  upsertBy(state.suppliers, app, 'id');
+  return app;
+}
+
+async function patchSupplier(id, changes) {
+  const current = state.suppliers.find((s) => s.id === id);
+  if (!current) return null;
+  const row = {};
+  if ('status' in changes) row.approval_status = changes.status;
+  if ('verified' in changes) row.verified = Boolean(changes.verified);
+  if ('featured' in changes) row.featured = Boolean(changes.featured);
+  await api.updateSupplier(id, row);
+  Object.assign(current, changes);
+  return current;
+}
+
+const suppliers = {
+  list({ status } = {}) {
+    return status ? state.suppliers.filter((s) => s.status === status) : state.suppliers.slice();
+  },
+  approved() {
+    return state.suppliers.filter((s) => s.status === 'approved');
+  },
+  get(id) {
+    return state.suppliers.find((s) => s.id === id) || null;
+  },
+  findBySlug(slug) {
+    return state.suppliers.find((s) => s.slug === slug) || null;
+  },
+  save: saveSupplier,
+  setStatus(id, status) {
+    return patchSupplier(id, { status });
+  },
+  setFlag(id, flag, value) {
+    if (!['verified', 'featured'].includes(flag)) throw new Error('Flag inválida');
+    return patchSupplier(id, { [flag]: Boolean(value) });
+  },
+  // Visualização conta em segundo plano; falhas não atrapalham a página.
+  incrementViews(id) {
+    api.incrementViews(id).catch(() => {});
+  },
+  async remove(id) {
+    await api.deleteSupplier(id);
+    state.suppliers = state.suppliers.filter((s) => s.id !== id);
+  },
+};
+
+// ---------- Categorias ----------
+async function saveCategory(data) {
+  const slug = data.slug || slugify(data.name);
+  const existing = state.categories.find((c) => c.slug === slug);
+  const record = { subcategories: [], status: 'active', description: '', icon: '📦', sortOrder: 0, ...existing, ...data, slug };
+  const saved = await api.upsertCategory(M.categoryToRow(record), record.subcategories || []);
+  const mapped = M.categoryFromRow(saved, (record.subcategories || []).map((name) => ({ name })));
+  upsertBy(state.categories, mapped, 'slug');
+  return mapped;
+}
+
+const categories = {
+  list({ includeInactive = true } = {}) {
+    return includeInactive ? state.categories.slice() : state.categories.filter((c) => c.status !== 'inactive');
+  },
+  get(slug) {
+    return state.categories.find((c) => c.slug === slug) || null;
+  },
+  save: saveCategory,
+  // Só remove se nenhum fornecedor usar a categoria. Caso contrário, retorna { ok:false }.
+  async remove(slug) {
+    if (state.suppliers.some((s) => s.category === slug)) {
+      return { ok: false, reason: 'Há fornecedores nesta categoria. Mova-os antes de excluir.' };
+    }
+    await api.deleteCategory(slug);
+    state.categories = state.categories.filter((c) => c.slug !== slug);
+    return { ok: true };
+  },
+  countSuppliers(slug) {
+    return state.suppliers.filter((s) => s.status === 'approved' && s.category === slug).length;
+  },
+};
+
+// ---------- Bairros e cidades ----------
+const regions = {
+  list() {
+    return state.regions.slice();
+  },
+  get(slug) {
+    return state.regions.find((r) => r.slug === slug) || null;
+  },
+  async save(data) {
+    const slug = data.slug || slugify(data.name);
+    const existing = state.regions.find((r) => r.slug === slug);
+    const record = { description: '', sortOrder: 0, ...existing, ...data, slug };
+    const saved = await api.upsertRegion(M.regionToRow(record));
+    const mapped = M.regionFromRow(saved);
+    upsertBy(state.regions, mapped, 'slug');
+    return mapped;
+  },
+  // Só remove se nenhum fornecedor estiver nesta região. Caso contrário, retorna { ok:false }.
+  async remove(slug) {
+    if (state.suppliers.some((s) => s.bairro === slug)) {
+      return { ok: false, reason: 'Há fornecedores nesta região. Mova-os antes de excluir.' };
+    }
+    await api.deleteRegion(slug);
+    state.regions = state.regions.filter((r) => r.slug !== slug);
+    return { ok: true };
+  },
+};
+
+// ---------- Usuários (somente administrador) ----------
+const users = {
+  list() {
+    return state.users.slice();
+  },
+  async setType(id, type) {
+    await api.setUserType(id, type);
+    state.users = state.users.map((u) => (u.id === id ? { ...u, type } : u));
+  },
+};
+
+// ---------- Sessão ----------
+const session = {
+  get() {
+    return state.session;
+  },
+};
+
+// ---------- Favoritos ----------
+const favorites = {
+  list() {
+    return state.favorites.slice();
+  },
+  has(id) {
+    return state.favorites.includes(id);
+  },
+  // Atualiza na hora (a tela responde sem esperar) e grava em segundo plano; desfaz se a gravação falhar.
+  toggle(id) {
+    const on = !state.favorites.includes(id);
+    state.favorites = on ? [...state.favorites, id] : state.favorites.filter((x) => x !== id);
+    if (state.session) {
+      api.setFavorite(state.session.id, id, on).catch(() => {
+        state.favorites = on ? state.favorites.filter((x) => x !== id) : [...state.favorites, id];
+        emitError('Não foi possível salvar o favorito. Tente de novo.');
       });
-      created.slug = uniqueSlug(all, created.slug, created.id);
-      all.push(created);
-      writeJson(storage, KEYS.suppliers, all);
-      return created;
-    },
-    setStatus(id, status) {
-      return this._patch(id, { status });
-    },
-    setFlag(id, flag, value) {
-      if (!['verified', 'featured'].includes(flag)) throw new Error('Flag inválida');
-      return this._patch(id, { [flag]: Boolean(value) });
-    },
-    incrementViews(id) {
-      const s = this.get(id);
-      if (!s) return null;
-      return this._patch(id, { views: (s.views || 0) + 1 }, { silent: true });
-    },
-    remove(id) {
-      const all = readJson(storage, KEYS.suppliers, []);
-      writeJson(storage, KEYS.suppliers, all.filter((s) => s.id !== id));
-    },
-    _patch(id, changes) {
-      const all = readJson(storage, KEYS.suppliers, []);
-      const idx = all.findIndex((s) => s.id === id);
-      if (idx < 0) return null;
-      all[idx] = { ...all[idx], ...changes };
-      writeJson(storage, KEYS.suppliers, all);
-      return all[idx];
-    },
-  };
+    } else {
+      setGuestFavorites(state.favorites);
+    }
+    return on;
+  },
+};
 
-  function uniqueSlug(all, base, selfId) {
-    let slug = base || 'fornecedor';
-    let n = 2;
-    const taken = (c) => all.some((s) => s.slug === c && s.id !== selfId);
-    while (taken(slug)) slug = `${base}-${n++}`;
-    return slug;
-  }
+// ---------- Assinaturas (acesso aos contatos) ----------
+const subscriptions = {
+  // Assinatura mais relevante do usuário logado (ativa, ou a mais recente).
+  get() {
+    return bestSubscription();
+  },
+  isActive() {
+    const sub = bestSubscription();
+    return Boolean(sub) && sub.status === 'active' && new Date(sub.expiresAt).getTime() > Date.now();
+  },
+  // Registra o pedido de assinatura por Pix como pendente. Só o administrador confirma e ativa.
+  async requestPix({ planId, amount }) {
+    if (!state.session) throw new Error('Entre na sua conta para assinar.');
+    const pending = state.subscriptions.find((s) =>
+      s.status === 'pending' && Date.now() - new Date(s.createdAt || 0).getTime() < PENDING_TTL_MS);
+    if (pending) return pending;
+    const sub = M.subscriptionFromRow(await api.requestSubscription({ userId: state.session.id, planId, amount }));
+    state.subscriptions = [sub, ...state.subscriptions];
+    return sub;
+  },
+};
 
-  // ---------- Categorias ----------
-  const categories = {
-    list({ includeInactive = true } = {}) {
-      const all = readJson(storage, KEYS.categories, []);
-      return includeInactive ? all : all.filter((c) => c.status !== 'inactive');
-    },
-    get(slug) {
-      return this.list().find((c) => c.slug === slug) || null;
-    },
-    save(data) {
-      const all = readJson(storage, KEYS.categories, []);
-      const slug = data.slug || slugify(data.name);
-      const idx = all.findIndex((c) => c.slug === slug);
-      const record = { subcategories: [], status: 'active', description: '', icon: '📦', ...all[idx], ...data, slug };
-      if (idx >= 0) all[idx] = record;
-      else all.push(record);
-      writeJson(storage, KEYS.categories, all);
-      return record;
-    },
-    // Só remove se nenhum fornecedor usar a categoria. Caso contrário, retorna { ok:false }.
-    remove(slug) {
-      const inUse = suppliers.list().some((s) => s.category === slug);
-      if (inUse) return { ok: false, reason: 'Há fornecedores nesta categoria. Mova-os antes de excluir.' };
-      const all = readJson(storage, KEYS.categories, []);
-      writeJson(storage, KEYS.categories, all.filter((c) => c.slug !== slug));
-      return { ok: true };
-    },
-    countSuppliers(slug) {
-      return suppliers.approved().filter((s) => s.category === slug).length;
-    },
-  };
-
-  // ---------- Bairros e cidades (regiões) ----------
-  const regions = {
-    list() {
-      return readJson(storage, KEYS.regions, []);
-    },
-    get(slug) {
-      return this.list().find((r) => r.slug === slug) || null;
-    },
-    save(data) {
-      const all = readJson(storage, KEYS.regions, []);
-      const slug = data.slug || slugify(data.name);
-      const idx = all.findIndex((r) => r.slug === slug);
-      const record = { description: '', ...all[idx], ...data, slug };
-      if (idx >= 0) all[idx] = record;
-      else all.push(record);
-      writeJson(storage, KEYS.regions, all);
-      return record;
-    },
-    // Só remove se nenhum fornecedor estiver nesta região. Caso contrário, retorna { ok:false }.
-    remove(slug) {
-      const inUse = suppliers.list().some((s) => s.bairro === slug);
-      if (inUse) return { ok: false, reason: 'Há fornecedores nesta região. Mova-os antes de excluir.' };
-      writeJson(storage, KEYS.regions, readJson(storage, KEYS.regions, []).filter((r) => r.slug !== slug));
-      return { ok: true };
-    },
-  };
-
-  // ---------- Usuários e sessão ----------
-  const users = {
-    list() {
-      return readJson(storage, KEYS.users, []);
-    },
-    findByEmail(email) {
-      const e = String(email).trim().toLowerCase();
-      return this.list().find((u) => u.email === e) || null;
-    },
-    register({ name, email, passwordHash }) {
-      const e = String(email).trim().toLowerCase();
-      if (this.findByEmail(e)) return { ok: false, reason: 'Já existe uma conta com este e-mail.' };
-      const all = this.list();
-      const user = { id: uid('usr'), name: name.trim(), email: e, passwordHash, type: 'comprador', createdAt: new Date().toISOString() };
-      all.push(user);
-      writeJson(storage, KEYS.users, all);
-      return { ok: true, user: publicUser(user) };
-    },
-    setType(id, type) {
-      const all = this.list().map((u) => (u.id === id ? { ...u, type } : u));
-      writeJson(storage, KEYS.users, all);
-    },
-    remove(id) {
-      writeJson(storage, KEYS.users, this.list().filter((u) => u.id !== id));
-    },
-  };
-
-  function publicUser(u) {
-    return { id: u.id, name: u.name, email: u.email, type: u.type || 'comprador' };
-  }
-
-  const session = {
-    get() {
-      return readJson(storage, KEYS.session, null);
-    },
-    set(user, role = 'user') {
-      writeJson(storage, KEYS.session, user ? { ...user, role } : null);
-    },
-    clear() {
-      storage.removeItem(KEYS.session);
-    },
-  };
-
-  // ---------- Favoritos (por conta; visitantes usam a chave "guest") ----------
-  const favorites = {
-    _key() {
-      const s = session.get();
-      return s?.email || 'guest';
-    },
-    list(userKey = this._key()) {
-      const map = readJson(storage, KEYS.favorites, {});
-      return map[userKey] || [];
-    },
-    has(id, userKey) {
-      return this.list(userKey).includes(id);
-    },
-    toggle(id, userKey = this._key()) {
-      const map = readJson(storage, KEYS.favorites, {});
-      const list = new Set(map[userKey] || []);
-      if (list.has(id)) list.delete(id);
-      else list.add(id);
-      map[userKey] = [...list];
-      writeJson(storage, KEYS.favorites, map);
-      return list.has(id);
-    },
-    // Mescla favoritos de visitante na conta ao fazer login.
-    mergeGuestInto(userKey) {
-      const map = readJson(storage, KEYS.favorites, {});
-      const merged = new Set([...(map[userKey] || []), ...(map.guest || [])]);
-      map[userKey] = [...merged];
-      delete map.guest;
-      writeJson(storage, KEYS.favorites, map);
-    },
-  };
-
-  // ---------- Assinaturas (acesso aos contatos) ----------
-  const subscriptions = {
-    get(email) {
-      if (!email) return null;
-      const all = readJson(storage, KEYS.subscriptions, {});
-      return all[String(email).trim().toLowerCase()] || null;
-    },
-    isActive(email) {
-      const sub = this.get(email);
-      return Boolean(sub) && new Date(sub.expiresAt).getTime() > Date.now();
-    },
-    // Soma o prazo ao que já resta, se a assinatura ainda estiver ativa.
-    activate(email, planId, days) {
-      const key = String(email).trim().toLowerCase();
-      const all = readJson(storage, KEYS.subscriptions, {});
-      const now = Date.now();
-      const current = all[key] && new Date(all[key].expiresAt).getTime() > now
-        ? new Date(all[key].expiresAt).getTime()
-        : now;
-      const expiresAt = new Date(current + days * 24 * 60 * 60 * 1000).toISOString();
-      all[key] = { planId, activatedAt: new Date(now).toISOString(), expiresAt };
-      writeJson(storage, KEYS.subscriptions, all);
-      return all[key];
-    },
-  };
-
-  return { init, suppliers, categories, regions, users, session, favorites, subscriptions, _storage: storage };
-}
-
-// Instância padrão para o navegador. Em testes, use createStore(fakeStorage).
-export const store = typeof localStorage !== 'undefined' ? createStore(localStorage) : null;
+export const store = {
+  refresh,
+  auth,
+  session,
+  suppliers,
+  categories,
+  regions,
+  users,
+  favorites,
+  subscriptions,
+};

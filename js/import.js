@@ -133,18 +133,18 @@ export function planImport(rows, existing = []) {
   return { records, counts };
 }
 
-// Grava os registros no store: cria categorias que faltarem e salva cada fornecedor.
-export function applyImport(store, records) {
+// Grava os registros no store (Supabase): cria categorias que faltarem e salva cada fornecedor.
+export async function applyImport(store, records) {
   const known = new Set(store.categories.list().map((c) => c.slug));
   let categoriesCreated = 0;
   for (const r of records) {
     if (!known.has(r.category)) {
-      store.categories.save({ name: r.categoryName, slug: r.category });
+      await store.categories.save({ name: r.categoryName, slug: r.category });
       known.add(r.category);
       categoriesCreated++;
     }
     const { categoryName, ...supplier } = r;
-    store.suppliers.save(supplier, { asAdmin: true });
+    await store.suppliers.save(supplier, { asAdmin: true });
   }
   return { imported: records.length, categoriesCreated };
 }

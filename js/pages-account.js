@@ -1,7 +1,7 @@
-// Login, cadastro de usuário, sair e cadastro público de fornecedor.
-import { ADMIN, SITE } from './config.js';
+// Login, cadastro de usuário, sair e cadastro público de fornecedor (Supabase Auth).
+import { SITE } from './config.js';
 import { store } from './store.js';
-import { validateUser, sha256Hex, escapeHtml as e, isEmail } from './utils.js';
+import { validateUser, escapeHtml as e } from './utils.js';
 import { toast, breadcrumbs, fieldError } from './ui.js';
 import { supplierFormHtml, checkSupplierForm, readImages, LIMITS } from './forms.js';
 
@@ -28,7 +28,6 @@ export function loginPage() {
         <div class="field"><label for="l-pass">Senha</label><input id="l-pass" name="password" type="password" required autocomplete="current-password"><span class="field-error" id="err-password" role="alert"></span></div>
         <button class="btn btn-primary btn-lg" type="submit">Entrar</button>
         <p class="muted small">Ainda não tem conta? <a href="#/registro">Criar conta</a></p>
-        <p class="muted small">Sem conta, seus favoritos ficam só neste navegador.</p>
       </form>
     </section>`,
     mount: (root) => {
@@ -36,27 +35,21 @@ export function loginPage() {
       form.addEventListener('submit', async (ev) => {
         ev.preventDefault();
         const { email = '', password = '' } = fieldsOf(form);
-        if (!isEmail(email)) return showErrors(form, { email: 'Informe um e-mail válido.' });
+        if (!email.trim()) return showErrors(form, { email: 'Informe seu e-mail.' });
         if (!password) return showErrors(form, { password: 'Informe sua senha.' });
-        const hash = await sha256Hex(password);
-        const cleanEmail = email.trim().toLowerCase();
-
-        if (cleanEmail === ADMIN.email.toLowerCase()) {
-          if (hash !== ADMIN.passwordSha256) return showErrors(form, { password: 'E-mail ou senha incorretos.' });
-          store.session.set({ email: cleanEmail, name: 'Administrador' }, 'admin');
-          store.favorites.mergeGuestInto(cleanEmail);
-          toast('Bem-vindo ao painel.');
-          location.hash = '#/admin';
-          return;
+        const button = form.querySelector('button[type="submit"]');
+        button.disabled = true;
+        try {
+          await store.auth.signIn(email, password);
+          await store.refresh();
+          const session = store.session.get();
+          toast(`Olá, ${(session?.name || '').split(' ')[0] || 'bem-vindo'}!`);
+          location.hash = session?.role === 'admin' ? '#/admin' : '#/favoritos';
+        } catch (err) {
+          showErrors(form, { password: err.message });
+        } finally {
+          button.disabled = false;
         }
-        const user = store.users.findByEmail(cleanEmail);
-        if (!user || user.passwordHash !== hash) {
-          return showErrors(form, { password: 'E-mail ou senha incorretos.' });
-        }
-        store.session.set({ id: user.id, email: user.email, name: user.name, type: user.type }, 'user');
-        store.favorites.mergeGuestInto(user.email);
-        toast(`Olá, ${user.name.split(' ')[0]}!`);
-        location.hash = '#/favoritos';
       });
     },
   };
@@ -65,10 +58,10 @@ export function loginPage() {
 export function registerPage() {
   return {
     title: `Criar conta | ${SITE.shortName}`,
-    description: 'Crie sua conta para salvar fornecedores e acompanhar seus cadastros.',
+    description: 'Crie sua conta para salvar fornecedores, assinar o acesso aos contatos e cadastrar sua loja.',
     html: `
     ${breadcrumbs([{ label: 'Início', href: '#/' }, { label: 'Criar conta' }])}
-    <section class="container section-tight narrow">
+    <section class="container section-tight narrow" id="register-area">
       <h1>Criar conta</h1>
       <form class="card form" id="register-form" novalidate>
         <div class="field"><label for="r-name">Nome</label><input id="r-name" name="name" required autocomplete="name"><span class="field-error" id="err-name" role="alert"></span></div>
@@ -76,7 +69,7 @@ export function registerPage() {
         <div class="field"><label for="r-pass">Senha (mínimo 8 caracteres)</label><input id="r-pass" name="password" type="password" required autocomplete="new-password"><span class="field-error" id="err-password" role="alert"></span></div>
         <div class="field"><label for="r-conf">Confirmar senha</label><input id="r-conf" name="confirm" type="password" required autocomplete="new-password"><span class="field-error" id="err-confirm" role="alert"></span></div>
         <button class="btn btn-primary btn-lg" type="submit">Criar conta</button>
-        <p class="muted small">Esta conta é guardada neste navegador (modo demonstração). Não use senhas que você usa em outros sites.</p>
+        <p class="muted small">Enviaremos um e-mail para confirmar o endereço. Não use uma senha que você usa em outros sites.</p>
       </form>
     </section>`,
     mount: (root) => {
@@ -86,29 +79,68 @@ export function registerPage() {
         const values = fieldsOf(form);
         const { ok, errors } = validateUser(values);
         if (!ok) return showErrors(form, errors);
-        const passwordHash = await sha256Hex(values.password);
-        const res = store.users.register({ name: values.name, email: values.email, passwordHash });
-        if (!res.ok) return showErrors(form, { email: res.reason });
-        store.session.set({ id: res.user.id, email: res.user.email, name: res.user.name, type: 'comprador' }, 'user');
-        store.favorites.mergeGuestInto(res.user.email);
-        toast('Conta criada com sucesso.');
-        location.hash = '#/favoritos';
+        const button = form.querySelector('button[type="submit"]');
+        button.disabled = true;
+        try {
+          const { needsConfirmation } = await store.auth.signUp({ name: values.name, email: values.email, password: values.password });
+          if (needsConfirmation) {
+            root.querySelector('#register-area').innerHTML = `
+              <div class="card success">
+                <h1>Confira seu e-mail</h1>
+                <p>Enviamos um link de confirmação para <strong>${e(values.email.trim())}</strong>. Clique nele e depois entre na sua conta.</p>
+                <p class="muted small">Não recebeu? Verifique a pasta de spam ou o lixo eletrônico.</p>
+                <a class="btn btn-primary" href="#/login">Ir para o login</a>
+              </div>`;
+            return;
+          }
+          await store.refresh();
+          toast('Conta criada com sucesso.');
+          location.hash = '#/favoritos';
+        } catch (err) {
+          showErrors(form, err.message.includes('senha') ? { password: err.message } : { email: err.message });
+        } finally {
+          button.disabled = false;
+        }
       });
     },
   };
 }
 
-export function logout() {
-  store.session.clear();
-  toast('Você saiu da conta.');
+export async function logout() {
+  try {
+    await store.auth.signOut();
+    toast('Você saiu da conta.');
+  } catch (err) {
+    toast(err.message, 'error');
+  }
   location.hash = '#/';
 }
 
 export function cadastroPage() {
   const session = store.session.get();
+  const title = `Cadastre sua loja | ${SITE.shortName}`;
+  const description = 'Cadastre seu negócio no Fornecedores Atacado SP e seja encontrado por compradores de todo o Brasil.';
+  if (!session) {
+    return {
+      title,
+      description,
+      html: `
+      ${breadcrumbs([{ label: 'Início', href: '#/' }, { label: 'Cadastrar fornecedor' }])}
+      <section class="container section-tight narrow">
+        <h1>Cadastre sua loja</h1>
+        <div class="card">
+          <p>Para cadastrar seu negócio, você precisa de uma conta. Assim, você acompanha o status do cadastro e pode corrigir os dados depois.</p>
+          <div class="form-actions">
+            <a class="btn btn-primary" href="#/registro">Criar conta</a>
+            <a class="btn btn-ghost" href="#/login">Já tenho conta</a>
+          </div>
+        </div>
+      </section>`,
+    };
+  }
   return {
-    title: `Cadastre sua loja | ${SITE.shortName}`,
-    description: 'Cadastre seu negócio no Fornecedores Atacado SP e seja encontrado por compradores de todo o Brasil.',
+    title,
+    description,
     html: `
     ${breadcrumbs([{ label: 'Início', href: '#/' }, { label: 'Cadastrar fornecedor' }])}
     <section class="container section-tight">
@@ -117,7 +149,7 @@ export function cadastroPage() {
       <div class="notice notice-warn" role="note">
         Anuncie apenas produtos lícitos. Itens com venda proibida por lei ou por norma de órgãos reguladores (como a Anvisa) não podem ser cadastrados.
       </div>
-      ${supplierFormHtml({}, { loggedEmail: session?.email || '' })}
+      ${supplierFormHtml({}, { loggedEmail: session.email || '' })}
     </section>`,
     mount: (root) => {
       const form = root.querySelector('#supplier-form');
@@ -125,16 +157,16 @@ export function cadastroPage() {
         ev.preventDefault();
         const data = checkSupplierForm(form);
         if (!data) return;
+        const button = form.querySelector('button[type="submit"]');
+        button.disabled = true;
         try {
           const logo = await readImages(form.elements.logo.files, { maxBytes: LIMITS.MAX_LOGO_BYTES, max: 1 });
           const photos = await readImages(form.elements.photos.files, { maxBytes: LIMITS.MAX_PHOTO_BYTES, max: LIMITS.MAX_PHOTOS });
-          const saved = store.suppliers.save({
+          const saved = await store.suppliers.save({
             ...data,
             acceptTerms: undefined,
             logo: logo[0] || '',
             photos,
-            ownerEmail: session?.email || data.email,
-            status: 'pending',
           });
           root.innerHTML = `
             <section class="container section-tight narrow">
@@ -147,7 +179,8 @@ export function cadastroPage() {
             </section>`;
           window.scrollTo({ top: 0 });
         } catch (err) {
-          toast(err.message || 'Não foi possível enviar as imagens.', 'error');
+          toast(err.message || 'Não foi possível enviar o cadastro.', 'error');
+          button.disabled = false;
         }
       });
     },
