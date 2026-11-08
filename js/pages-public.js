@@ -46,13 +46,11 @@ function wireFavorites(root) {
 export function home() {
   const counts = countByCategory();
   const featured = store.suppliers.approved().filter((s) => s.featured);
-  const hasDemo = store.suppliers.approved().some((s) => s.isDemo);
   const popular = ['Eletrônicos', 'Moda feminina', 'Tênis', 'Acessórios', 'Perfumes'];
   return {
     title: `${SITE.name} | Fornecedores de São Paulo`,
     description: SITE.description,
     html: `
-    ${hasDemo ? demoBanner() : ''}
     <section class="hero">
       <div class="container hero-inner">
         <p class="eyebrow">25 de Março · Brás · Pari · Bom Retiro</p>
@@ -351,7 +349,6 @@ export function supplierPage({ slug }) {
     title: pageTitle,
     description: (s.description || `${s.name}, fornecedor de ${catName[s.category]} em ${regName[s.bairro] || 'São Paulo'}.`).slice(0, 155),
     html: `
-    ${s.isDemo ? demoBanner() : ''}
     ${breadcrumbs([
       { label: 'Início', href: '#/' },
       { label: catName[s.category] || 'Categoria', href: `#/categorias/${s.category}` },
