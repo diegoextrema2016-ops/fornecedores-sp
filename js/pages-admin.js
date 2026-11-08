@@ -4,6 +4,7 @@ import { SITE } from './config.js';
 import { store } from './store.js';
 import { escapeHtml as e, formatDate, formatCount, slugify } from './utils.js';
 import { toast, confirmDialog, emptyState, pagination } from './ui.js';
+import { PLANS } from './config.js';
 import { supplierFormHtml, checkSupplierForm, readImages, LIMITS } from './forms.js';
 import { parseCsv, planImport, applyImport } from './import.js';
 import { paginate } from './search.js';
@@ -30,6 +31,7 @@ async function attempt(action, okMessage) {
 export function adminLayout(active, title, body) {
   const link = (href, key, label) => `<a class="${active === key ? 'is-active' : ''}" href="${href}">${label}</a>`;
   const pending = store.suppliers.list({ status: 'pending' }).length;
+  const payPending = store.subscriptions.adminList().filter((s) => s.status === 'pending').length;
   return {
     title: `${title} | Painel | ${SITE.shortName}`,
     description: 'Painel administrativo.',
@@ -43,6 +45,7 @@ export function adminLayout(active, title, body) {
         ${link('#/admin/novo', 'new', 'Adicionar fornecedor')}
         ${link('#/admin/categorias', 'categories', 'Categorias')}
         ${link('#/admin/regioes', 'regions', 'Bairros e cidades')}
+        ${link('#/admin/pagamentos', 'payments', `Pagamentos${payPending ? ` (${payPending})` : ''}`)}
         ${link('#/admin/usuarios', 'users', 'Usuários')}
         ${link('#/admin/migracao', 'backup', 'Backup e migração')}
         <a href="#/sair">Sair</a>
@@ -577,6 +580,111 @@ export function mountAdminUsers(root, rerender) {
     if (!sel) return;
     const ok = await attempt(() => store.users.setType(sel.dataset.userType, sel.value), 'Tipo de usuário atualizado.');
     if (ok) rerender();
+  });
+}
+
+// ---------- Pagamentos (Pix) ----------
+const brl = (v) => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+const planName = (id) => PLANS.find((p) => p.id === id)?.name || id;
+const isLive = (s) => s.status === 'active' && new Date(s.expiresAt).getTime() > Date.now();
+
+function payClient(s) {
+  return `<strong>${e(s.userName || 'Sem nome')}</strong><br><span class="muted small">${e(s.userEmail)}</span>`;
+}
+
+function payTable(rows, columns) {
+  return `
+    <div class="table-wrap">
+      <table class="table">
+        <thead><tr>${columns.map((c) => `<th>${c.label}</th>`).join('')}</tr></thead>
+        <tbody>${rows.map((s) => `<tr>${columns.map((c) => `<td>${c.cell(s)}</td>`).join('')}</tr>`).join('')}</tbody>
+      </table>
+    </div>`;
+}
+
+export function adminPayments() {
+  const all = store.subscriptions.adminList();
+  const pending = all.filter((s) => s.status === 'pending');
+  const active = all.filter(isLive);
+  const closed = all.filter((s) => !pending.includes(s) && !active.includes(s));
+
+  const pendingTable = payTable(pending, [
+    { label: 'Cliente', cell: payClient },
+    { label: 'Plano', cell: (s) => e(planName(s.planId)) },
+    { label: 'Valor', cell: (s) => brl(s.amount) },
+    { label: 'Pedido em', cell: (s) => formatDate(s.createdAt) },
+    { label: '', cell: (s) => `
+      <div class="pay-actions">
+        <button class="btn btn-primary" type="button" data-pay-confirm="${e(s.id)}">Confirmar Pix</button>
+        <button class="btn btn-ghost" type="button" data-pay-reject="${e(s.id)}">Recusar</button>
+      </div>` },
+  ]);
+  const activeTable = payTable(active, [
+    { label: 'Cliente', cell: payClient },
+    { label: 'Plano', cell: (s) => e(planName(s.planId)) },
+    { label: 'Válida até', cell: (s) => formatDate(s.expiresAt) },
+    { label: '', cell: (s) => `<button class="btn btn-ghost" type="button" data-pay-cancel="${e(s.id)}">Cancelar acesso</button>` },
+  ]);
+  const closedTable = payTable(closed, [
+    { label: 'Cliente', cell: payClient },
+    { label: 'Situação', cell: (s) => (s.status === 'cancelled' ? 'Cancelada' : 'Vencida') },
+    { label: 'Válida até', cell: (s) => (s.status === 'pending' ? '' : formatDate(s.expiresAt)) },
+    { label: 'Observação', cell: (s) => `<span class="muted small">${e(s.paymentNote)}</span>` },
+  ]);
+
+  return adminLayout('payments', 'Pagamentos', `
+    <p class="muted">Confira o Pix na sua conta bancária antes de confirmar. Ao confirmar, o cliente ganha acesso aos contatos pelo prazo do plano.</p>
+    <h2>Aguardando conferência (${pending.length})</h2>
+    ${pending.length ? pendingTable : emptyState('Nenhum Pix aguardando', 'Quando um cliente informar o pagamento, o pedido aparece aqui.')}
+    <h2>Assinaturas ativas (${active.length})</h2>
+    ${active.length ? activeTable : emptyState('Nenhuma assinatura ativa', 'As assinaturas confirmadas aparecem aqui até o prazo acabar.')}
+    ${closed.length ? `<h2>Encerradas ou recusadas (${closed.length})</h2>${closedTable}` : ''}`);
+}
+
+export function mountAdminPayments(root, rerender) {
+  root.addEventListener('click', async (ev) => {
+    const confirmBtn = ev.target.closest('[data-pay-confirm]');
+    const rejectBtn = ev.target.closest('[data-pay-reject]');
+    const cancelBtn = ev.target.closest('[data-pay-cancel]');
+    const find = (id) => store.subscriptions.adminList().find((s) => s.id === id);
+
+    if (confirmBtn) {
+      const s = find(confirmBtn.dataset.payConfirm);
+      if (!s) return toast('Pedido não encontrado. Atualize a página.', 'error');
+      const yes = await confirmDialog({
+        title: 'Confirmar o Pix?',
+        text: `Você recebeu o Pix de ${s.userName || s.userEmail} (${brl(s.amount)})? O acesso aos contatos será liberado pelo prazo do plano.`,
+        confirmLabel: 'Confirmar Pix',
+      });
+      if (!yes) return;
+      if (await attempt(() => store.subscriptions.confirmPix(s.id), 'Pagamento confirmado. Acesso liberado.')) rerender();
+    }
+
+    if (rejectBtn) {
+      const s = find(rejectBtn.dataset.payReject);
+      if (!s) return toast('Pedido não encontrado. Atualize a página.', 'error');
+      const yes = await confirmDialog({
+        title: 'Recusar o pedido?',
+        text: `O pedido de ${s.userName || s.userEmail} será marcado como recusado. Use isso se o Pix não chegou.`,
+        confirmLabel: 'Recusar',
+        danger: true,
+      });
+      if (!yes) return;
+      if (await attempt(() => store.subscriptions.cancel(s.id, 'Pix não localizado; pedido recusado pelo administrador'), 'Pedido recusado.')) rerender();
+    }
+
+    if (cancelBtn) {
+      const s = find(cancelBtn.dataset.payCancel);
+      if (!s) return toast('Assinatura não encontrada. Atualize a página.', 'error');
+      const yes = await confirmDialog({
+        title: 'Cancelar o acesso?',
+        text: `${s.userName || s.userEmail} perde o acesso aos contatos agora. O histórico fica registrado.`,
+        confirmLabel: 'Cancelar acesso',
+        danger: true,
+      });
+      if (!yes) return;
+      if (await attempt(() => store.subscriptions.cancel(s.id, 'Cancelada pelo administrador'), 'Acesso cancelado.')) rerender();
+    }
   });
 }
 

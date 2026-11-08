@@ -7,7 +7,7 @@
 //  - Única exceção: os favoritos de quem ainda não tem conta ficam neste navegador (preferência, não dado de negócio).
 //    Ao entrar na conta, são copiados para o banco.
 import { api, imagePathFromUrl } from './api.js';
-import { SITE } from './config.js';
+import { SITE, PLANS } from './config.js';
 import { slugify } from './utils.js';
 import * as M from './mapping.js';
 
@@ -23,6 +23,7 @@ const state = {
   favorites: [],        // ids dos fornecedores favoritos
   subscriptions: [],    // assinaturas deste usuário, da mais recente para a mais antiga
   users: [],            // contas (somente administrador)
+  allSubscriptions: [], // todos os pedidos e assinaturas, com quem pagou (somente administrador)
 };
 
 // Avisa a interface sobre erros de escrita que não bloqueiam a tela (ex.: falha ao salvar favorito).
@@ -96,6 +97,7 @@ async function doRefresh() {
   let favorites = guestFavorites();
   let subscriptions = [];
   let users = [];
+  let allSubscriptions = [];
 
   if (user) {
     const profile = await api.loadProfile(user.id);
@@ -111,10 +113,13 @@ async function doRefresh() {
       favorites = [...new Set([...favorites, ...guest])];
     }
     subscriptions = (await api.loadSubscriptions(user.id)).map(M.subscriptionFromRow);
-    if (session.role === 'admin') users = (await api.loadUsers()).map(M.userFromRow);
+    if (session.role === 'admin') {
+      users = (await api.loadUsers()).map(M.userFromRow);
+      allSubscriptions = (await api.loadAllSubscriptions()).map(M.subscriptionAdminFromRow);
+    }
   }
 
-  Object.assign(state, { session, categories, suppliers, favorites, subscriptions, users, regions: catalog.regions.map(M.regionFromRow) });
+  Object.assign(state, { session, categories, suppliers, favorites, subscriptions, users, allSubscriptions, regions: catalog.regions.map(M.regionFromRow) });
 }
 
 // ---------- Autenticação ----------
@@ -347,9 +352,52 @@ const subscriptions = {
     if (pending) return pending;
     const sub = M.subscriptionFromRow(await api.requestSubscription({ userId: state.session.id, planId, amount }));
     state.subscriptions = [sub, ...state.subscriptions];
+    state.allSubscriptions = [sub, ...state.allSubscriptions];
     return sub;
   },
+  // Administrador: todos os pedidos, com nome de quem pagou.
+  adminList() {
+    return state.allSubscriptions.slice();
+  },
+  // Confirma o Pix recebido: ativa a assinatura pelo prazo do plano.
+  // Se o cliente já tinha uma assinatura válida, o prazo começa quando ela termina.
+  async confirmPix(id) {
+    const sub = state.allSubscriptions.find((s) => s.id === id);
+    if (!sub) throw new Error('Pedido não encontrado. Atualize a página e tente de novo.');
+    const plan = PLANS.find((p) => p.id === sub.planId) || PLANS[0];
+    const now = new Date();
+    const current = state.allSubscriptions
+      .filter((s) => s.userId === sub.userId && s.id !== id && s.status === 'active' && new Date(s.expiresAt) > now)
+      .sort((a, b) => new Date(b.expiresAt) - new Date(a.expiresAt))[0];
+    const term = M.renewalWindow(now, plan.days, current?.expiresAt);
+    const fields = {
+      status: 'active',
+      startsAt: term.startsAt,
+      expiresAt: term.expiresAt,
+      paymentNote: `Pix conferido pelo administrador em ${now.toLocaleDateString('pt-BR')}`,
+    };
+    await api.updateSubscription(id, {
+      status: fields.status,
+      starts_at: fields.startsAt,
+      expires_at: fields.expiresAt,
+      payment_note: fields.paymentNote,
+    });
+    patchSubscription(id, fields);
+  },
+  // Recusa um pedido pendente ou cancela uma assinatura ativa. Não apaga o registro.
+  async cancel(id, reason) {
+    const note = reason || 'Cancelada pelo administrador';
+    await api.updateSubscription(id, { status: 'cancelled', payment_note: note });
+    patchSubscription(id, { status: 'cancelled', paymentNote: note });
+  },
 };
+
+// Atualiza um pedido nas duas listas (a do administrador e a do próprio usuário, se for o mesmo).
+function patchSubscription(id, fields) {
+  const apply = (list) => list.map((s) => (s.id === id ? { ...s, ...fields } : s));
+  state.allSubscriptions = apply(state.allSubscriptions);
+  state.subscriptions = apply(state.subscriptions);
+}
 
 export const store = {
   refresh,

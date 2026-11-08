@@ -145,6 +145,13 @@ export const api = {
       payment_note: 'Pix informado pelo cliente; aguardando conferência',
     }).select().single());
   },
+  // Administrador: todos os pedidos e assinaturas, com nome e e-mail de quem pagou.
+  async loadAllSubscriptions() {
+    return check(await sb.from('subscriptions').select('*, profiles(name, email)').order('created_at', { ascending: false }));
+  },
+  async updateSubscription(id, patch) {
+    check(await sb.from('subscriptions').update(patch).eq('id', id));
+  },
 
   // ----- Imagens -----
   async uploadImage(path, blob) {

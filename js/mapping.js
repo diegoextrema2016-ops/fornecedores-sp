@@ -162,6 +162,31 @@ export function subscriptionFromRow(row) {
   };
 }
 
+// Assinatura vista pelo administrador: inclui quem pagou (vem do embed profiles(name, email)).
+export function subscriptionAdminFromRow(row) {
+  const profile = first(row.profiles);
+  return {
+    ...subscriptionFromRow(row),
+    userId: row.user_id,
+    userName: profile?.name || '',
+    userEmail: profile?.email || '',
+  };
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+// Prazo de uma confirmação de Pix. Começa agora, ou logo após o fim de uma assinatura que ainda está válida
+// (assim, quem renova não perde os dias que já pagou).
+export function renewalWindow(now, days, currentExpiry) {
+  const nowMs = now.getTime();
+  const currentMs = currentExpiry ? new Date(currentExpiry).getTime() : NaN;
+  const baseMs = Number.isFinite(currentMs) && currentMs > nowMs ? currentMs : nowMs;
+  return {
+    startsAt: now.toISOString(),
+    expiresAt: new Date(baseMs + days * DAY_MS).toISOString(),
+  };
+}
+
 // ---------- Nomes de slug ----------
 // Evita dois fornecedores com o mesmo endereço (slug): acrescenta -2, -3...
 export function uniqueSlug(list, base, selfId) {

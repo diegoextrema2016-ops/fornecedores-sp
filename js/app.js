@@ -41,6 +41,7 @@ const routes = [
   [/^\/admin\/categorias$/, () => withMount(adm.adminCategories(), (r) => adm.mountAdminCategories(r, render)), { admin: true }],
   [/^\/admin\/regioes$/, () => withMount(adm.adminRegions(), (r) => adm.mountAdminRegions(r, render)), { admin: true }],
   [/^\/admin\/usuarios$/, () => withMount(adm.adminUsers(), (r) => adm.mountAdminUsers(r, render)), { admin: true }],
+  [/^\/admin\/pagamentos$/, () => withMount(adm.adminPayments(), (r) => adm.mountAdminPayments(r, render)), { admin: true }],
   [/^\/admin\/migracao$/, () => withMount(adm.adminBackup(), (r) => adm.mountAdminBackup(r, render)), { admin: true }],
 ];
 
