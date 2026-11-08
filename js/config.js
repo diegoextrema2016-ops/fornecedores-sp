@@ -23,8 +23,9 @@ export const SITE = {
 export const DATA_MODE = 'local';
 
 export const SUPABASE = {
-  url: '', // ex.: https://xyzcompany.supabase.co
-  anonKey: '', // chave pública "anon" (pode ir no frontend; a proteção vem das políticas RLS)
+  url: 'https://fzjiixiqezvvfeybydie.supabase.co',
+  // Chave publicável (publishable). É segura no navegador porque as regras de acesso (RLS) protegem os dados.
+  anonKey: 'sb_publishable_Ax9dowVsMkcsX2JjGS8aBQ_p537TLK7',
 };
 
 // Administrador de demonstração.
