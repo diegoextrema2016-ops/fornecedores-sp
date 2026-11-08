@@ -1,7 +1,7 @@
 // Janela de assinatura para liberar os contatos. Modo 'simulacao': nenhuma cobrança real é feita.
-import { PLANS, PAYMENT_MODE } from './config.js';
+import { PLANS, PAYMENT_MODE, PIX } from './config.js';
 import { store } from './store.js';
-import { escapeHtml as e, formatDate } from './utils.js';
+import { escapeHtml as e, formatDate, pixPayload } from './utils.js';
 import { toast } from './ui.js';
 import { subscriptionInfo } from './access.js';
 
@@ -75,6 +75,7 @@ function showPlans() {
 }
 
 function showCheckout(plan) {
+  if (PAYMENT_MODE === 'pix') return showPix(plan);
   const simulation = PAYMENT_MODE === 'simulacao';
   const host = frame(`
     <h3 id="pw-title">Confirmar assinatura</h3>
@@ -96,5 +97,37 @@ function showCheckout(plan) {
     close();
     toast(`Acesso liberado até ${formatDate(sub.expiresAt)}.`);
     window.SPF?.render?.();
+  });
+}
+
+// Pagamento por Pix: mostra o QR e o código copia e cola. A liberação é feita depois da conferência.
+function showPix(plan) {
+  const code = pixPayload({ key: PIX.key, amount: plan.price, name: PIX.name, city: PIX.city });
+  const host = frame(`
+    <h3 id="pw-title">Pague com Pix</h3>
+    <div class="checkout-summary card">
+      <p><strong>${e(plan.name)}</strong></p>
+      <p class="plan-price"><strong>${money(plan.price)}</strong> <span class="muted">por ${plan.days} dias</span></p>
+    </div>
+    <div class="pix-box">
+      <img src="${e(PIX.qrImage)}" alt="QR code Pix de ${money(plan.price)}" width="220" height="220">
+      <p class="small muted">No app do seu banco, escolha Pix, depois Ler QR Code, e confira o valor antes de confirmar.</p>
+      <label class="small" for="pix-code">Ou use o código Pix copia e cola:</label>
+      <textarea id="pix-code" class="pix-code" readonly rows="3">${e(code)}</textarea>
+      <button class="btn btn-ghost btn-block" type="button" id="pix-copy">Copiar código Pix</button>
+    </div>
+    <div class="notice notice-warn" role="note">Depois do pagamento, o acesso é liberado pelo administrador após a conferência do Pix. Guarde o comprovante.</div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" type="button" data-back>Voltar</button>
+    </div>`);
+  host.querySelector('[data-back]').addEventListener('click', showPlans);
+  host.querySelector('#pix-copy').addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(code);
+      toast('Código Pix copiado.');
+    } catch {
+      host.querySelector('#pix-code').select();
+      toast('Selecione o código e copie manualmente.', 'error');
+    }
   });
 }

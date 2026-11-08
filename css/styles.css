@@ -444,3 +444,8 @@ a.wa-link svg { color: var(--whatsapp); }
 /* Barra de mudança de categoria em massa (admin) */
 .bulk-bar { display: flex; flex-wrap: wrap; gap: .6rem; align-items: center; margin-bottom: 1rem; padding: .75rem 1rem; }
 .bulk-bar select { min-width: 220px; }
+
+/* Pix (checkout) */
+.pix-box { display: grid; justify-items: center; gap: .6rem; text-align: center; margin: .75rem 0; }
+.pix-box img { border-radius: var(--radius, 8px); background: #fff; }
+.pix-code { width: 100%; font-family: ui-monospace, monospace; font-size: .75rem; word-break: break-all; }

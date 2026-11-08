@@ -172,3 +172,29 @@ export function maskHandle(handle = '') {
   if (!h) return '';
   return `@${h.slice(0, 3)}${'*'.repeat(Math.max(4, h.length - 3))}`;
 }
+
+// ---------- Pix (BR Code estático) ----------
+// CRC-16/CCITT-FALSE, exigido pelo padrão do Banco Central.
+export function crc16Ccitt(str = '') {
+  let crc = 0xffff;
+  for (const byte of new TextEncoder().encode(String(str))) {
+    crc ^= byte << 8;
+    for (let i = 0; i < 8; i++) crc = crc & 0x8000 ? ((crc << 1) ^ 0x1021) & 0xffff : (crc << 1) & 0xffff;
+  }
+  return crc.toString(16).toUpperCase().padStart(4, '0');
+}
+
+// Monta o código "copia e cola" do Pix com valor fixo. Chave, nome e cidade vêm do config.js.
+export function pixPayload({ key, amount, name, city, txid = '***' } = {}) {
+  const tlv = (id, value) => `${id}${String(value.length).padStart(2, '0')}${value}`;
+  const body = tlv('00', '01')
+    + tlv('26', tlv('00', 'br.gov.bcb.pix') + tlv('01', String(key)))
+    + tlv('52', '0000')
+    + tlv('53', '986')
+    + tlv('54', Number(amount).toFixed(2))
+    + tlv('58', 'BR')
+    + tlv('59', String(name).slice(0, 25))
+    + tlv('60', String(city).slice(0, 15))
+    + tlv('62', tlv('05', txid));
+  return body + '6304' + crc16Ccitt(body + '6304');
+}

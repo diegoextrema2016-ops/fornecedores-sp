@@ -256,7 +256,7 @@ Como é um site estático, pode ser publicado em qualquer hospedagem de arquivos
 - Visitantes veem nome, categoria, bairro e descrição. WhatsApp, Instagram e endereço completo aparecem mascarados, por exemplo `(11) 9****-**21`.
 - Para liberar os contatos, o cliente cria uma conta e assina um plano. Os planos ficam em `PLANS` no `js/config.js`.
 - Administradores sempre têm acesso completo.
-- Com `PAYMENT_MODE = 'simulacao'`, o botão de confirmação só libera o acesso localmente, sem cobrança. Serve para testar o fluxo.
+- Com `PAYMENT_MODE = 'pix'` (ativo), o cliente vê o QR code e o código copia e cola de R$ 29,90 da chave CPF configurada em `PIX` (`js/config.js`). Não há confirmação automática: o acesso é liberado depois de conferir o Pix. `'simulacao'` libera o acesso sem pagamento e serve só para testes.
 
 **Antes de cobrar de verdade:**
 1. Mover os dados para o Supabase (seção 7). Só assim o servidor consegue esconder os contatos de quem não pagou.

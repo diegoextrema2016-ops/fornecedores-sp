@@ -40,13 +40,23 @@ export const ADMIN = {
 // Ajuste nomes, valores e prazos aqui. O preço é exibido ao cliente antes do pagamento.
 export const PLANS = [
   {
-    id: 'mensal',
-    name: 'Acesso completo mensal',
-    price: 9.9,
-    days: 30,
-    description: 'Contatos e endereços completos de todos os fornecedores por 30 dias.',
+    id: 'anual',
+    name: 'Acesso completo anual',
+    price: 29.9,
+    days: 365,
+    description: 'Contatos e endereços completos de todos os fornecedores por 1 ano.',
   },
 ];
 
-// 'simulacao' = nenhuma cobrança real. Troque por 'provedor' ao integrar o pagamento (ver README).
-export const PAYMENT_MODE = 'simulacao';
+// Pagamento por Pix estático (QR code e código "copia e cola").
+// Sem integração automática: o acesso é liberado depois que o pagamento é conferido.
+export const PIX = {
+  keyType: 'CPF',
+  key: '11568638485',
+  name: 'FORNECEDORES ATACADO SP',
+  city: 'SAO PAULO',
+  qrImage: 'img/pix-29-90.png', // QR do valor de R$ 29,90; regere se o preço mudar
+};
+
+// 'pix' = mostra o Pix ao cliente. 'simulacao' = libera o acesso sem pagamento (apenas para testes).
+export const PAYMENT_MODE = 'pix';
