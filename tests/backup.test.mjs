@@ -31,6 +31,7 @@ function fakeStore({ failSupplier = null } = {}) {
       },
     },
     suppliers: {
+      list: () => sups.slice(),
       save: async (d) => {
         if (failSupplier && d.name === failSupplier) throw new Error('nome inválido');
         if ('id' in d && d.id !== undefined) throw new Error('id antigo não deveria chegar aqui');
@@ -105,4 +106,33 @@ test('uma falha não interrompe a importação e aparece na lista de erros', asy
   assert.equal(res.suppliers, 1);
   assert.equal(res.errors.length, 1);
   assert.match(res.errors[0], /Quebrada/);
+});
+
+test('restaurar de novo não duplica fornecedores que já estão no banco (mesmo slug)', async () => {
+  const store = fakeStore();
+  const backup = {
+    categories: [],
+    regions: [],
+    suppliers: [
+      { name: 'Loja A', slug: 'loja-a', category: '' },
+      { name: 'Loja B', slug: 'loja-b', category: '' },
+    ],
+  };
+  const primeira = await importBackup(store, backup);
+  assert.equal(primeira.suppliers, 2);
+  assert.equal(primeira.skipped, 0);
+
+  // Simula o banco devolvendo os fornecedores já gravados, com o slug que o site gerou.
+  store.suppliers.list = () => store.sups.slice();
+  const segunda = await importBackup(store, backup);
+  assert.equal(segunda.suppliers, 0);
+  assert.equal(segunda.skipped, 2);
+  assert.equal(store.sups.length, 2, 'nenhuma cópia foi criada');
+});
+
+test('fornecedor sem slug no arquivo ainda é gravado (não há como comparar)', async () => {
+  const store = fakeStore();
+  const res = await importBackup(store, { categories: [], regions: [], suppliers: [{ name: 'Sem slug', category: '' }] });
+  assert.equal(res.suppliers, 1);
+  assert.equal(res.skipped, 0);
 });

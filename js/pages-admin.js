@@ -749,6 +749,7 @@ export function mountAdminBackup(root) {
         const res = await importBackup(store, data);
         preview.innerHTML = `
           <p><strong>${formatCount(res.suppliers)}</strong> fornecedores, <strong>${formatCount(res.categories)}</strong> categorias e <strong>${formatCount(res.regions)}</strong> bairros gravados.</p>
+          ${res.skipped ? `<p class="small">${formatCount(res.skipped)} fornecedor(es) já existiam no banco (mesmo endereço) e não foram gravados de novo.</p>` : ''}
           ${res.errors.length ? `<p class="small">Não foi possível gravar ${formatCount(res.errors.length)} item(ns):</p><ul class="small">${res.errors.map((m) => `<li>${e(m)}</li>`).join('')}</ul>` : ''}
           <a class="btn btn-secondary" href="#/admin/fornecedores">Ver fornecedores</a>`;
       } catch (err) {

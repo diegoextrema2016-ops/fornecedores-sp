@@ -62,6 +62,9 @@ export async function importBackup(store, backup) {
   let categories = 0;
   let regions = 0;
   let suppliers = 0;
+  let skipped = 0;
+  // Fornecedores que já estão no banco (mesmo slug) não são gravados de novo, para evitar cópias.
+  const existingSlugs = new Set(store.suppliers.list().map((s) => s.slug).filter(Boolean));
 
   for (const c of backup.categories) {
     try {
@@ -93,6 +96,10 @@ export async function importBackup(store, backup) {
     }
   }
   for (const s of backup.suppliers) {
+    if (s.slug && existingSlugs.has(s.slug)) {
+      skipped++;
+      continue;
+    }
     // O identificador antigo não serve no banco: o Supabase gera um novo.
     const { id, createdAt, views, ownerEmail, ...supplier } = s;
     try {
@@ -102,5 +109,5 @@ export async function importBackup(store, backup) {
       errors.push(`Fornecedor "${s.name}": ${err.message}`);
     }
   }
-  return { categories, regions, suppliers, errors };
+  return { categories, regions, suppliers, skipped, errors };
 }
