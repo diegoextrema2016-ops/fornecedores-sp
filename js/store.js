@@ -7,6 +7,7 @@ import { slugify, uid } from './utils.js';
 
 const KEYS = {
   suppliers: 'spf:v1:suppliers',
+  demoCleaned: 'spf:v1:demo-limpo',
   categories: 'spf:v1:categories',
   regions: 'spf:v1:regions',
   users: 'spf:v1:users',
@@ -31,8 +32,17 @@ function writeJson(storage, key, value) {
 export function createStore(storage, { seedSuppliers = DEMO_SUPPLIERS, seedCategories = CATEGORIES, seedRegions = REGIONS } = {}) {
   // ---------- Inicialização ----------
   function init() {
-    if (storage.getItem(KEYS.suppliers) == null) {
+    const hadSuppliers = storage.getItem(KEYS.suppliers) != null;
+    if (!hadSuppliers) {
       writeJson(storage, KEYS.suppliers, seedSuppliers.map((s) => withDefaults(s)));
+    }
+    // Uma única vez: tira os fornecedores de demonstração de navegadores que já tinham dados.
+    if (storage.getItem(KEYS.demoCleaned) == null) {
+      if (hadSuppliers) {
+        const current = readJson(storage, KEYS.suppliers, []);
+        writeJson(storage, KEYS.suppliers, current.filter((s) => !s.isDemo));
+      }
+      writeJson(storage, KEYS.demoCleaned, true);
     }
     if (storage.getItem(KEYS.categories) == null) {
       writeJson(storage, KEYS.categories, seedCategories.map((c) => ({ subcategories: [], status: 'active', ...c })));

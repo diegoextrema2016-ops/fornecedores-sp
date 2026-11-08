@@ -153,7 +153,7 @@ O logotipo é tipográfico (bloco "SP" + texto) e está em `js/ui.js` (função 
 
 ## 5. Dados de demonstração
 
-- Os fornecedores em `js/data.js` são **fictícios**, marcados com `isDemo: true` e exibidos com o selo "Demonstração".
+- O site não traz fornecedores de exemplo. Os dados fictícios usados pelos testes ficam em `tests/fixtures-demo.mjs`.
 - Não há telefones, Instagram, sites nem endereços de rua nesses dados.
 - Como não têm e-mail, responsável, endereço, número nem CEP, ao **editar** um demonstrativo o painel vai pedir esses campos obrigatórios antes de salvar.
 - Para começar a usar de verdade: entre no painel, **exclua** os demonstrativos (ou apague o `localStorage`

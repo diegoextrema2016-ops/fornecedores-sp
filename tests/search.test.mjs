@@ -1,10 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { filterSuppliers, sortSuppliers, paginate, tokenize, normalize } from '../js/search.js';
-import { DEMO_SUPPLIERS, CATEGORIES, REGIONS } from '../js/data.js';
+import { CATEGORIES, REGIONS } from '../js/data.js';
+import { DEMO_FIXTURES } from './fixtures-demo.mjs';
 import { slugify, mapsLink, whatsappLink, validateSupplier, isBrazilPhone, maskPhone, maskHandle, formatPhone } from '../js/utils.js';
 
-const approved = DEMO_SUPPLIERS.map((s, i) => ({ ...s, id: `t${i}`, slug: slugify(s.name), status: 'approved' }));
+const approved = DEMO_FIXTURES.map((s, i) => ({ ...s, id: `t${i}`, slug: slugify(s.name), status: 'approved' }));
 const ctx = {
   categoryNames: Object.fromEntries(CATEGORIES.map((c) => [c.slug, c.name])),
   regionNames: Object.fromEntries(REGIONS.map((r) => [r.slug, r.name])),

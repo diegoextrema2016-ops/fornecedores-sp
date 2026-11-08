@@ -1,6 +1,7 @@
 import { test, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { createStore } from '../js/store.js';
+import { DEMO_FIXTURES } from './fixtures-demo.mjs';
 
 // Storage falso compatível com localStorage (apenas os métodos usados).
 function fakeStorage() {
@@ -15,7 +16,7 @@ function fakeStorage() {
 
 let store;
 beforeEach(() => {
-  store = createStore(fakeStorage());
+  store = createStore(fakeStorage(), { seedSuppliers: DEMO_FIXTURES });
   store.init();
 });
 
