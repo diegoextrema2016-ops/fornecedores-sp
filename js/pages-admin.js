@@ -350,8 +350,26 @@ export function mountAdminSupplierForm(root, id) {
 }
 
 // ---------- Categorias ----------
+// Ordem de exibição no site: sortOrder e, em empate, nome.
+const sortedCategories = () => store.categories.list().slice()
+  .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0) || a.name.localeCompare(b.name, 'pt-BR'));
+
+// Sobe ou desce uma categoria. Renumera 1..n e grava só as linhas que mudaram.
+async function moveCategory(slug, delta, rerender) {
+  const list = sortedCategories();
+  const i = list.findIndex((c) => c.slug === slug);
+  const j = i + delta;
+  if (i < 0 || j < 0 || j >= list.length) return;
+  [list[i], list[j]] = [list[j], list[i]];
+  const changes = list.map((c, k) => ({ c, order: k + 1 })).filter(({ c, order }) => (c.sortOrder ?? 0) !== order);
+  const ok = await attempt(async () => {
+    for (const { c, order } of changes) await store.categories.save({ ...c, sortOrder: order });
+  }, 'Ordem das categorias atualizada.');
+  if (ok) rerender();
+}
+
 export function adminCategories() {
-  const cats = store.categories.list();
+  const cats = sortedCategories();
   return adminLayout('categories', 'Categorias', `
     <section class="card">
       <h2 id="cat-form-title">Nova categoria</h2>
@@ -367,10 +385,14 @@ export function adminCategories() {
     </section>
     <div class="table-wrap">
       <table class="table">
-        <thead><tr><th>Categoria</th><th>Slug</th><th>Fornecedores aprovados</th><th>Situação</th><th>Ações</th></tr></thead>
+        <thead><tr><th>Ordem</th><th>Categoria</th><th>Slug</th><th>Fornecedores aprovados</th><th>Situação</th><th>Ações</th></tr></thead>
         <tbody>
-          ${cats.map((c) => `
+          ${cats.map((c, idx) => `
             <tr>
+              <td class="row-actions">
+                <button class="btn btn-sm btn-ghost" data-cat-up="${e(c.slug)}" aria-label="Subir ${e(c.name)}" ${idx === 0 ? 'disabled' : ''}>▲</button>
+                <button class="btn btn-sm btn-ghost" data-cat-down="${e(c.slug)}" aria-label="Descer ${e(c.name)}" ${idx === cats.length - 1 ? 'disabled' : ''}>▼</button>
+              </td>
               <td>${e(c.icon || '')} <strong>${e(c.name)}</strong><div class="muted small">${e(c.description || '')}</div></td>
               <td><code>${e(c.slug)}</code></td>
               <td>${store.categories.countSuppliers(c.slug)}</td>
@@ -424,6 +446,10 @@ export function mountAdminCategories(root, rerender) {
     const edit = ev.target.closest('[data-cat-edit]');
     const toggle = ev.target.closest('[data-cat-toggle]');
     const del = ev.target.closest('[data-cat-del]');
+    const up = ev.target.closest('[data-cat-up]');
+    const down = ev.target.closest('[data-cat-down]');
+    if (up) return moveCategory(up.dataset.catUp, -1, rerender);
+    if (down) return moveCategory(down.dataset.catDown, 1, rerender);
     if (edit) {
       const c = store.categories.get(edit.dataset.catEdit);
       form.elements.slug.value = c.slug;

@@ -20,7 +20,9 @@ const regName = new Proxy({}, { get: (_t, slug) => store.regions.get(String(slug
 const ctx = { categoryNames: catName, regionNames: regName };
 
 function allCategories() {
-  return store.categories.list({ includeInactive: false });
+  return store.categories.list({ includeInactive: false })
+    .slice()
+    .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0) || a.name.localeCompare(b.name, 'pt-BR'));
 }
 
 function countByCategory() {
