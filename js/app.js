@@ -93,9 +93,11 @@ function renderLocal() {
 async function render({ fromMemory = false } = {}) {
   const id = ++renderId;
   const { path, query } = parseLocation();
+  // Só a primeira visita espera os dados. Nas seguintes a tela aparece na hora, com a cópia da memória.
+  const primeiraVez = !fromMemory && !store.loaded();
 
   try {
-    if (!fromMemory) await store.refresh({ maxAgeMs: 30000 });
+    if (primeiraVez) await store.refresh({ maxAgeMs: 30000 });
   } catch (err) {
     if (id !== renderId) return;
     headerHost.innerHTML = header({ session: null, route: '/' });
@@ -143,6 +145,18 @@ async function render({ fromMemory = false } = {}) {
   page.mount?.(main);
   window.scrollTo(0, 0);
   main.focus({ preventScroll: true });
+
+  // Atualiza os dados em segundo plano e redesenha só se algo mudou (sem atrasar o clique).
+  if (!fromMemory && !primeiraVez) atualizarEmSegundoPlano(id);
+}
+
+function atualizarEmSegundoPlano(id) {
+  const antes = store.fingerprint();
+  store.refresh({ maxAgeMs: 30000 })
+    .then(() => {
+      if (id === renderId && store.fingerprint() !== antes) renderLocal();
+    })
+    .catch(() => {});
 }
 
 // Clique numa foto da ficha abre a imagem inteira
