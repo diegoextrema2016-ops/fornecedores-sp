@@ -8,12 +8,16 @@
 import { SUPABASE } from '../js/config.js';
 
 // Só a categoria entra no pedido: texto curto e rápido.
-function promptPara({ categoria }) {
-  return [
+function promptPara({ categoria, instrucao }) {
+  const partes = [
     `Escreva uma descrição comercial curta, em português do Brasil, com no máximo 2 frases, para um fornecedor de atacado de São Paulo da categoria "${categoria}".`,
+  ];
+  if (instrucao) partes.push(`Baseie o texto nesta orientação do fornecedor: "${instrucao}".`);
+  partes.push(
     'Fale do produto e do atacado. Não invente tempo de mercado, prêmios, preços, endereço ou telefone.',
     'Responda somente com o texto, sem aspas e sem título.',
-  ].join(' ');
+  );
+  return partes.join(' ');
 }
 
 async function usuarioLogado(token) {
@@ -83,7 +87,10 @@ export default async function handler(req, res) {
   }
 
   const corpo = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
-  const dados = { categoria: String(corpo.categoria || 'produtos para revenda').slice(0, 80) };
+  const dados = {
+    categoria: String(corpo.categoria || 'produtos para revenda').slice(0, 80),
+    instrucao: String(corpo.instrucao || '').replace(/["\n\r]/g, ' ').trim().slice(0, 300),
+  };
   const prompt = promptPara(dados);
 
   try {

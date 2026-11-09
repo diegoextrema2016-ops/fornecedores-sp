@@ -96,6 +96,10 @@ export function supplierFormHtml(s = {}, { admin = false, loggedEmail = '' } = {
       <legend>Apresentação</legend>
       ${field('description', `Descrição comercial${star} (até 600 caracteres)`,
         `<textarea id="description" name="description" rows="4" maxlength="600" ${R ? 'required' : ''}>${v('description')}</textarea>`, 'field-wide')}
+      <div class="field field-wide">
+        <label for="instrucao-ia">Orientação para a IA (opcional)</label>
+        <input id="instrucao-ia" type="text" maxlength="300" placeholder="Ex.: somos fabricantes, entrega rápida, peças de inverno" />
+      </div>
       <div class="suggest-row field-wide">
         <button type="button" class="btn btn-secondary" data-suggest-description>Sugerir com IA</button>
         <span class="muted small">A IA escreve um texto novo a cada clique. Se ela não responder, aparece o motivo e uma sugestão pronta.</span>
@@ -168,6 +172,8 @@ if (typeof document !== 'undefined') {
     const cat = form.elements.category;
     const dados = {
       categoria: cat && cat.selectedIndex > 0 ? cat.options[cat.selectedIndex].text : '',
+      // Orientação digitada pelo fornecedor (campo sem "name": não é gravado no cadastro).
+      instrucao: (form.querySelector('#instrucao-ia')?.value || '').trim().slice(0, 300),
     };
     const textoBotao = botao.textContent;
     botao.disabled = true;
