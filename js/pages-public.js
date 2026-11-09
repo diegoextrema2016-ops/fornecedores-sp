@@ -660,7 +660,14 @@ function bannersHtml() {
     <section class="banner-section" aria-label="Destaques">
       <div class="banner-track">
         ${BANNERS.map((b, i) => {
-          const img = `<picture>${b.mobileSrc ? `<source media="(max-width: 820px)" srcset="${e(b.mobileSrc)}">` : ''}<img src="${e(b.src)}" alt="${e(b.alt)}" ${i === 0 ? 'fetchpriority="high"' : 'loading="lazy"'} decoding="async"></picture>`;
+          // WebP primeiro (menor); JPG como reserva. Celular usa a versão vertical.
+          const webp = (src) => src.replace(/\.(jpe?g|png)$/i, '.webp');
+          const sources = [
+            b.mobileSrc ? `<source media="(max-width: 820px)" type="image/webp" srcset="${e(webp(b.mobileSrc))}">` : '',
+            b.mobileSrc ? `<source media="(max-width: 820px)" srcset="${e(b.mobileSrc)}">` : '',
+            `<source type="image/webp" srcset="${e(webp(b.src))}">`,
+          ].join('');
+          const img = `<picture>${sources}<img src="${e(b.src)}" alt="${e(b.alt)}" ${i === 0 ? 'fetchpriority="high"' : 'loading="lazy"'} decoding="async"></picture>`;
           return `<div class="banner-slide">${b.href ? `<a href="${e(b.href)}">${img}</a>` : img}</div>`;
         }).join('')}
       </div>
