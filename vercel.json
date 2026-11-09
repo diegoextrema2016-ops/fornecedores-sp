@@ -2,6 +2,9 @@
   "buildCommand": "node scripts/build.mjs",
   "outputDirectory": "dist",
   "cleanUrls": false,
+  "functions": {
+    "api/sugerir-descricao.js": { "maxDuration": 30 }
+  },
   "trailingSlash": false,
   "rewrites": [
     { "source": "/admin/:path*", "destination": "/admin/index.html" },
