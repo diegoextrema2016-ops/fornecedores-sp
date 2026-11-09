@@ -57,7 +57,7 @@ export function supplierFormHtml(s = {}, { admin = false, loggedEmail = '' } = {
         ${text('site', 'Site', { ph: 'www.sualoja.com.br' })}
         ${select('category', `Categoria${star}`, categoryOptions(s.category), s.category, R)}
         ${text('subcategory', 'Subcategoria')}
-        ${select('supplierType', `Tipo de fornecedor${star}`, SUPPLIER_TYPES.map((t) => [t.value, t.label]), s.supplierType || (admin ? 'atacadista' : ''), R)}
+        ${select('supplierType', `Tipo de fornecedor${star}`, SUPPLIER_TYPES.map((t) => [t.value, t.label]), (admin ? 'atacadista' : s.supplierType || ''), R)}
       </div>
     </fieldset>
 
