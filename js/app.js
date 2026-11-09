@@ -21,6 +21,7 @@ const isAdmin = () => store.session.get()?.role === 'admin';
 const routes = [
   [/^\/$/, () => pub.home()],
   [/^\/categorias$/, () => pub.categoriesIndex()],
+  [/^\/categorias\/mais-acessados$/, () => pub.mostAccessedPage()],
   [/^\/categorias\/([^/]+)$/, (p, q) => pub.categoryPage({ slug: p[1] }, q)],
   [/^\/fornecedores$/, (_p, q) => pub.suppliersPage({}, q)],
   [/^\/fornecedor\/([^/]+)$/, (p) => pub.supplierPage({ slug: p[1] })],
