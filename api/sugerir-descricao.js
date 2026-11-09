@@ -43,16 +43,26 @@ async function usuarioLogado(token) {
 }
 
 // Gemini (gratuita). Modelo pode ser trocado pela variável GEMINI_MODEL.
-async function comGemini(prompt) {
+// Desliga o "pensamento" do modelo (mais rápido para um texto curto) e tem limite de tempo.
+async function chamarGemini(prompt, comPensamento) {
   const modelo = process.env.GEMINI_MODEL || 'gemini-3.8-flash';
-  const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelo}:generateContent`, {
+  const generationConfig = { temperature: 1, maxOutputTokens: 300 };
+  if (comPensamento) generationConfig.thinkingConfig = { thinkingBudget: 0 };
+  return fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelo}:generateContent`, {
     method: 'POST',
     headers: { 'x-goog-api-key': process.env.GEMINI_API_KEY, 'content-type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { temperature: 1, maxOutputTokens: 400 },
-    }),
+    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig }),
+    signal: AbortSignal.timeout(15000),
   });
+}
+
+async function comGemini(prompt) {
+  let r = await chamarGemini(prompt, true);
+  // Se o modelo não aceitar essa opção, tenta de novo sem ela.
+  if (r.status === 400) {
+    const texto = await r.clone().text();
+    if (/thinking/i.test(texto)) r = await chamarGemini(prompt, false);
+  }
   const json = await r.json().catch(() => ({}));
   if (!r.ok) return { erro: `A IA (Gemini) respondeu com erro ${r.status}${json?.error?.message ? `: ${String(json.error.message).slice(0, 160)}` : '.'}` };
   const texto = (json.candidates?.[0]?.content?.parts || []).map((p) => p.text || '').join('').trim();
@@ -105,6 +115,7 @@ export default async function handler(req, res) {
     if (resultado.erro) return res.status(502).json({ error: resultado.erro });
     return res.status(200).json({ texto: resultado.texto.slice(0, 600) });
   } catch (err) {
-    return res.status(502).json({ error: `Não foi possível falar com a IA agora (${String(err?.message || err).slice(0, 120)}).` });
+    const demorou = err?.name === 'TimeoutError' || err?.name === 'AbortError';
+    return res.status(502).json({ error: demorou ? 'A IA demorou demais para responder. Tente de novo.' : `Não foi possível falar com a IA agora (${String(err?.message || err).slice(0, 120)}).` });
   }
 }
