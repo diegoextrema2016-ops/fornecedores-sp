@@ -28,13 +28,22 @@ export const SUPABASE = {
 
 // Planos de acesso aos contatos (WhatsApp, Instagram, endereço completo).
 // O preço é exibido ao cliente antes do pagamento.
+// offered: false = plano antigo, mantido só para assinaturas já existentes (renovação e nomes), sem venda.
 export const PLANS = [
   {
+    id: 'mensal',
+    name: 'Acesso completo mensal',
+    price: 29.9,
+    days: 30,
+    description: 'Contatos e endereços completos de todos os fornecedores por 30 dias.',
+  },
+  {
     id: 'anual',
-    name: 'Acesso completo anual',
+    name: 'Acesso completo anual (antigo)',
     price: 29.9,
     days: 365,
-    description: 'Contatos e endereços completos de todos os fornecedores por 1 ano.',
+    description: 'Plano anterior, mantido para assinaturas já existentes.',
+    offered: false,
   },
 ];
 
