@@ -10,6 +10,7 @@ import { api, imagePathFromUrl } from './api.js';
 import { SITE, PLANS } from './config.js';
 import { slugify } from './utils.js';
 import * as M from './mapping.js';
+import { instagramKey, phoneKey } from './extract.js';
 
 const GUEST_FAV_KEY = 'spf:v2:guest-favorites';
 const PENDING_TTL_MS = 7 * 24 * 60 * 60 * 1000;
@@ -163,7 +164,7 @@ const auth = {
 };
 
 // ---------- Fornecedores ----------
-async function saveSupplier(data, { asAdmin = false } = {}) {
+async function saveSupplier(data, { asAdmin = false, checkDuplicates = false } = {}) {
   if (!state.session) throw new Error('Entre na sua conta para salvar fornecedores.');
   lastRefreshAt = 0;
   const existing = data.id ? state.suppliers.find((s) => s.id === data.id) : null;
@@ -171,6 +172,18 @@ async function saveSupplier(data, { asAdmin = false } = {}) {
 
   const id = existing ? existing.id : crypto.randomUUID();
   const merged = { ...(existing || {}), ...data, id };
+
+  // Duplicado (só no formulário; restauração e importação não passam por aqui): mesmo Instagram ou WhatsApp.
+  // Checado no banco, porque os contatos dos outros fornecedores não ficam visíveis para quem está cadastrando.
+  const igKey = instagramKey(merged.instagram);
+  const waKey = phoneKey(merged.whatsapp);
+  if (checkDuplicates && (igKey || waKey)) {
+    const dup = await api.findDuplicate({ instagram: igKey, whatsapp: waKey, excludeId: existing ? id : null });
+    if (dup) {
+      const motivo = dup.field === 'instagram' ? 'este Instagram' : 'este WhatsApp';
+      throw new Error(`Fornecedor duplicado: ${motivo} já está cadastrado em "${dup.name}".`);
+    }
+  }
   const categoryId = categoryIdBySlug(merged.category);
   if (merged.category && !categoryId) throw new Error('Categoria inexistente. Crie a categoria antes de usá-la.');
   const slug = M.uniqueSlug(state.suppliers, merged.slug || slugify(merged.name), id);

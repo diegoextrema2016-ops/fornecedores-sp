@@ -3,7 +3,7 @@ import { SITE } from './config.js';
 import { store } from './store.js';
 import { validateUser, escapeHtml as e } from './utils.js';
 import { toast, breadcrumbs, fieldError } from './ui.js';
-import { supplierFormHtml, checkSupplierForm, readImages, LIMITS } from './forms.js';
+import { supplierFormHtml, checkSupplierForm, readImages, LIMITS, bindPasteFill } from './forms.js';
 
 const fieldsOf = (form) => Object.fromEntries(new FormData(form).entries());
 
@@ -153,6 +153,7 @@ export function cadastroPage() {
     </section>`,
     mount: (root) => {
       const form = root.querySelector('#supplier-form');
+      bindPasteFill(form, { categories: store.categories.list(), regions: store.regions.list() });
       form.addEventListener('submit', async (ev) => {
         ev.preventDefault();
         const data = checkSupplierForm(form);
@@ -167,7 +168,7 @@ export function cadastroPage() {
             acceptTerms: undefined,
             logo: logo[0] || '',
             photos,
-          });
+          }, { checkDuplicates: true });
           root.innerHTML = `
             <section class="container section-tight narrow">
               <div class="card success">

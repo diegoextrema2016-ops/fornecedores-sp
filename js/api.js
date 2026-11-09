@@ -85,6 +85,15 @@ export const api = {
   async updateSupplier(id, row) {
     return check(await sb.from('suppliers').update(row).eq('id', id).select().single());
   },
+  // Duplicado por Instagram ou WhatsApp (função no banco; ver supabase/migration-004-duplicados.sql).
+  async findDuplicate({ instagram = null, whatsapp = null, excludeId = null }) {
+    const rows = check(await sb.rpc('find_supplier_duplicate', {
+      p_instagram: instagram || null,
+      p_whatsapp: whatsapp || null,
+      p_exclude: excludeId || null,
+    }));
+    return rows?.[0] || null;
+  },
   async deleteSupplier(id) {
     check(await sb.from('suppliers').delete().eq('id', id));
   },
