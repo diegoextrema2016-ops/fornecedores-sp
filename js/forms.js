@@ -77,10 +77,10 @@ export function supplierFormHtml(s = {}, { admin = false, loggedEmail = '' } = {
     <fieldset class="form-section">
       <legend>Vendas</legend>
       <div class="checks">
-        <label class="check"><input type="checkbox" name="saleWholesale" ${chk('saleWholesale', admin)}> Venda no atacado</label>
+        <label class="check"><input type="checkbox" name="saleWholesale" ${admin ? 'checked' : chk('saleWholesale')}> Venda no atacado</label>
         <label class="check"><input type="checkbox" name="saleRetail" ${chk('saleRetail')}> Venda no varejo</label>
         <label class="check"><input type="checkbox" name="saleResellers" ${chk('saleResellers')}> Venda para lojistas</label>
-        <label class="check"><input type="checkbox" name="shipsOtherCities" ${chk('shipsOtherCities', admin)}> Envio para outras cidades</label>
+        <label class="check"><input type="checkbox" name="shipsOtherCities" ${admin ? 'checked' : chk('shipsOtherCities')}> Envio para outras cidades</label>
       </div>
       <span class="field-error" id="err-sale" role="alert"></span>
       <div class="form-grid">
