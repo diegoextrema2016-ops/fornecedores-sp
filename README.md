@@ -137,22 +137,6 @@ Não há confirmação automática. Hoje o administrador confere cada Pix manual
 
 ---
 
-## Cadastro com informações coladas
-
-No cadastro (público e no painel do administrador) há o bloco **Preencher com informações do fornecedor**:
-
-1. Copie a bio e as informações do perfil (Instagram, site, etc.) e cole no campo.
-2. Clique em **Preencher automaticamente**.
-3. O sistema reconhece Instagram, WhatsApp (ou link wa.me), e-mail, site, endereço, número, CEP, bairro, categoria e descrição. Só preenche campos vazios; campos que você já digitou são mantidos.
-4. Confira tudo. O que não aparece no texto fica vazio, nada é inventado, e nada é salvo sem clicar em **Salvar**.
-
-Regras:
-
-- Telefone sem a palavra WhatsApp vai para o campo WhatsApp com um aviso para conferir.
-- Categoria só é sugerida quando uma única categoria bate com o texto.
-- Ao salvar pelo formulário, o site confere no banco se o Instagram ou o WhatsApp já pertencem a outro fornecedor e bloqueia o cadastro, mostrando qual fornecedor já usa o dado.
-- Restauração de backup e importação de planilha não passam por essa checagem.
-
 ## Painel administrativo
 
 Rotas (só com sessão de administrador):
