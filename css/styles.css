@@ -485,3 +485,10 @@ a.wa-link svg { color: var(--whatsapp); }
 .rank-badge { flex: 0 0 2.2rem; height: 2.2rem; border-radius: 50%; display: grid; place-items: center; font-weight: 700; background: var(--primary); color: #fff; }
 .ranked-link { display: flex; flex-direction: column; text-decoration: none; color: inherit; min-width: 0; }
 .ranked-link:hover strong { text-decoration: underline; }
+
+/* Reordenar categorias no painel (arrastar e soltar) */
+.cat-row { cursor: grab; }
+.cat-row.dragging { opacity: .4; }
+.cat-row.drop-before td { box-shadow: inset 0 2px 0 var(--primary); }
+.cat-row.drop-after td { box-shadow: inset 0 -2px 0 var(--primary); }
+.drag-handle { color: var(--muted); cursor: grab; user-select: none; padding: 0 .3rem; font-size: 1.1rem; line-height: 1; }
