@@ -40,15 +40,19 @@ const FECHAMENTOS = [
 // Monta uma descrição aleatória a partir da categoria e das opções de venda marcadas.
 // rand é injetável para teste (padrão: Math.random). O resultado tem no máximo 600 caracteres.
 export function sugerirDescricao(
-  { categoria = '', atacado = false, varejo = false, lojistas = false, outrasCidades = false } = {},
+  { categoria = '', instrucao = '', atacado = false, varejo = false, lojistas = false, outrasCidades = false } = {},
   rand = Math.random,
 ) {
   const pick = (lista) => lista[Math.floor(rand() * lista.length)];
   const cat = String(categoria || '').trim().toLowerCase();
-  const abertura = cat
-    ? pick(ABERTURAS_COM_CATEGORIA).replace('{cat}', cat)
-    : pick(ABERTURAS_GERAIS);
-  const frases = [abertura, `Oferecemos ${pick(PRODUTOS)}.`];
+  const orientacao = String(instrucao || '').trim().replace(/\s+/g, ' ');
+  // Se o fornecedor escreveu uma orientação, ela é o texto principal (sem trocar as informações dele).
+  const abertura = orientacao
+    ? (/[.!?]$/.test(orientacao) ? orientacao : `${orientacao}.`)
+    : cat
+      ? pick(ABERTURAS_COM_CATEGORIA).replace('{cat}', cat)
+      : pick(ABERTURAS_GERAIS);
+  const frases = orientacao ? [abertura] : [abertura, `Oferecemos ${pick(PRODUTOS)}.`];
   if (atacado) frases.push(pick(VENDA_ATACADO));
   if (varejo) frases.push(pick(VENDA_VAREJO));
   if (lojistas) frases.push('Atendemos lojistas e revendedores.');
