@@ -1,0 +1,12 @@
+{
+  "buildCommand": "node scripts/build.mjs",
+  "outputDirectory": "dist",
+  "cleanUrls": false,
+  "trailingSlash": false,
+  "rewrites": [
+    { "source": "/admin/:path*", "destination": "/admin/index.html" },
+    { "source": "/fornecedor/:slug", "destination": "/index.html" },
+    { "source": "/categorias/:slug", "destination": "/index.html" },
+    { "source": "/regiao/:slug", "destination": "/index.html" }
+  ]
+}

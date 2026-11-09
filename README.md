@@ -26,6 +26,11 @@ Toda gravação vai ao Supabase. O próprio banco aplica as regras de acesso (RL
 ```
 fornecedores-sp/
 ├── index.html              # casca da aplicação, metas de SEO e dados estruturados
+├── vercel.json             # build na Vercel (dist/) e endereços limpos
+├── scripts/
+│   ├── build.mjs           # gera dist/: páginas HTML, sitemap.xml e robots.txt (lê o banco)
+│   ├── seo.mjs             # textos, títulos, metas e dados estruturados das páginas
+│   └── serve.mjs           # servidor local que imita a Vercel (npm run serve)
 ├── css/styles.css          # identidade visual (variáveis no topo)
 ├── img/pix-29-90.png       # QR code do Pix de R$ 29,90
 ├── js/
@@ -51,21 +56,33 @@ fornecedores-sp/
 │   ├── migration-003-site-conectado.sql# subcategoria em texto e leitura pública das categorias
 │   └── migration-004-duplicados.sql    # checagem de duplicados por Instagram e WhatsApp
 ├── tests/                  # testes automatizados (node --test)
-├── robots.txt
-└── sitemap.xml
+├── robots.txt              # regras para o Google (o build gera a versão final em dist/)
+└── tests/fixtures-seo.json # dados de exemplo para testar o build sem internet
 ```
 
 ---
 
 ## Publicação na Vercel
 
-**O deploy é automático.** Quando um commit chega à branch `main` no GitHub, a Vercel publica a nova versão sozinha, se o projeto estiver ligado ao repositório.
+**O deploy é automático.** Quando um commit chega à branch `main` no GitHub, a Vercel roda o build e publica a nova versão sozinha, se o projeto estiver ligado ao repositório.
+
+O `vercel.json` já define tudo que a Vercel precisa, sem configuração manual:
+
+- `buildCommand`: `node scripts/build.mjs` gera a pasta `dist/` com as páginas HTML públicas (categorias, bairros, fichas dos fornecedores aprovados), o `sitemap.xml` e o `robots.txt`.
+- `outputDirectory`: `dist`.
+- `rewrites`: endereços de fornecedor, categoria e bairro que ainda não têm página gerada (cadastro feito depois do último build) abrem o app, que carrega os dados sozinho.
+
+O build lê apenas dados públicos com a chave publicável (`js/config.js`). Não há chave secreta nem variável de ambiente para configurar. Se a leitura do banco falhar, o build para com erro e a Vercel mantém a versão anterior no ar.
 
 1. Antes de publicar uma mudança, rode o banco (veja "Migrações do banco") se ela depender de SQL novo.
-2. Faça commit e push para `main`. A Vercel publica.
-3. Confira no painel da Vercel se o deploy terminou sem erro.
+2. Faça commit e push para `main`. A Vercel gera o build e publica.
+3. Confira no painel da Vercel se o build terminou sem erro (a linha de log mostra quantas URLs entraram no sitemap).
 
-**Domínio próprio:** na Vercel, abra o projeto, vá em **Settings → Domains**, adicione `fornecedoresdesp.com.br` e siga as instruções de DNS. O domínio já está configurado no código (`SITE.url` em `js/config.js`, `index.html`, `robots.txt` e `sitemap.xml`). Depois de conectado, envie o `sitemap.xml` ao Google Search Console.
+**Atualizar as páginas geradas:** as fichas e listagens são geradas no build. Um fornecedor aprovado depois do último deploy já abre pelo endereço `/fornecedor/nome`, mas só entra no sitemap e no HTML gerado no próximo build. Para gerar na hora, use um **Deploy Hook** da Vercel (Settings → Git → Deploy Hooks) e chame a URL dele quando aprovar fornecedores.
+
+**Testar o build no seu computador:** `npm run build` (precisa de internet para ler o banco) e depois `npm run serve`, que abre o site em `http://localhost:8080`. O `abrir-site.bat` faz as duas coisas.
+
+**Domínio próprio:** na Vercel, abra o projeto, vá em **Settings → Domains**, adicione `fornecedoresdesp.com.br` e siga as instruções de DNS. O domínio já está configurado no código (`SITE.url` em `js/config.js`). Depois de conectado, envie o `sitemap.xml` ao Google Search Console (veja a seção "SEO e Google").
 
 **O que não vai para a internet:** o `.vercelignore` impede a publicação de `tests/`, `supabase/` e `abrir-site.bat`. Eles continuam no repositório.
 
@@ -86,6 +103,31 @@ fornecedores-sp/
 Se o preço mudar, também regere o QR code (`img/pix-29-90.png`) e ajuste `PLANS`.
 
 ---
+
+## SEO e Google
+
+Endereços limpos, sem `#`: `/categorias/moda-feminina`, `/regiao/bras`, `/fornecedor/vazevedo-modas`. Os endereços antigos com `#` (`/#/fornecedor/x`) redirecionam automaticamente.
+
+O que cada página publica:
+
+- **Título e descrição** próprios, com canonical absoluto no domínio oficial.
+- **Dados estruturados** (JSON-LD): `Organization` e `WebSite` na página inicial, `BreadcrumbList` em todas as páginas de conteúdo e `ItemList` nas listagens.
+- **Conteúdo legível sem JavaScript:** o HTML gerado já traz o nome, a categoria, o bairro e as informações publicadas de cada fornecedor.
+- **Contatos:** WhatsApp, Instagram e endereço completo nunca aparecem no HTML público, porque são exibidos só para assinantes.
+
+**Não indexados (`noindex` e fora do `robots.txt`):** `/admin`, `/login`, `/registro`, `/cadastro`, `/favoritos`, `/sair`, a página 404, categorias sem fornecedores aprovados, bairros sem fornecedores e a categoria **Vapers e acessórios** (venda de vapes é proibida pela Anvisa; a lista fica em `scripts/seo.mjs`, em `RESTRICTED_CATEGORY_SLUGS`).
+
+**Sitemap:** `https://fornecedoresdesp.com.br/sitemap.xml`, gerado no build com as páginas públicas e indexáveis (inclui só fornecedores aprovados e não marcados como demonstração).
+
+**Google Search Console (passo a passo):**
+
+1. Acesse search.google.com/search-console e clique em **Adicionar propriedade**.
+2. Escolha **Domínio** e digite `fornecedoresdesp.com.br`. Assim o Google confere todas as variações de endereço (com e sem `www`, http e https).
+3. O Google vai pedir um registro **TXT** no DNS do domínio (no registro.br). Copie o valor que ele mostrar e crie o registro. Ele é público e não é segredo. Depois clique em **Verificar**.
+4. Quando a propriedade estiver verificada, abra **Sitemaps**, digite `sitemap.xml` e clique em **Enviar**.
+5. Para pedir indexação da página inicial ou de uma categoria, use **Inspeção de URL**, cole o endereço completo e clique em **Solicitar indexação**. Faça isso para `/`, `/categorias` e as categorias principais.
+
+Indexação e posicionamento dependem do Google. Não há garantia de primeira posição, e o resultado costuma levar semanas.
 
 ## Banco de dados (Supabase)
 

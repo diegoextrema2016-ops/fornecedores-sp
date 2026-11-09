@@ -2,6 +2,7 @@
 // Todas as gravações vão ao Supabase; o banco também confere se quem grava é administrador.
 import { SITE } from './config.js';
 import { store } from './store.js';
+import { go, currentLocation } from './nav.js';
 import { escapeHtml as e, formatDate, formatCount, slugify } from './utils.js';
 import { toast, confirmDialog, emptyState, pagination } from './ui.js';
 import { PLANS } from './config.js';
@@ -39,16 +40,16 @@ export function adminLayout(active, title, body) {
     <div class="admin-shell">
       <aside class="admin-side" aria-label="Painel">
         <strong class="admin-brand">Painel</strong>
-        ${link('#/admin', 'dashboard', 'Visão geral')}
-        ${link('#/admin/pendentes', 'pending', `Pendentes${pending ? ` (${pending})` : ''}`)}
-        ${link('#/admin/fornecedores', 'suppliers', 'Fornecedores')}
-        ${link('#/admin/novo', 'new', 'Adicionar fornecedor')}
-        ${link('#/admin/categorias', 'categories', 'Categorias')}
-        ${link('#/admin/regioes', 'regions', 'Bairros e cidades')}
-        ${link('#/admin/pagamentos', 'payments', `Pagamentos${payPending ? ` (${payPending})` : ''}`)}
-        ${link('#/admin/usuarios', 'users', 'Usuários')}
-        ${link('#/admin/migracao', 'backup', 'Backup e migração')}
-        <a href="#/sair">Sair</a>
+        ${link('/admin', 'dashboard', 'Visão geral')}
+        ${link('/admin/pendentes', 'pending', `Pendentes${pending ? ` (${pending})` : ''}`)}
+        ${link('/admin/fornecedores', 'suppliers', 'Fornecedores')}
+        ${link('/admin/novo', 'new', 'Adicionar fornecedor')}
+        ${link('/admin/categorias', 'categories', 'Categorias')}
+        ${link('/admin/regioes', 'regions', 'Bairros e cidades')}
+        ${link('/admin/pagamentos', 'payments', `Pagamentos${payPending ? ` (${payPending})` : ''}`)}
+        ${link('/admin/usuarios', 'users', 'Usuários')}
+        ${link('/admin/migracao', 'backup', 'Backup e migração')}
+        <a href="/sair">Sair</a>
       </aside>
       <section class="admin-main">
         <h1>${e(title)}</h1>
@@ -78,7 +79,7 @@ export function adminDashboard() {
     <div class="admin-cols">
       <section class="card">
         <h2>Cadastros recentes</h2>
-        ${recent.length ? `<ul class="plain-list">${recent.map((s) => `<li><a href="#/admin/fornecedores?busca=${encodeURIComponent(s.name)}">${e(s.name)}</a> <span class="muted small">· ${e(STATUS_LABEL[s.status])} · ${formatDate(s.createdAt)}</span></li>`).join('')}</ul>`
+        ${recent.length ? `<ul class="plain-list">${recent.map((s) => `<li><a href="/admin/fornecedores?busca=${encodeURIComponent(s.name)}">${e(s.name)}</a> <span class="muted small">· ${e(STATUS_LABEL[s.status])} · ${formatDate(s.createdAt)}</span></li>`).join('')}</ul>`
           : '<p class="muted">Nenhum cadastro ainda.</p>'}
       </section>
       <section class="card">
@@ -100,7 +101,7 @@ export function adminSuppliers(query, { preset = '' } = {}) {
   list.sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
   // 50 fornecedores por página
   const p = paginate(list, Number(query.get('pagina')) || 1, 50);
-  const base = preset ? '#/admin/pendentes' : '#/admin/fornecedores';
+  const base = preset ? '/admin/pendentes' : '/admin/fornecedores';
   const makeHref = (n) => {
     const q = new URLSearchParams();
     if (!preset && status !== 'all') q.set('status', status);
@@ -114,7 +115,7 @@ export function adminSuppliers(query, { preset = '' } = {}) {
 
   return adminLayout(key, preset ? 'Pendentes de aprovação' : 'Fornecedores', `
     ${preset ? '' : `<div class="tabs" role="tablist">${tabs.map(([v, l]) =>
-      `<a role="tab" class="tab ${status === v ? 'is-active' : ''}" href="#/admin/fornecedores?status=${v}">${l}</a>`).join('')}</div>`}
+      `<a role="tab" class="tab ${status === v ? 'is-active' : ''}" href="/admin/fornecedores?status=${v}">${l}</a>`).join('')}</div>`}
     ${preset ? '' : importPanelHtml()}
     <form class="toolbar" data-admin-search>
       <input type="search" name="busca" value="${e(search)}" placeholder="Buscar por nome, e-mail ou responsável">
@@ -138,8 +139,8 @@ export function adminSuppliers(query, { preset = '' } = {}) {
             <td class="row-actions">
               ${s.status !== 'approved' ? `<button class="btn btn-sm btn-primary" data-status="approved" data-id="${e(s.id)}">Aprovar</button>` : ''}
               ${s.status !== 'rejected' ? `<button class="btn btn-sm btn-ghost" data-status="rejected" data-id="${e(s.id)}">Rejeitar</button>` : ''}
-              <a class="btn btn-sm btn-secondary" href="#/admin/fornecedor/${e(s.id)}/editar">Editar</a>
-              ${s.status === 'approved' ? `<a class="btn btn-sm btn-ghost" href="#/fornecedor/${e(s.slug)}">Ver</a>` : ''}
+              <a class="btn btn-sm btn-secondary" href="/admin/fornecedor/${e(s.id)}/editar">Editar</a>
+              ${s.status === 'approved' ? `<a class="btn btn-sm btn-ghost" href="/fornecedor/${e(s.slug)}">Ver</a>` : ''}
               <select class="row-cat" style="max-width:170px" data-row-cat="${e(s.id)}" aria-label="Categoria de ${e(s.name)}">${categoryOptionsFor(s.category)}</select>
               <button class="btn btn-sm btn-danger" data-delete="${e(s.id)}">Excluir</button>
             </td>
@@ -300,17 +301,18 @@ export function mountAdminSuppliers(root, rerender) {
   root.querySelector('[data-admin-search]')?.addEventListener('submit', (ev) => {
     ev.preventDefault();
     const busca = new FormData(ev.currentTarget).get('busca')?.toString().trim() || '';
-    const current = new URLSearchParams(location.hash.split('?')[1] || '');
+    const { path, search } = currentLocation();
+    const current = new URLSearchParams(search);
     current.set('busca', busca);
     current.delete('pagina');
-    location.hash = `${location.hash.split('?')[0]}?${current.toString()}`;
+    go(`${path}?${current.toString()}`);
   });
 }
 
 // ---------- Criar / editar fornecedor ----------
 export function adminSupplierForm(id) {
   const existing = id ? store.suppliers.get(id) : null;
-  if (id && !existing) return adminLayout('suppliers', 'Fornecedor não encontrado', emptyState('Não encontrado', 'Este fornecedor não existe mais.', '<a class="btn btn-primary" href="#/admin/fornecedores">Voltar</a>'));
+  if (id && !existing) return adminLayout('suppliers', 'Fornecedor não encontrado', emptyState('Não encontrado', 'Este fornecedor não existe mais.', '<a class="btn btn-primary" href="/admin/fornecedores">Voltar</a>'));
   return adminLayout(existing ? 'suppliers' : 'new', existing ? `Editar: ${existing.name}` : 'Adicionar fornecedor', `
     <p class="muted">Use para cadastrar fornecedores manualmente ou corrigir dados.</p>
     ${supplierFormHtml(existing || {}, { admin: true })}
@@ -339,7 +341,7 @@ export function mountAdminSupplierForm(root, id) {
         photos: newPhotos.length ? newPhotos : existing?.photos || [],
       }, { asAdmin: true, checkDuplicates: true });
       toast('Fornecedor salvo.');
-      location.hash = saved.status === 'approved' ? `#/fornecedor/${saved.slug}` : '#/admin/fornecedores';
+      go(saved.status === 'approved' ? `/fornecedor/${saved.slug}` : '/admin/fornecedores');
     } catch (err) {
       toast(err.message || 'Erro ao salvar.', 'error');
       button.disabled = false;
@@ -751,7 +753,7 @@ export function mountAdminBackup(root) {
           <p><strong>${formatCount(res.suppliers)}</strong> fornecedores, <strong>${formatCount(res.categories)}</strong> categorias e <strong>${formatCount(res.regions)}</strong> bairros gravados.</p>
           ${res.skipped ? `<p class="small">${formatCount(res.skipped)} fornecedor(es) já existiam no banco (mesmo endereço) e não foram gravados de novo.</p>` : ''}
           ${res.errors.length ? `<p class="small">Não foi possível gravar ${formatCount(res.errors.length)} item(ns):</p><ul class="small">${res.errors.map((m) => `<li>${e(m)}</li>`).join('')}</ul>` : ''}
-          <a class="btn btn-secondary" href="#/admin/fornecedores">Ver fornecedores</a>`;
+          <a class="btn btn-secondary" href="/admin/fornecedores">Ver fornecedores</a>`;
       } catch (err) {
         preview.innerHTML = '';
         toast(err.message || 'Falha ao gravar o backup.', 'error');

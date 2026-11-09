@@ -115,14 +115,14 @@ export function supplierFormHtml(s = {}, { admin = false, loggedEmail = '' } = {
     </fieldset>` : `
     <fieldset class="form-section">
       <legend>Termos</legend>
-      <label class="check"><input type="checkbox" name="acceptTerms" id="acceptTerms"> Declaro que as informações são verdadeiras, que vendo produtos lícitos e aceito os <a href="#/termos">termos de uso</a>.</label>
+      <label class="check"><input type="checkbox" name="acceptTerms" id="acceptTerms"> Declaro que as informações são verdadeiras, que vendo produtos lícitos e aceito os <a href="/termos">termos de uso</a>.</label>
       <span class="field-error" id="err-acceptTerms" role="alert"></span>
       <p class="muted small">Seu cadastro ficará pendente até a análise da equipe. Nada é publicado automaticamente.</p>
     </fieldset>`}
 
     <div class="form-actions">
       <button class="btn btn-primary btn-lg" type="submit">${admin ? 'Salvar fornecedor' : 'Enviar cadastro'}</button>
-      <a class="btn btn-ghost" href="#/">Cancelar</a>
+      <a class="btn btn-ghost" href="/">Cancelar</a>
     </div>
   </form>`;
 }

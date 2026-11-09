@@ -20,29 +20,29 @@ export function header({ session, route }) {
   const is = (path) => (route === path ? 'is-active' : '');
   const isAdmin = session?.role === 'admin';
   const account = session
-    ? `<a class="btn btn-ghost" href="#/favoritos" aria-label="Meus favoritos">${icon.heart}<span class="hide-sm">Favoritos</span></a>
-       <a class="btn btn-ghost hide-sm" href="#/sair">Sair</a>`
-    : `<a class="btn btn-ghost" href="#/login">Entrar</a>`;
+    ? `<a class="btn btn-ghost" href="/favoritos" aria-label="Meus favoritos">${icon.heart}<span class="hide-sm">Favoritos</span></a>
+       <a class="btn btn-ghost hide-sm" href="/sair">Sair</a>`
+    : `<a class="btn btn-ghost" href="/login">Entrar</a>`;
   return `
   <a class="skip-link" href="#main">Pular para o conteúdo</a>
   <header class="site-header" id="site-header">
     <div class="container header-inner">
-      <a class="brand" href="#/" aria-label="${e(SITE.name)} - início">
+      <a class="brand" href="/" aria-label="${e(SITE.name)} - início">
         <span class="brand-mark" aria-hidden="true">SP</span>
         <span class="brand-text"><strong>FORNECEDORES</strong><small>ATACADO SP</small></span>
       </a>
       <nav class="main-nav" id="main-nav" aria-label="Principal">
-        <a class="${is('/')}" href="#/">Início</a>
-        <a class="${is('/categorias')}" href="#/categorias">Categorias</a>
-        <a class="${is('/fornecedores')}" href="#/fornecedores">Fornecedores</a>
-        <a class="${is('/mapa')}" href="#/mapa">Mapa</a>
-        <a class="${is('/sobre')}" href="#/sobre">Como funciona</a>
-        <a class="nav-cta" href="#/cadastro">Cadastrar fornecedor</a>
-        ${isAdmin ? '<a href="#/admin">Painel</a>' : ''}
+        <a class="${is('/')}" href="/">Início</a>
+        <a class="${is('/categorias')}" href="/categorias">Categorias</a>
+        <a class="${is('/fornecedores')}" href="/fornecedores">Fornecedores</a>
+        <a class="${is('/mapa')}" href="/mapa">Mapa</a>
+        <a class="${is('/sobre')}" href="/sobre">Como funciona</a>
+        <a class="nav-cta" href="/cadastro">Cadastrar fornecedor</a>
+        ${isAdmin ? '<a href="/admin">Painel</a>' : ''}
       </nav>
       <div class="header-actions">
         ${account}
-        <a class="btn btn-primary hide-sm" href="#/cadastro">Cadastrar fornecedor</a>
+        <a class="btn btn-primary hide-sm" href="/cadastro">Cadastrar fornecedor</a>
         <button class="icon-btn menu-toggle" type="button" aria-controls="main-nav" aria-expanded="false" aria-label="Abrir menu">${icon.menu}</button>
       </div>
     </div>
@@ -59,16 +59,16 @@ export function footer() {
         <p class="muted">${e(SITE.tagline)}</p>
       </div>
       <nav aria-label="Rodapé">
-        <a href="#/categorias">Categorias</a>
-        <a href="#/fornecedores">Fornecedores</a>
-        <a href="#/mapa">Mapa</a>
-        <a href="#/cadastro">Cadastre sua loja</a>
+        <a href="/categorias">Categorias</a>
+        <a href="/fornecedores">Fornecedores</a>
+        <a href="/mapa">Mapa</a>
+        <a href="/cadastro">Cadastre sua loja</a>
       </nav>
       <nav aria-label="Institucional">
-        <a href="#/sobre">Sobre</a>
-        <a href="#/contato">Contato</a>
-        <a href="#/privacidade">Privacidade</a>
-        <a href="#/termos">Termos de uso</a>
+        <a href="/sobre">Sobre</a>
+        <a href="/contato">Contato</a>
+        <a href="/privacidade">Privacidade</a>
+        <a href="/termos">Termos de uso</a>
       </nav>
     </div>
     <div class="container footer-bottom muted">© ${year} ${e(SITE.name)}. Dados de demonstração são identificados como tal.</div>
@@ -81,7 +81,7 @@ export function demoBanner() {
 
 export function categoryCard(cat, count) {
   return `
-  <a class="category-card" href="#/categorias/${e(cat.slug)}">
+  <a class="category-card" href="/categorias/${e(cat.slug)}">
     <span class="category-icon" aria-hidden="true">${e(cat.icon || '📦')}</span>
     <span class="category-body">
       <strong>${e(cat.name)}</strong>
@@ -190,7 +190,7 @@ export function supplierCard(s, { categoryName = '', regionName = '', favorite =
     <div class="supplier-card-top">
       <div class="logo-box" aria-hidden="true">${s.logo ? `<img src="${e(s.logo)}" alt="" loading="lazy">` : e((s.name || '?').slice(0, 2).toUpperCase())}</div>
       <div class="supplier-title">
-        <h3><a href="#/fornecedor/${e(s.slug)}">${e(s.name)}</a></h3>
+        <h3><a href="/fornecedor/${e(s.slug)}">${e(s.name)}</a></h3>
         <div class="badges">
           ${s.verified ? `<span class="badge badge-verified">${icon.check} Verificado</span>` : ''}
           ${s.isDemo ? '<span class="badge badge-demo">Demonstração</span>' : ''}
@@ -205,7 +205,7 @@ export function supplierCard(s, { categoryName = '', regionName = '', favorite =
     ${contactLine}
     ${igLine}
     <div class="supplier-actions">
-      <a class="btn btn-secondary" href="#/fornecedor/${e(s.slug)}">Ver fornecedor</a>
+      <a class="btn btn-secondary" href="/fornecedor/${e(s.slug)}">Ver fornecedor</a>
       ${primaryAction}
     </div>
   </article>`;
