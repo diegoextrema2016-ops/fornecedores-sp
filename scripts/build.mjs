@@ -99,7 +99,7 @@ async function main() {
   }));
   sitemap.push({ path: '/categorias' });
 
-  await write('fornecedores/index.html', seo.suppliersIndexPage({ suppliers: sortedByName(suppliers), regionName }));
+  await write('fornecedores/index.html', seo.suppliersIndexPage({ suppliers: sortedByName(suppliers), regionName, categoryName }));
   sitemap.push({ path: '/fornecedores' });
 
   await write('mapa/index.html', seo.mapPage({

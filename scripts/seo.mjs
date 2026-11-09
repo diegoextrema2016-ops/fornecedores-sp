@@ -210,15 +210,74 @@ function breadcrumbHtml(items) {
     .join('')}</ol></nav>`;
 }
 
-function supplierListHtml(suppliers, regionName) {
-  if (!suppliers.length) return '<p>Ainda não há fornecedores aprovados nesta lista.</p>';
-  return `<ul class="plain-list supplier-list">${suppliers
-    .map((s) => {
-      const meta = [typeLabel(s.supplier_type), regionName ? regionName(s.bairro) : ''].filter(Boolean).join(' · ');
-      return `<li><a href="/fornecedor/${esc(s.slug)}"><strong>${esc(s.name)}</strong></a>${meta ? `<br><span class="muted small">${esc(meta)}</span>` : ''}${s.description ? `<p class="small">${esc(truncate(s.description, 160))}</p>` : ''}</li>`;
-    })
-    .join('')}</ul>`;
+// Ícones iguais aos do site (js/ui.js).
+const ICON = {
+  heart: '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M12 21s-7.5-4.6-9.5-9.1C1 8.6 3 5 6.6 5c2 0 3.4 1.1 4.4 2.5C12 6.1 13.4 5 15.4 5 19 5 21 8.6 21.5 11.9 19.5 16.4 12 21 12 21z"/></svg>',
+  pin: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 22s7-6.2 7-12a7 7 0 1 0-14 0c0 5.8 7 12 7 12z"/><circle cx="12" cy="10" r="2.5"/></svg>',
+  check: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="m5 12 4 4 10-10"/></svg>',
+  wa: '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2zm4.5-6.1c-.2-.1-1.4-.7-1.6-.8s-.4-.1-.5.1-.6.8-.8.9-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.2-.4.2-.4.6-1.2.1-.2 0-.3 0-.4l-.7-1.8c-.2-.4-.4-.4-.5-.4h-.5a.9.9 0 0 0-.6.3 2.6 2.6 0 0 0-.8 2 4.5 4.5 0 0 0 .9 2.4 10.4 10.4 0 0 0 4 3.5c1.5.6 2.1.7 2.8.6a2.4 2.4 0 0 0 1.6-1.1 2 2 0 0 0 .1-1.1c0-.1-.2-.2-.4-.3z"/></svg>',
+};
+
+// Cartão igual ao que o visitante vê no site: sem nome real, logo, WhatsApp nem Instagram.
+// Assim a página pré-renderizada e o site ficam iguais, e nenhum nome ou @ aparece antes do carregamento.
+// ctx.categoryName(id) e ctx.regionName(bairroSlug) devolvem os nomes para o cartão.
+function visitorCardHtml(s, { categoryName = () => '', regionName = () => '' } = {}) {
+  const region = s.bairro ? regionName(s.bairro) : '';
+  const label = `Fornecedor${region ? ` em ${region}` : ' de atacado'}`;
+  const location = [region, s.city || 'São Paulo'].filter(Boolean).join(' · ');
+  const sales = [
+    s.sale_wholesale && 'Atacado',
+    s.sale_retail && 'Varejo',
+    s.sale_resellers && 'Lojistas',
+    s.ships_other_cities && 'Envio para outras cidades',
+  ].filter(Boolean);
+  return `<article class="supplier-card">
+    <div class="supplier-card-top">
+      <div class="logo-box" aria-hidden="true"><span class="logo-mask">SP</span></div>
+      <div class="supplier-title">
+        <h3><a href="/fornecedor/${esc(s.slug)}">${esc(label)}</a></h3>
+        <div class="badges">
+          ${s.verified ? `<span class="badge badge-verified">${ICON.check} Verificado</span>` : ''}
+          <span class="badge">${esc(categoryName(s.category_id))}</span>
+        </div>
+      </div>
+      <button class="fav-btn" type="button" aria-label="Salvar nos favoritos">${ICON.heart}</button>
+    </div>
+    <p class="supplier-location muted small">${ICON.pin} ${esc(location)}</p>
+    <p class="supplier-desc">${esc(s.description || 'Descrição não informada.')}</p>
+    <p class="supplier-sale small">${sales.map((l) => `<span class="tag">${esc(l)}</span>`).join('')}</p>
+    <p class="contact-line small">${ICON.wa} <span>WhatsApp para assinantes</span></p>
+    <div class="supplier-actions">
+      <a class="btn btn-secondary" href="/fornecedor/${esc(s.slug)}">Ver fornecedor</a>
+      <button class="btn btn-primary" type="button" data-action="unlock">Ver contato completo</button>
+    </div>
+  </article>`;
 }
+
+function visitorGridHtml(list, ctx = {}) {
+  if (!list.length) return '<p>Ainda não há fornecedores aprovados nesta lista.</p>';
+  return `<div class="grid grid-3">${list.map((s) => visitorCardHtml(s, ctx)).join('')}</div>`;
+}
+
+// Lista com o mesmo borrão do site: cartões embaçados e o aviso de planos por cima.
+function listingGateHtml(list, ctx = {}) {
+  if (!list.length) return visitorGridHtml(list, ctx);
+  return `<div class="blur-gate">
+    <div class="card blur-banner">
+      <p><strong>Assine para ver os contatos dos fornecedores</strong></p>
+      <p class="small muted">WhatsApp, Instagram e endereço completos são liberados após o pagamento via Pix.</p>
+      <button class="btn btn-primary" type="button" data-action="unlock">Ver planos de acesso</button>
+    </div>
+    <div class="blur-content" aria-hidden="true">${visitorGridHtml(list, ctx)}</div>
+  </div>`;
+}
+
+// Mesma ordem de "relevância" do site, sem busca: destaque, verificado, acessos e nome.
+const byRelevance = (a, b) =>
+  (b.featured === true) - (a.featured === true)
+  || (b.verified === true) - (a.verified === true)
+  || (b.views || 0) - (a.views || 0)
+  || String(a.name || '').localeCompare(String(b.name || ''), 'pt-BR');
 
 // ---------- Textos originais por categoria e região (com números reais) ----------
 
@@ -279,7 +338,10 @@ export function homePage({ categories, regions, suppliers, featured }) {
     <ul class="plain-list two-col">${catLinks}</ul>
     <h2>Bairros e regiões</h2>
     <ul class="plain-list two-col">${regLinks}</ul>
-    ${featured.length ? `<h2>Fornecedores em destaque</h2>${supplierListHtml(featured, (b) => regions.find((r) => r.slug === b)?.name)}` : ''}
+    ${featured.length ? `<h2>Fornecedores em destaque</h2>${visitorGridHtml(featured, {
+      categoryName: (id) => categories.find((c) => c.id === id)?.name || '',
+      regionName: (slug) => regions.find((r) => r.slug === slug)?.name || '',
+    })}` : ''}
   </section>`;
   return documentHtml({
     title, description, path: '/', mainHtml: main, nav: staticHeader(), footer: staticFooter(),
@@ -318,7 +380,7 @@ export function categoryPage({ category, suppliers, regionName }) {
     ${category.description ? `<p>${esc(clean(category.description))}</p>` : ''}
     ${paragraphs.map((p) => `<p>${esc(p)}</p>`).join('')}
     <h2>Fornecedores</h2>
-    ${supplierListHtml(suppliers, regionName)}
+    ${listingGateHtml(suppliers, { categoryName: () => category.name, regionName })}
   </section>`;
   return documentHtml({
     title, description, path: `/categorias/${category.slug}`, noindex, mainHtml: main,
@@ -341,7 +403,7 @@ export function regionPage({ region, suppliers, categoryName }) {
     <h1>Fornecedores no ${esc(region.name)}, São Paulo</h1>
     ${paragraphs.map((p) => `<p>${esc(p)}</p>`).join('')}
     <h2>Fornecedores</h2>
-    ${supplierListHtml(suppliers, () => region.name)}
+    ${listingGateHtml(suppliers, { categoryName, regionName: () => region.name })}
   </section>`;
   return documentHtml({
     title, description, path: `/regiao/${region.slug}`, noindex, mainHtml: main,
@@ -353,15 +415,28 @@ export function regionPage({ region, suppliers, categoryName }) {
   });
 }
 
-export function suppliersIndexPage({ suppliers, regionName }) {
+export function suppliersIndexPage({ suppliers, regionName, categoryName }) {
   const title = 'Todos os fornecedores de São Paulo | Fornecedores Atacado SP';
   const description = 'Lista de fornecedores de atacado de São Paulo, com filtros por categoria, bairro, tipo de venda e WhatsApp.';
+  const ctx = { categoryName: categoryName || (() => ''), regionName: regionName || (() => '') };
+  const shown = [...suppliers].sort(byRelevance).slice(0, SITE.pageSize);
+  // Mesmo layout da página de fornecedores do site (título, texto, filtros e cartões), para a troca ser imperceptível.
   const main = `
   <section class="container section-tight">
     ${breadcrumbHtml([{ label: 'Início', path: '/' }, { label: 'Fornecedores' }])}
-    <h1>Todos os fornecedores</h1>
-    <p>${suppliers.length} fornecedores aprovados.</p>
-    ${supplierListHtml(suppliers, regionName)}
+    <h1>Fornecedores</h1>
+    <p class="lead">Pesquise por nome, produto, categoria ou localização. Use os filtros para refinar.</p>
+    <div class="listing">
+      <aside class="filters" aria-label="Filtros">
+        <details class="filters-details"><summary class="filters-summary">Filtros</summary></details>
+      </aside>
+      <div class="listing-main">
+        <div class="listing-toolbar">
+          <p class="muted">${new Intl.NumberFormat('pt-BR').format(suppliers.length)} ${suppliers.length === 1 ? 'fornecedor encontrado' : 'fornecedores encontrados'}</p>
+        </div>
+        ${listingGateHtml(shown, ctx)}
+      </div>
+    </div>
   </section>`;
   return documentHtml({
     title, description, path: '/fornecedores', mainHtml: main, nav: staticNav(), footer: staticFooter(),
@@ -408,7 +483,7 @@ export function supplierPage({ supplier: s, category, regionName, related }) {
     ${tags.length ? `<p class="small">Palavras-chave: ${esc(tags.join(', '))}</p>` : ''}
     ${photos.length ? `<h2>Fotos</h2><div class="photo-grid">${photos.map((u) => `<img src="${esc(u)}" alt="Foto de ${esc(s.name)}" loading="lazy">`).join('')}</div>` : ''}
     <p class="muted small">WhatsApp, Instagram e endereço completo ficam disponíveis para quem tem acesso aos contatos.</p>
-    ${related.length ? `<h2>Outros fornecedores de ${esc(category?.name || '')}</h2>${supplierListHtml(related, regionName)}` : ''}
+    ${related.length ? `<h2>Outros fornecedores de ${esc(category?.name || '')}</h2>${visitorGridHtml(related, { categoryName: (id) => (id === category?.id ? category.name : ''), regionName })}` : ''}
   </article>`;
   return documentHtml({
     title, description, path: `/fornecedor/${s.slug}`, mainHtml: main, nav: staticNav(), footer: staticFooter(),
