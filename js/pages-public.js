@@ -1,5 +1,5 @@
 // Páginas públicas. Cada página exporta uma função (params, query) => { title, description, html, mount? }.
-import { SITE } from './config.js';
+import { SITE, BANNERS } from './config.js';
 import { CATEGORIES, REGIONS, SUPPLIER_TYPES } from './data.js';
 import { store } from './store.js';
 import { go } from './nav.js';
@@ -84,6 +84,7 @@ export function home() {
       </div>
     </section>
 
+    ${bannersHtml()}
     <section class="section container">
       <div class="section-head">
         <div><h2>Categorias</h2><p class="muted">Escolha um segmento e veja os fornecedores.</p></div>
@@ -607,3 +608,17 @@ export function notFound() {
 }
 
 export { skeletonCards, icon };
+
+// Faixa de banners da home: um por vez, rola para o lado (swipe).
+function bannersHtml() {
+  if (!BANNERS.length) return '';
+  return `
+    <section class="banner-section" aria-label="Destaques">
+      <div class="banner-track">
+        ${BANNERS.map((b, i) => {
+          const img = `<picture>${b.mobileSrc ? `<source media="(max-width: 820px)" srcset="${e(b.mobileSrc)}">` : ''}<img src="${e(b.src)}" alt="${e(b.alt)}" ${i === 0 ? 'fetchpriority="high"' : 'loading="lazy"'} decoding="async"></picture>`;
+          return `<div class="banner-slide">${b.href ? `<a href="${e(b.href)}">${img}</a>` : img}</div>`;
+        }).join('')}
+      </div>
+    </section>`;
+}
