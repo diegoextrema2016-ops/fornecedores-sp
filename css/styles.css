@@ -444,7 +444,7 @@ a.wa-link svg { color: var(--whatsapp); }
 .featured-track { gap: 1rem; padding-block: .25rem .75rem; }
 .featured-track::-webkit-scrollbar { display: none; }
 .featured-track { scrollbar-width: none; }
-.featured-item { flex: 0 0 calc(50% - .5rem); scroll-snap-align: start; display: flex; }
+.featured-item { flex: 0 0 min(300px, 82%); scroll-snap-align: start; display: flex; }
 .featured-item > .supplier-card { flex: 1; }
 @media (min-width: 820px) {
   .featured-item { flex-basis: 300px; }
