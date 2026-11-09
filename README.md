@@ -2,7 +2,7 @@
 
 Portal de fornecedores de atacado e varejo de São Paulo (25 de Março, Brás, Pari, Bom Retiro, Santa Ifigênia e outros polos).
 
-- **Site:** https://fornecedoresdesp.com.br (domínio ainda a conectar na Vercel, veja abaixo)
+- **Site:** https://www.fornecedoresdesp.com.br (domínio ainda a conectar na Vercel, veja abaixo)
 - **Publicação:** Vercel, a partir da branch `main` no GitHub
 - **Banco, login e fotos:** Supabase
 
@@ -117,7 +117,7 @@ O que cada página publica:
 
 **Não indexados (`noindex` e fora do `robots.txt`):** `/admin`, `/login`, `/registro`, `/cadastro`, `/favoritos`, `/sair`, a página 404, categorias sem fornecedores aprovados, bairros sem fornecedores e a categoria **Vapers e acessórios** (venda de vapes é proibida pela Anvisa; a lista fica em `scripts/seo.mjs`, em `RESTRICTED_CATEGORY_SLUGS`).
 
-**Sitemap:** `https://fornecedoresdesp.com.br/sitemap.xml`, gerado no build com as páginas públicas e indexáveis (inclui só fornecedores aprovados e não marcados como demonstração).
+**Sitemap:** `https://www.fornecedoresdesp.com.br/sitemap.xml`, gerado no build com as páginas públicas e indexáveis (inclui só fornecedores aprovados e não marcados como demonstração).
 
 **Google Search Console (passo a passo):**
 
@@ -162,7 +162,7 @@ Se o banco já tem a Fase 1 aplicada, rode `migration-003-site-conectado.sql` e 
 ### Configurações de autenticação (painel do Supabase)
 
 - **Authentication → Providers → Email:** "Confirm email" ligado (o cadastro exige confirmação).
-- **Authentication → URL Configuration:** Site URL `https://fornecedoresdesp.com.br`. Inclua também a URL da Vercel na lista de redirecionamento, se quiser testar por ela.
+- **Authentication → URL Configuration:** Site URL `https://www.fornecedoresdesp.com.br`. Inclua também a URL da Vercel na lista de redirecionamento, se quiser testar por ela.
 
 ---
 
