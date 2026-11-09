@@ -354,18 +354,27 @@ export function mountAdminSupplierForm(root, id) {
 const sortedCategories = () => store.categories.list().slice()
   .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0) || a.name.localeCompare(b.name, 'pt-BR'));
 
-// Sobe ou desce uma categoria. Renumera 1..n e grava só as linhas que mudaram.
-async function moveCategory(slug, delta, rerender) {
-  const list = sortedCategories();
-  const i = list.findIndex((c) => c.slug === slug);
-  const j = i + delta;
-  if (i < 0 || j < 0 || j >= list.length) return;
-  [list[i], list[j]] = [list[j], list[i]];
-  const changes = list.map((c, k) => ({ c, order: k + 1 })).filter(({ c, order }) => (c.sortOrder ?? 0) !== order);
+// Grava a ordem dada (lista de slugs). Renumera 1..n e grava só as linhas que mudaram.
+async function saveCategoryOrder(slugs, rerender) {
+  const byslug = new Map(store.categories.list().map((c) => [c.slug, c]));
+  const changes = slugs
+    .map((slug, k) => ({ c: byslug.get(slug), order: k + 1 }))
+    .filter(({ c, order }) => c && (c.sortOrder ?? 0) !== order);
+  if (!changes.length) return;
   const ok = await attempt(async () => {
     for (const { c, order } of changes) await store.categories.save({ ...c, sortOrder: order });
   }, 'Ordem das categorias atualizada.');
   if (ok) rerender();
+}
+
+// Sobe ou desce uma categoria (botões ▲ ▼).
+async function moveCategory(slug, delta, rerender) {
+  const slugs = sortedCategories().map((c) => c.slug);
+  const i = slugs.indexOf(slug);
+  const j = i + delta;
+  if (i < 0 || j < 0 || j >= slugs.length) return;
+  [slugs[i], slugs[j]] = [slugs[j], slugs[i]];
+  return saveCategoryOrder(slugs, rerender);
 }
 
 export function adminCategories() {
@@ -388,8 +397,9 @@ export function adminCategories() {
         <thead><tr><th>Ordem</th><th>Categoria</th><th>Slug</th><th>Fornecedores aprovados</th><th>Situação</th><th>Ações</th></tr></thead>
         <tbody>
           ${cats.map((c, idx) => `
-            <tr>
+            <tr draggable="true" data-cat-row="${e(c.slug)}" class="cat-row">
               <td class="row-actions">
+                <span class="drag-handle" aria-hidden="true" title="Arraste para reordenar">⋮⋮</span>
                 <button class="btn btn-sm btn-ghost" data-cat-up="${e(c.slug)}" aria-label="Subir ${e(c.name)}" ${idx === 0 ? 'disabled' : ''}>▲</button>
                 <button class="btn btn-sm btn-ghost" data-cat-down="${e(c.slug)}" aria-label="Descer ${e(c.name)}" ${idx === cats.length - 1 ? 'disabled' : ''}>▼</button>
               </td>
@@ -409,6 +419,45 @@ export function adminCategories() {
 }
 
 export function mountAdminCategories(root, rerender) {
+  // Arrastar e soltar (computador). Os botões ▲ ▼ continuam valendo para celular e teclado.
+  let dragSlug = null;
+  const clearDropMarks = () => root.querySelectorAll('.drop-before, .drop-after, .dragging')
+    .forEach((el) => el.classList.remove('drop-before', 'drop-after', 'dragging'));
+  root.addEventListener('dragstart', (ev) => {
+    const row = ev.target.closest?.('tr[data-cat-row]');
+    if (!row) return;
+    dragSlug = row.dataset.catRow;
+    ev.dataTransfer.effectAllowed = 'move';
+    ev.dataTransfer.setData('text/plain', dragSlug);
+    row.classList.add('dragging');
+  });
+  root.addEventListener('dragover', (ev) => {
+    const row = ev.target.closest?.('tr[data-cat-row]');
+    if (!row || !dragSlug || row.dataset.catRow === dragSlug) return;
+    ev.preventDefault();
+    ev.dataTransfer.dropEffect = 'move';
+    const rect = row.getBoundingClientRect();
+    const after = ev.clientY > rect.top + rect.height / 2;
+    root.querySelectorAll('.drop-before, .drop-after').forEach((el) => el.classList.remove('drop-before', 'drop-after'));
+    row.classList.add(after ? 'drop-after' : 'drop-before');
+  });
+  root.addEventListener('dragend', () => { dragSlug = null; clearDropMarks(); });
+  root.addEventListener('drop', async (ev) => {
+    const row = ev.target.closest?.('tr[data-cat-row]');
+    if (!row || !dragSlug) return;
+    ev.preventDefault();
+    const from = dragSlug;
+    const to = row.dataset.catRow;
+    const after = row.classList.contains('drop-after');
+    dragSlug = null;
+    clearDropMarks();
+    if (from === to) return;
+    const slugs = sortedCategories().map((c) => c.slug).filter((slug) => slug !== from);
+    let at = slugs.indexOf(to) + (after ? 1 : 0);
+    slugs.splice(at, 0, from);
+    await saveCategoryOrder(slugs, rerender);
+  });
+
   const form = root.querySelector('#cat-form');
   const title = root.querySelector('#cat-form-title');
   const cancel = root.querySelector('#cat-cancel');
