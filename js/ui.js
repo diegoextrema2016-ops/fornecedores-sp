@@ -101,11 +101,67 @@ export function photosCarousel(s = {}, max = 4) {
     <div class="carousel-wrap">
       ${photos.length > 1 ? '<button class="carousel-arrow carousel-prev" type="button" data-carousel-prev aria-label="Foto anterior">&#8249;</button>' : ''}
       <div class="carousel-track">
-        ${photos.map((src, i) => `<figure class="carousel-slide"><img src="${e(src)}" alt="Foto ${i + 1} de ${e(s.name)}" loading="lazy"></figure>`).join('')}
+        ${photos.map((src, i) => `<figure class="carousel-slide"><button class="photo-zoom" type="button" data-photo-open="${i}" aria-label="Ampliar foto ${i + 1} de ${e(s.name)}"><img src="${e(src)}" alt="Foto ${i + 1} de ${e(s.name)}" loading="lazy"></button></figure>`).join('')}
       </div>
       ${photos.length > 1 ? '<button class="carousel-arrow carousel-next" type="button" data-carousel-next aria-label="Próxima foto">&#8250;</button>' : ''}
     </div>
   </section>`;
+}
+
+// Visualizador de fotos em tela cheia. Setas passam de foto; Esc, o X ou um clique fora da imagem fecham.
+let viewerCleanup = null;
+
+export function closePhotoViewer() {
+  if (viewerCleanup) viewerCleanup();
+}
+
+export function openPhotoViewer(srcs, index = 0, alt = 'Foto') {
+  closePhotoViewer();
+  if (!srcs.length) return;
+  const total = srcs.length;
+  let current = Math.min(Math.max(index, 0), total - 1);
+  const host = document.createElement('div');
+  host.className = 'photo-viewer';
+  host.setAttribute('role', 'dialog');
+  host.setAttribute('aria-modal', 'true');
+  host.setAttribute('aria-label', 'Foto ampliada');
+  host.innerHTML = `
+    <button class="photo-viewer-close" type="button" aria-label="Fechar">&times;</button>
+    ${total > 1 ? '<button class="photo-viewer-arrow prev" type="button" aria-label="Foto anterior">&#8249;</button>' : ''}
+    <figure class="photo-viewer-figure"><img alt=""><figcaption></figcaption></figure>
+    ${total > 1 ? '<button class="photo-viewer-arrow next" type="button" aria-label="Próxima foto">&#8250;</button>' : ''}`;
+  const img = host.querySelector('img');
+  const caption = host.querySelector('figcaption');
+  const show = (i) => {
+    current = (i + total) % total;
+    img.src = srcs[current];
+    img.alt = `${alt} (${current + 1} de ${total})`;
+    caption.textContent = total > 1 ? `${current + 1} de ${total}` : '';
+  };
+  const onKey = (ev) => {
+    if (ev.key === 'Escape') close();
+    if (ev.key === 'ArrowRight') show(current + 1);
+    if (ev.key === 'ArrowLeft') show(current - 1);
+  };
+  const onClick = (ev) => {
+    if (ev.target === host || ev.target.classList.contains('photo-viewer-figure') || ev.target.closest('.photo-viewer-close')) return close();
+    if (ev.target.closest('.photo-viewer-arrow.next')) return show(current + 1);
+    if (ev.target.closest('.photo-viewer-arrow.prev')) return show(current - 1);
+  };
+  const previousOverflow = document.body.style.overflow;
+  function close() {
+    host.remove();
+    document.removeEventListener('keydown', onKey);
+    document.body.style.overflow = previousOverflow;
+    viewerCleanup = null;
+  }
+  viewerCleanup = close;
+  host.addEventListener('click', onClick);
+  document.addEventListener('keydown', onKey);
+  document.body.style.overflow = 'hidden';
+  document.body.appendChild(host);
+  show(current);
+  host.querySelector('.photo-viewer-close').focus();
 }
 
 export function supplierCard(s, { categoryName = '', regionName = '', favorite = false, unlocked = canSeeContacts() } = {}) {

@@ -424,6 +424,15 @@ a.wa-link svg { color: var(--whatsapp); }
 .carousel-track { scrollbar-width: none; }
 .carousel-slide { flex: 0 0 100%; margin: 0; scroll-snap-align: start; }
 .carousel-slide img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 12px; display: block; background: var(--surface-2, #eef1f6); }
+.photo-zoom { display: block; width: 100%; padding: 0; border: 0; background: none; cursor: zoom-in; }
+.photo-viewer { position: fixed; inset: 0; z-index: 1000; background: rgba(0, 0, 0, .9); display: flex; align-items: center; justify-content: center; padding: 16px; }
+.photo-viewer-figure { margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; max-width: 100%; max-height: 100%; }
+.photo-viewer img { max-width: 100%; max-height: 84vh; object-fit: contain; border-radius: 8px; display: block; }
+.photo-viewer figcaption { color: #fff; font-size: .9rem; margin-top: .5rem; text-align: center; min-height: 1.2em; }
+.photo-viewer-close { position: absolute; top: 12px; right: 12px; width: 44px; height: 44px; border-radius: 50%; border: 0; background: rgba(255, 255, 255, .18); color: #fff; font-size: 28px; line-height: 1; cursor: pointer; }
+.photo-viewer-arrow { position: absolute; top: 50%; transform: translateY(-50%); width: 48px; height: 48px; border-radius: 50%; border: 0; background: rgba(255, 255, 255, .18); color: #fff; font-size: 32px; line-height: 1; cursor: pointer; }
+.photo-viewer-arrow.prev { left: 12px; }
+.photo-viewer-arrow.next { right: 12px; }
 .carousel-arrow { flex: 0 0 auto; width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--border, #d8dde6); background: #fff; font-size: 1.4rem; line-height: 1; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,.08); }
 .carousel-arrow:hover { background: #f4f6fa; }
 @media (min-width: 820px) {
