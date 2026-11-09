@@ -39,6 +39,7 @@ export function header({ session, route }) {
         <a class="${is('/sobre')}" href="/sobre">Como funciona</a>
         <a class="nav-cta" href="/cadastro">Cadastrar fornecedor</a>
         ${isAdmin ? '<a href="/admin">Painel</a>' : ''}
+        ${session ? '<a class="nav-account" href="/sair">Sair da conta</a>' : ''}
       </nav>
       <div class="header-actions">
         ${account}
