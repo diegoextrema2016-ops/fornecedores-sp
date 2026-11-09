@@ -1,7 +1,7 @@
 // Ponto de entrada: roteamento por hash (#/rota?query), proteção das rotas do painel e renderização.
 import { SITE } from './config.js';
 import { store } from './store.js';
-import { header, footer, toast } from './ui.js';
+import { header, footer, toast, openPhotoViewer } from './ui.js';
 import * as pub from './pages-public.js';
 import * as acc from './pages-account.js';
 import * as adm from './pages-admin.js';
@@ -118,6 +118,16 @@ async function render() {
   window.scrollTo(0, 0);
   main.focus({ preventScroll: true });
 }
+
+// Clique numa foto da ficha abre a imagem inteira
+document.addEventListener('click', (ev) => {
+  const zoom = ev.target.closest('[data-photo-open]');
+  if (!zoom) return;
+  const carousel = zoom.closest('[data-carousel]');
+  const buttons = [...(carousel?.querySelectorAll('[data-photo-open]') || [])];
+  const srcs = buttons.map((b) => b.querySelector('img')?.getAttribute('src')).filter(Boolean);
+  openPhotoViewer(srcs, Number(zoom.dataset.photoOpen) || 0, zoom.querySelector('img')?.alt || 'Foto');
+});
 
 // Setas do carrossel de fotos da ficha
 document.addEventListener('click', (ev) => {
