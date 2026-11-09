@@ -12,7 +12,12 @@ function promptPara({ categoria, instrucao }) {
   const partes = [
     `Escreva uma descrição comercial curta, em português do Brasil, com no máximo 2 frases, para um fornecedor de atacado de São Paulo da categoria "${categoria}".`,
   ];
-  if (instrucao) partes.push(`Baseie o texto nesta orientação do fornecedor: "${instrucao}".`);
+  if (instrucao) {
+    partes.push(
+      `A orientação do fornecedor é a base principal do texto: "${instrucao}".`,
+      'Use as ideias e informações dessa orientação, sem trocar nem acrescentar fatos que ela não traga.',
+    );
+  }
   partes.push(
     'Fale do produto e do atacado. Não invente tempo de mercado, prêmios, preços, endereço ou telefone.',
     'Responda somente com o texto, sem aspas e sem título.',
