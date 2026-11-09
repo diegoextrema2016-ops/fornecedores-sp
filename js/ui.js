@@ -166,6 +166,10 @@ export function openPhotoViewer(srcs, index = 0, alt = 'Foto') {
 }
 
 export function supplierCard(s, { categoryName = '', regionName = '', favorite = false, unlocked = canSeeContacts() } = {}) {
+  // Para visitantes, o cartão não mostra logo nem nome reais: aparece um rótulo genérico.
+  // (Visual apenas; o link da ficha ainda tem o endereço público do fornecedor.)
+  const masked = !unlocked;
+  const shownName = masked ? `Fornecedor${regionName ? ` em ${regionName}` : ' de atacado'}` : (s.name || '');
   const wa = whatsappTarget(s, SITE.whatsappDefaultMessage);
   const ig = instagramHandle(s.instagram);
   const location = [s.bairro && regionName ? regionName : '', s.city].filter(Boolean).join(' · ');
@@ -193,9 +197,9 @@ export function supplierCard(s, { categoryName = '', regionName = '', favorite =
   return `
   <article class="supplier-card">
     <div class="supplier-card-top">
-      <div class="logo-box" aria-hidden="true">${s.logo ? `<img src="${e(s.logo)}" alt="" loading="lazy">` : e((s.name || '?').slice(0, 2).toUpperCase())}</div>
+      <div class="logo-box" aria-hidden="true">${masked ? '<span class="logo-mask">SP</span>' : (s.logo ? `<img src="${e(s.logo)}" alt="" loading="lazy">` : e((s.name || '?').slice(0, 2).toUpperCase()))}</div>
       <div class="supplier-title">
-        <h3><a href="/fornecedor/${e(s.slug)}">${e(s.name)}</a></h3>
+        <h3><a href="/fornecedor/${e(s.slug)}">${e(shownName)}</a></h3>
         <div class="badges">
           ${s.verified ? `<span class="badge badge-verified">${icon.check} Verificado</span>` : ''}
           ${s.isDemo ? '<span class="badge badge-demo">Demonstração</span>' : ''}
