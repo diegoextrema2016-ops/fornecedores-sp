@@ -137,7 +137,9 @@ test('páginas geradas não têm links com #', () => {
 test('home tem título e H1 do plano de SEO', () => {
   const html = seo.homePage({ categories: [cat], regions: [region], suppliers: [supplier], featured: [] });
   assert.ok(html.includes('<title>Fornecedores Atacado SP | Brás, Moda, Tênis e Eletrônicos</title>'));
-  assert.ok(html.includes('<h1>Fornecedores de atacado em São Paulo</h1>'));
+  // H1 igual ao da home do site (a troca da versão pré-gerada para o site não pode mudar o título).
+  assert.ok(html.includes('<h1>Os melhores fornecedores de São Paulo em um só lugar.</h1>'));
+  assert.ok(html.includes('Fornecedores de atacado'), 'palavra-chave continua no texto de apoio');
   assert.ok(html.includes('"@type":"Organization"'));
   assert.ok(html.includes('"@type":"WebSite"'));
 });
