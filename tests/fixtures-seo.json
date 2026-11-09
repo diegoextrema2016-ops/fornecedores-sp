@@ -1,0 +1,199 @@
+{
+ "categories": [
+  {
+   "id": "c-moda",
+   "slug": "moda-feminina",
+   "name": "Moda feminina",
+   "description": "Vestuário feminino para lojas e revendas.",
+   "status": "active",
+   "sort_order": 1
+  },
+  {
+   "id": "c-tenis",
+   "slug": "tenis",
+   "name": "Tênis",
+   "description": "Tênis esportivos, casuais e de moda.",
+   "status": "active",
+   "sort_order": 2
+  },
+  {
+   "id": "c-vaz",
+   "slug": "vapers-e-acessorios",
+   "name": "Vapers e acessórios",
+   "description": "Acessórios relacionados. Veja o aviso de conformidade no cadastro.",
+   "status": "active",
+   "sort_order": 3
+  },
+  {
+   "id": "c-vazio",
+   "slug": "bolsas",
+   "name": "Bolsas",
+   "description": "Bolsas, mochilas e carteiras.",
+   "status": "active",
+   "sort_order": 4
+  },
+  {
+   "id": "c-inativa",
+   "slug": "antiga",
+   "name": "Categoria antiga",
+   "description": "",
+   "status": "inactive",
+   "sort_order": 5
+  }
+ ],
+ "regions": [
+  {
+   "slug": "bras",
+   "name": "Brás",
+   "description": "Polo de atacado de roupas e calçados.",
+   "sort_order": 1
+  },
+  {
+   "slug": "pari",
+   "name": "Pari",
+   "description": "",
+   "sort_order": 2
+  },
+  {
+   "slug": "25-de-marco",
+   "name": "25 de Março",
+   "description": "Rua e região conhecidas pelo comércio atacadista.",
+   "sort_order": 3
+  }
+ ],
+ "suppliers": [
+  {
+   "id": "s1",
+   "slug": "vazevedo-modas",
+   "name": "Vazevedo Modas",
+   "description": "Roupas femininas para revenda.",
+   "category_id": "c-moda",
+   "subcategory": "",
+   "supplier_type": "atacadista",
+   "bairro": "bras",
+   "city": "São Paulo",
+   "state": "SP",
+   "sale_wholesale": true,
+   "sale_retail": false,
+   "sale_resellers": false,
+   "ships_other_cities": true,
+   "min_order": "12 peças",
+   "hours": "Seg a sáb, 9h às 18h",
+   "tags": [
+    "vestido",
+    "blusa"
+   ],
+   "logo_url": null,
+   "verified": true,
+   "featured": true,
+   "is_demo": false,
+   "approval_status": "approved",
+   "supplier_photos": [
+    {
+     "url": "https://exemplo.test/f1.webp",
+     "position": 0
+    }
+   ]
+  },
+  {
+   "id": "s2",
+   "slug": "tenis-do-pari",
+   "name": "Tênis do Pari",
+   "description": "",
+   "category_id": "c-tenis",
+   "subcategory": "",
+   "supplier_type": "",
+   "bairro": "pari",
+   "city": "São Paulo",
+   "state": "SP",
+   "sale_wholesale": true,
+   "sale_retail": true,
+   "sale_resellers": false,
+   "ships_other_cities": false,
+   "min_order": "",
+   "hours": "",
+   "tags": [],
+   "logo_url": null,
+   "verified": false,
+   "featured": false,
+   "is_demo": false,
+   "approval_status": "approved",
+   "supplier_photos": []
+  },
+  {
+   "id": "s3",
+   "slug": "pendente-loja",
+   "name": "Loja Pendente",
+   "description": "Não deve aparecer.",
+   "category_id": "c-moda",
+   "subcategory": "",
+   "supplier_type": "",
+   "bairro": "bras",
+   "city": "São Paulo",
+   "state": "SP",
+   "sale_wholesale": false,
+   "sale_retail": false,
+   "sale_resellers": false,
+   "ships_other_cities": false,
+   "min_order": "",
+   "hours": "",
+   "tags": [],
+   "logo_url": null,
+   "verified": false,
+   "featured": false,
+   "is_demo": false,
+   "approval_status": "pending",
+   "supplier_photos": []
+  },
+  {
+   "id": "s4",
+   "slug": "demo-loja",
+   "name": "Loja Demo",
+   "description": "Demonstração.",
+   "category_id": "c-moda",
+   "subcategory": "",
+   "supplier_type": "",
+   "bairro": "bras",
+   "city": "São Paulo",
+   "state": "SP",
+   "sale_wholesale": false,
+   "sale_retail": false,
+   "sale_resellers": false,
+   "ships_other_cities": false,
+   "min_order": "",
+   "hours": "",
+   "tags": [],
+   "logo_url": null,
+   "verified": false,
+   "featured": false,
+   "is_demo": true,
+   "approval_status": "approved",
+   "supplier_photos": []
+  },
+  {
+   "id": "s5",
+   "slug": "vape-loja",
+   "name": "Vape Loja",
+   "description": "Acessórios.",
+   "category_id": "c-vaz",
+   "subcategory": "",
+   "supplier_type": "",
+   "bairro": "25-de-marco",
+   "city": "São Paulo",
+   "state": "SP",
+   "sale_wholesale": true,
+   "sale_retail": false,
+   "sale_resellers": false,
+   "ships_other_cities": false,
+   "min_order": "",
+   "hours": "",
+   "tags": [],
+   "logo_url": null,
+   "verified": false,
+   "featured": false,
+   "is_demo": false,
+   "approval_status": "approved",
+   "supplier_photos": []
+  }
+ ]
+}

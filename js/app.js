@@ -1,4 +1,4 @@
-// Ponto de entrada: roteamento por hash (#/rota?query), proteção das rotas do painel e renderização.
+// Ponto de entrada: roteamento por endereço limpo (/rota?query), proteção das rotas do painel e renderização.
 import { SITE } from './config.js';
 import { store } from './store.js';
 import { header, footer, toast, openPhotoViewer } from './ui.js';
@@ -6,6 +6,10 @@ import * as pub from './pages-public.js';
 import * as acc from './pages-account.js';
 import * as adm from './pages-admin.js';
 import { openPaywall } from './paywall.js';
+import { go, currentLocation, normalizeTarget } from './nav.js';
+
+// Páginas que não devem aparecer no Google (também marcadas no HTML gerado pelo build).
+const NOINDEX_PATH = /^\/(admin|login|registro|cadastro|favoritos|sair)(\/|$)/;
 
 const main = document.getElementById('main');
 const headerHost = document.getElementById('header');
@@ -50,17 +54,30 @@ function withMount(page, mount) {
   return { ...page, mount };
 }
 
-function parseHash() {
-  let raw = location.hash.replace(/^#/, '') || '/';
-  // Retorno do link de confirmação do e-mail: o Supabase lê os tokens e limpa o endereço; enquanto isso, mostra a início.
-  if (raw.startsWith('access_token=') || raw.startsWith('error=')) raw = '/';
-  const [path, qs = ''] = raw.split('?');
-  return { path: path.replace(/\/+$/, '') || '/', query: new URLSearchParams(qs) };
+function parseLocation() {
+  const { path, search } = currentLocation();
+  return { path, query: new URLSearchParams(search) };
 }
 
-function setMeta(page) {
+// Endereços antigos com # (ex.: /#/fornecedor/x, já compartilhados) viram endereço limpo.
+// Retorno do link de confirmação do e-mail (tokens depois do #) fica na página inicial.
+function migrateLegacyHash() {
+  const hash = location.hash;
+  if (hash.startsWith('#/')) {
+    history.replaceState(null, '', normalizeTarget(hash));
+  } else if (hash.startsWith('#access_token=') || hash.startsWith('#error=')) {
+    history.replaceState(null, '', '/' + location.search);
+  }
+}
+
+function setMeta(page, path) {
   document.title = page.title || SITE.name;
   document.querySelector('meta[name="description"]')?.setAttribute('content', page.description || SITE.description);
+  const canonical = document.querySelector('link[rel="canonical"]');
+  if (canonical) canonical.setAttribute('href', SITE.url + (path === '/' ? '/' : path));
+  const robots = document.querySelector('meta[name="robots"]');
+  const noindex = Boolean(page.noindex) || NOINDEX_PATH.test(path);
+  if (robots) robots.setAttribute('content', noindex ? 'noindex, nofollow' : 'index, follow');
 }
 
 // Evita que uma renderização antiga sobrescreva a mais recente (cliques rápidos ou atualizações em sequência).
@@ -68,7 +85,7 @@ let renderId = 0;
 
 async function render() {
   const id = ++renderId;
-  const { path, query } = parseHash();
+  const { path, query } = parseLocation();
 
   try {
     await store.refresh({ maxAgeMs: 30000 });
@@ -101,7 +118,7 @@ async function render() {
   // Rota de admin sem permissão: pede login.
   if (route?.[2]?.admin && !isAdmin()) {
     toast('Entre como administrador para acessar o painel.', 'error');
-    location.hash = '#/login';
+    go('/login', { replace: true });
     return;
   }
 
@@ -115,7 +132,7 @@ async function render() {
   if (page === null) return;
 
   main.innerHTML = page.html;
-  setMeta(page);
+  setMeta(page, path);
   page.mount?.(main);
   window.scrollTo(0, 0);
   main.focus({ preventScroll: true });
@@ -171,8 +188,22 @@ window.addEventListener('scroll', () => {
 // Erros de gravação em segundo plano (ex.: favorito) aparecem como aviso.
 window.addEventListener('spf:error', (ev) => toast(ev.detail, 'error'));
 
-window.addEventListener('hashchange', render);
+// Navegação interna: links do próprio site trocam a tela sem recarregar a página.
+document.addEventListener('click', (ev) => {
+  if (ev.defaultPrevented || ev.button !== 0 || ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.altKey) return;
+  const a = ev.target.closest('a[href]');
+  if (!a || a.target || a.hasAttribute('download')) return;
+  const href = a.getAttribute('href');
+  if (!href.startsWith('/') || href.startsWith('//')) return;
+  ev.preventDefault();
+  go(href);
+});
+
+// Voltar/avançar do navegador.
+window.addEventListener('popstate', render);
+
+migrateLegacyHash();
 render();
 
 // Acesso no console para depuração (não expõe segredos).
-window.SPF = { store, render };
+window.SPF = { store, render, go };

@@ -38,8 +38,8 @@ export function openPaywall() {
       <h3 id="pw-title">Crie uma conta para liberar os contatos</h3>
       <p class="muted">Os contatos completos (WhatsApp, Instagram e endereço) são exibidos para assinantes. Crie uma conta e assine o acesso.</p>
       <div class="modal-actions">
-        <a class="btn btn-ghost" href="#/login" data-close>Já tenho conta</a>
-        <a class="btn btn-primary" href="#/registro" data-close>Criar conta</a>
+        <a class="btn btn-ghost" href="/login" data-close>Já tenho conta</a>
+        <a class="btn btn-primary" href="/registro" data-close>Criar conta</a>
       </div>`);
     return;
   }
@@ -71,7 +71,7 @@ function showPlans() {
           <button class="btn btn-primary btn-block" type="button" data-plan="${e(p.id)}">Pagar com Pix</button>
         </div>`).join('')}
     </div>
-    <p class="muted small">Ao assinar, você confirma que leu os <a href="#/termos" data-close>termos de uso</a>.</p>`);
+    <p class="muted small">Ao assinar, você confirma que leu os <a href="/termos" data-close>termos de uso</a>.</p>`);
   host.querySelectorAll('[data-plan]').forEach((b) => b.addEventListener('click', () => {
     const plan = PLANS.find((p) => p.id === b.dataset.plan);
     if (plan) showPix(plan);

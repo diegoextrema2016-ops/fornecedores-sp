@@ -1,9 +1,19 @@
 @echo off
 title SP Fornecedores
 cd /d "%~dp0"
-where py >nul 2>nul
-if %errorlevel%==0 (set "PY=py -3") else (set "PY=python")
-start "SP Fornecedores - servidor" /min cmd /c "%PY% -m http.server 8080"
-timeout /t 2 /nobreak >nul
+where node >nul 2>nul
+if errorlevel 1 (
+  echo Instale o Node.js em https://nodejs.org para abrir o site.
+  pause
+  exit /b 1
+)
+echo Gerando o site com os dados atuais do banco...
+call node scripts\build.mjs
+if errorlevel 1 (
+  echo Nao foi possivel gerar o site. Verifique a conexao com a internet.
+  pause
+  exit /b 1
+)
 start "" http://localhost:8080/
-exit
+node scripts\serve.mjs dist 8080
+pause

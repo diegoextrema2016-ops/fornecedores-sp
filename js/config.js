@@ -45,5 +45,5 @@ export const PIX = {
   key: '11568638485',
   name: 'FORNECEDORES ATACADO SP',
   city: 'SAO PAULO',
-  qrImage: 'img/pix-29-90.png', // QR do valor de R$ 29,90; regere se o preço mudar
+  qrImage: '/img/pix-29-90.png', // QR do valor de R$ 29,90; regere se o preço mudar
 };

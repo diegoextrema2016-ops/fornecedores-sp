@@ -2,6 +2,7 @@
 import { SITE } from './config.js';
 import { CATEGORIES, REGIONS, SUPPLIER_TYPES } from './data.js';
 import { store } from './store.js';
+import { go } from './nav.js';
 import { canSeeContacts } from './access.js';
 import { filterSuppliers, sortSuppliers, paginate } from './search.js';
 import { escapeHtml as e, formatCount, mapsLink, whatsappTarget, instagramHandle, normalizeUrl, formatPhone, maskPhone, maskHandle } from './utils.js';
@@ -62,15 +63,15 @@ export function home() {
   const blurred = !canSeeContacts();
   const popular = ['Eletrônicos', 'Moda feminina', 'Tênis', 'Acessórios', 'Perfumes'];
   return {
-    title: `${SITE.name} | Fornecedores de São Paulo`,
-    description: SITE.description,
+    title: 'Fornecedores Atacado SP | Brás, Moda, Tênis e Eletrônicos',
+    description: 'Encontre fornecedores de atacado em São Paulo, Brás e 25 de Março. Explore lojas de roupas, moda feminina, tênis, eletrônicos e muito mais.',
     html: `
     <section class="hero">
       <div class="container hero-inner">
         <p class="eyebrow">25 de Março · Brás · Pari · Bom Retiro</p>
         <h1>Encontre fornecedores de São Paulo.</h1>
         <p class="lead">Descubra lojas, distribuidores e fornecedores para comprar no atacado e abastecer seu negócio.</p>
-        <form class="search-hero" role="search" data-search-form data-target="#/fornecedores">
+        <form class="search-hero" role="search" data-search-form data-target="/fornecedores">
           <label class="sr-only" for="hero-q">Buscar</label>
           <span class="search-icon">${icon.search}</span>
           <input id="hero-q" name="q" type="search" placeholder="Busque produtos, fornecedores ou categorias..." autocomplete="off">
@@ -78,7 +79,7 @@ export function home() {
         </form>
         <div class="chips" aria-label="Pesquisas populares">
           <span class="muted small">Populares:</span>
-          ${popular.map((p) => `<a class="chip" href="#/fornecedores?q=${encodeURIComponent(p)}">${e(p)}</a>`).join('')}
+          ${popular.map((p) => `<a class="chip" href="/fornecedores?q=${encodeURIComponent(p)}">${e(p)}</a>`).join('')}
         </div>
       </div>
     </section>
@@ -86,7 +87,7 @@ export function home() {
     <section class="section container">
       <div class="section-head">
         <div><h2>Categorias</h2><p class="muted">Escolha um segmento e veja os fornecedores.</p></div>
-        <a href="#/categorias" class="link-arrow">Ver todas →</a>
+        <a href="/categorias" class="link-arrow">Ver todas →</a>
       </div>
       <div class="grid grid-categories">
         ${allCategories().slice(0, 10).map((c) => categoryCard(c, counts[c.slug] || 0)).join('')}
@@ -131,7 +132,7 @@ export function home() {
         <h2>Tem uma loja ou distribuidora?</h2>
         <p class="muted">Cadastre seu negócio e seja encontrado por compradores de todo o Brasil. Os cadastros passam por aprovação.</p>
       </div>
-      <a class="btn btn-primary btn-lg" href="#/cadastro">Cadastrar fornecedor</a>
+      <a class="btn btn-primary btn-lg" href="/cadastro">Cadastrar fornecedor</a>
     </section>`,
     mount: (root) => {
       root.querySelectorAll('[data-search-form]').forEach((f) => wireSearchForm(f));
@@ -144,7 +145,7 @@ function wireSearchForm(form) {
   form.addEventListener('submit', (ev) => {
     ev.preventDefault();
     const q = new FormData(form).get('q')?.toString().trim() || '';
-    location.hash = `${form.dataset.target}${q ? `?q=${encodeURIComponent(q)}` : ''}`;
+    go(`${form.dataset.target}${q ? `?q=${encodeURIComponent(q)}` : ''}`);
   });
 }
 
@@ -155,7 +156,7 @@ export function categoriesIndex() {
     title: `Categorias de fornecedores | ${SITE.shortName}`,
     description: 'Fornecedores por categoria: eletrônicos, moda feminina, tênis, perfumes, cosméticos e mais.',
     html: `
-    ${breadcrumbs([{ label: 'Início', href: '#/' }, { label: 'Categorias' }])}
+    ${breadcrumbs([{ label: 'Início', href: '/' }, { label: 'Categorias' }])}
     <section class="container section-tight">
       <h1>Categorias</h1>
       <p class="lead">Encontre fornecedores pelo segmento do seu negócio.</p>
@@ -168,13 +169,13 @@ export function categoryPage({ slug }, query) {
   const cat = store.categories.get(slug);
   if (!cat) return notFound();
   return listingPage({
-    title: cat.name,
-    description: `${cat.description || ''} Fornecedores de ${cat.name} em São Paulo.`,
-    crumbs: [{ label: 'Início', href: '#/' }, { label: 'Categorias', href: '#/categorias' }, { label: cat.name }],
+    title: `Fornecedores de ${cat.name} em São Paulo | Atacado`,
+    description: `${cat.description || ''} Fornecedores de ${cat.name} no atacado de São Paulo.`.trim(),
+    crumbs: [{ label: 'Início', href: '/' }, { label: 'Categorias', href: '/categorias' }, { label: cat.name }],
     heading: `${cat.name}`,
     intro: cat.description,
     fixed: { category: slug },
-    base: `#/categorias/${slug}`,
+    base: `/categorias/${slug}`,
     query,
   });
 }
@@ -183,13 +184,13 @@ export function regionPage({ slug }, query) {
   const region = store.regions.get(slug);
   if (!region) return notFound();
   return listingPage({
-    title: `Fornecedores na ${region.name} | ${SITE.shortName}`,
+    title: `Fornecedores no ${region.name} | São Paulo`,
     description: `${region.description} Encontre fornecedores na ${region.name}, São Paulo.`,
-    crumbs: [{ label: 'Início', href: '#/' }, { label: 'Regiões' }, { label: region.name }],
+    crumbs: [{ label: 'Início', href: '/' }, { label: 'Regiões' }, { label: region.name }],
     heading: `Fornecedores na ${region.name}`,
     intro: region.description,
     fixed: { bairro: slug },
-    base: `#/regiao/${slug}`,
+    base: `/regiao/${slug}`,
     query,
   });
 }
@@ -198,11 +199,11 @@ export function suppliersPage(_params, query) {
   return listingPage({
     title: `Todos os fornecedores | ${SITE.shortName}`,
     description: 'Lista de fornecedores de São Paulo com filtros por categoria, região, tipo de venda e WhatsApp.',
-    crumbs: [{ label: 'Início', href: '#/' }, { label: 'Fornecedores' }],
+    crumbs: [{ label: 'Início', href: '/' }, { label: 'Fornecedores' }],
     heading: 'Fornecedores',
     intro: 'Pesquise por nome, produto, categoria ou localização. Use os filtros para refinar.',
     fixed: {},
-    base: '#/fornecedores',
+    base: '/fornecedores',
     query,
   });
 }
@@ -273,7 +274,7 @@ function listingPage({ title, description, crumbs, heading, intro, fixed, base, 
           for (const k of ['atacado', 'varejo', 'whatsapp', 'verificado']) if (fd.get(k)) params.set(k, '1');
           put('ordem', fd.get('ordem') !== 'relevance' ? fd.get('ordem') : '');
           const qs = params.toString();
-          location.hash = qs ? `${base}?${qs}` : base;
+          go(qs ? `${base}?${qs}` : base);
         });
       }
       wireFavorites(root);
@@ -361,16 +362,16 @@ export function supplierPage({ slug }) {
   const fullAddress = unlocked
     ? [s.address && `${s.address}${s.number ? `, ${s.number}` : ''}`, s.complement, s.bairro && regName[s.bairro], s.city, s.state, s.cep].filter(Boolean).join(' · ')
     : [s.bairro && regName[s.bairro], s.city].filter(Boolean).join(' · ') + ' · endereço completo para assinantes';
-  const shareUrl = `${SITE.url}/#/fornecedor/${s.slug}`;
-  const pageTitle = `${s.name} | Fornecedor em ${regName[s.bairro] || s.city}`;
+  const shareUrl = `${SITE.url}/fornecedor/${s.slug}`;
+  const pageTitle = `${s.name} | Fornecedor em ${regName[s.bairro] || s.city || 'São Paulo'}`;
 
   return {
     title: pageTitle,
     description: (s.description || `${s.name}, fornecedor de ${catName[s.category]} em ${regName[s.bairro] || 'São Paulo'}.`).slice(0, 155),
     html: `
     ${breadcrumbs([
-      { label: 'Início', href: '#/' },
-      { label: catName[s.category] || 'Categoria', href: `#/categorias/${s.category}` },
+      { label: 'Início', href: '/' },
+      { label: catName[s.category] || 'Categoria', href: `/categorias/${s.category}` },
       { label: s.name },
     ])}
     <article class="container supplier-profile">
@@ -462,7 +463,7 @@ export function mapPage() {
     title: `Mapa de fornecedores | ${SITE.shortName}`,
     description: 'Encontre fornecedores por região: 25 de Março, Brás, Pari, Bom Retiro e Santa Ifigênia.',
     html: `
-    ${breadcrumbs([{ label: 'Início', href: '#/' }, { label: 'Mapa' }])}
+    ${breadcrumbs([{ label: 'Início', href: '/' }, { label: 'Mapa' }])}
     <section class="container section-tight">
       <h1>Encontre fornecedores pelo mapa.</h1>
       <p class="lead">Veja os fornecedores por bairro e abra a rota no Google Maps.</p>
@@ -470,11 +471,11 @@ export function mapPage() {
       <div class="map-groups">
         ${groups.map(({ region, list }) => `
           <section class="card">
-            <h2><a href="#/regiao/${e(region.slug)}">${e(region.name)}</a></h2>
+            <h2><a href="/regiao/${e(region.slug)}">${e(region.name)}</a></h2>
             <p class="muted small">${e(region.description)}</p>
             ${list.length ? `<ul class="plain-list">${list.map((s) => `
               <li>
-                <a href="#/fornecedor/${e(s.slug)}"><strong>${e(s.name)}</strong></a>
+                <a href="/fornecedor/${e(s.slug)}"><strong>${e(s.name)}</strong></a>
                 <span class="muted small"> · ${canSeeContacts() ? e(s.address ? `${s.address}${s.number ? `, ${s.number}` : ''}` : 'Endereço a confirmar') : 'endereço para assinantes'}</span>
                 ${canSeeContacts() ? `<a class="small" target="_blank" rel="noopener noreferrer" href="${e(mapsLink({ address: s.address, number: s.number, bairro: region.name, cep: s.cep }))}">Rota</a>` : ''}
               </li>`).join('')}</ul>`
@@ -494,7 +495,7 @@ export function favoritesPage() {
     title: `Meus fornecedores favoritos | ${SITE.shortName}`,
     description: 'Seus fornecedores salvos.',
     html: `
-    ${breadcrumbs([{ label: 'Início', href: '#/' }, { label: 'Favoritos' }])}
+    ${breadcrumbs([{ label: 'Início', href: '/' }, { label: 'Favoritos' }])}
     <section class="container section-tight">
       <h1>Meus fornecedores favoritos</h1>
       <p class="lead">${loggedIn
@@ -503,7 +504,7 @@ export function favoritesPage() {
       ${list.length
         ? blurGate(`<div class="grid grid-3">${list.map((s) => supplierCard(s, { categoryName: catName[s.category], regionName: regName[s.bairro], favorite: true })).join('')}</div>`)
         : emptyState('Nenhum favorito ainda', 'Toque no coração de um fornecedor para salvá-lo aqui.',
-          '<a class="btn btn-primary" href="#/fornecedores">Ver fornecedores</a>')}
+          '<a class="btn btn-primary" href="/fornecedores">Ver fornecedores</a>')}
     </section>`,
     mount: (root) => wireFavorites(root),
   };
@@ -515,7 +516,7 @@ export function aboutPage() {
     title: `Sobre o portal | ${SITE.shortName}`,
     description: 'Conheça o Fornecedores Atacado SP e como funciona o portal.',
     html: `
-    ${breadcrumbs([{ label: 'Início', href: '#/' }, { label: 'Como funciona' }])}
+    ${breadcrumbs([{ label: 'Início', href: '/' }, { label: 'Como funciona' }])}
     <section class="container prose" id="como-funciona">
       <h1>Como funciona</h1>
       <p>O ${e(SITE.name)} reúne fornecedores de atacado e varejo de São Paulo, com foco nos polos da 25 de Março, Brás, Pari e regiões vizinhas.</p>
@@ -541,7 +542,7 @@ export function contactPage() {
     title: `Contato | ${SITE.shortName}`,
     description: 'Fale com a equipe do Fornecedores Atacado SP.',
     html: `
-    ${breadcrumbs([{ label: 'Início', href: '#/' }, { label: 'Contato' }])}
+    ${breadcrumbs([{ label: 'Início', href: '/' }, { label: 'Contato' }])}
     <section class="container section-tight narrow">
       <h1>Contato</h1>
       <p class="lead">Dúvidas, sugestões ou problemas com o seu cadastro.</p>
@@ -590,7 +591,7 @@ function legalPage(title, body) {
   return {
     title: `${title} | ${SITE.shortName}`,
     description: title,
-    html: `${breadcrumbs([{ label: 'Início', href: '#/' }, { label: title }])}
+    html: `${breadcrumbs([{ label: 'Início', href: '/' }, { label: title }])}
       <section class="container prose"><h1>${e(title)}</h1>${body}</section>`,
   };
 }
@@ -601,7 +602,7 @@ export function notFound() {
     description: 'Página não encontrada.',
     status: 404,
     html: `<section class="container section-tight">${emptyState('Página não encontrada', 'O endereço pode estar errado ou a página foi removida.',
-      '<a class="btn btn-primary" href="#/">Voltar ao início</a>')}</section>`,
+      '<a class="btn btn-primary" href="/">Voltar ao início</a>')}</section>`,
   };
 }
 
