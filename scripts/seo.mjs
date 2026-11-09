@@ -1,7 +1,7 @@
 // Geração do HTML público para mecanismos de busca (usado pelo build na Vercel).
 // Funções puras: recebem dados já lidos do banco e devolvem texto HTML, XML ou JSON.
 // Regra: só usa informações que existem nos dados. O que estiver vazio não aparece.
-import { SITE } from '../js/config.js';
+import { SITE, BANNERS } from '../js/config.js';
 import { SUPPLIER_TYPES } from '../js/data.js';
 
 // Categorias com restrição legal (venda proibida pela Anvisa, por exemplo) ficam fora do Google.
@@ -132,6 +132,44 @@ export function documentHtml({ title, description, path, noindex = false, jsonld
 }
 
 // Navegação simples em HTML puro. O app substitui pelo cabeçalho completo quando carrega.
+// Cabeçalho da versão pré-gerada: igual ao do site (marca, menu e Entrar), para a troca na carga ser invisível.
+export function staticHeader() {
+  return `<header class="site-header" id="site-header">
+    <div class="container header-inner">
+      <a class="brand" href="/" aria-label="${esc(SITE.name)} - início">
+        <span class="brand-mark" aria-hidden="true">SP</span>
+        <span class="brand-text"><strong>FORNECEDORES</strong><small>ATACADO SP</small></span>
+      </a>
+      ${staticNav()}
+      <div class="header-actions">
+        <a class="btn btn-ghost" href="/login">Entrar</a>
+        <a class="btn btn-primary hide-sm" href="/cadastro">Cadastrar fornecedor</a>
+        <button class="icon-btn menu-toggle" type="button" aria-controls="main-nav" aria-expanded="false" aria-label="Abrir menu">☰</button>
+      </div>
+    </div>
+  </header>`;
+}
+
+// Faixa de banners igual à do site (mesmo markup de js/pages-public.js).
+export function staticBanners() {
+  if (!BANNERS.length) return '';
+  const webp = (src) => src.replace(/\.(jpe?g|png)$/i, '.webp');
+  return `
+    <section class="banner-section" aria-label="Destaques">
+      <div class="banner-track">
+        ${BANNERS.map((b, i) => {
+          const sources = [
+            b.mobileSrc ? `<source media="(max-width: 820px)" type="image/webp" srcset="${esc(webp(b.mobileSrc))}">` : '',
+            b.mobileSrc ? `<source media="(max-width: 820px)" srcset="${esc(b.mobileSrc)}">` : '',
+            `<source type="image/webp" srcset="${esc(webp(b.src))}">`,
+          ].join('');
+          const img = `<picture>${sources}<img src="${esc(b.src)}" alt="${esc(b.alt)}" ${i === 0 ? 'fetchpriority="high"' : 'loading="lazy"'} decoding="async"></picture>`;
+          return `<div class="banner-slide">${b.href ? `<a href="${esc(b.href)}">${img}</a>` : img}</div>`;
+        }).join('')}
+      </div>
+    </section>`;
+}
+
 export function staticNav() {
   return `<nav class="main-nav" aria-label="Principal">
   <a href="/">Início</a> <a href="/categorias">Categorias</a> <a href="/fornecedores">Fornecedores</a> <a href="/mapa">Mapa</a> <a href="/sobre">Como funciona</a> <a href="/cadastro">Cadastrar fornecedor</a>
@@ -205,11 +243,19 @@ export function homePage({ categories, regions, suppliers, featured }) {
   const description = 'Encontre fornecedores de atacado em São Paulo, Brás e 25 de Março. Explore lojas de roupas, moda feminina, tênis, eletrônicos e muito mais.';
   const catLinks = categories.map((c) => `<li><a href="/categorias/${esc(c.slug)}">${esc(c.name)}</a></li>`).join('');
   const regLinks = regions.map((r) => `<li><a href="/regiao/${esc(r.slug)}">${esc(r.name)}</a></li>`).join('');
+  // Mesma ordem da home do site: banners, destaque (hero), categorias, bairros e destaques.
   const main = `
+  ${staticBanners()}
+  <section class="hero">
+    <div class="container hero-inner">
+      <p class="eyebrow">25 de Março · Brás · Pari · Bom Retiro</p>
+      <h1>Os melhores fornecedores de São Paulo em um só lugar.</h1>
+      <p class="lead">Descubra lojas, distribuidores e fornecedores para comprar no atacado e abastecer seu negócio.</p>
+      <p class="muted small">Fornecedores de atacado em São Paulo. ${n ? `Reunimos ${n} fornecedores aprovados em ${categories.length} categorias,` : 'Reunimos fornecedores de atacado de São Paulo,'} com destaque para o Brás, a 25 de Março e outros polos comerciais da cidade.</p>
+      <p><a class="btn btn-primary" href="/fornecedores">Ver todos os fornecedores</a> <a class="btn btn-secondary" href="/categorias">Ver categorias</a></p>
+    </div>
+  </section>
   <section class="container section-tight">
-    <h1>Fornecedores de atacado em São Paulo</h1>
-    <p>${n ? `Reunimos ${n} fornecedores aprovados em ${categories.length} categorias,` : 'Reunimos fornecedores de atacado de São Paulo,'} com destaque para o Brás, a 25 de Março e outros polos comerciais da cidade.</p>
-    <p><a class="btn btn-primary" href="/fornecedores">Ver todos os fornecedores</a> <a class="btn btn-secondary" href="/categorias">Ver categorias</a></p>
     <h2>Categorias</h2>
     <ul class="plain-list two-col">${catLinks}</ul>
     <h2>Bairros e regiões</h2>
@@ -217,7 +263,7 @@ export function homePage({ categories, regions, suppliers, featured }) {
     ${featured.length ? `<h2>Fornecedores em destaque</h2>${supplierListHtml(featured, (b) => regions.find((r) => r.slug === b)?.name)}` : ''}
   </section>`;
   return documentHtml({
-    title, description, path: '/', mainHtml: main, nav: staticNav(), footer: staticFooter(),
+    title, description, path: '/', mainHtml: main, nav: staticHeader(), footer: staticFooter(),
     jsonld: [organizationJsonLd(), websiteJsonLd()],
   });
 }
