@@ -37,5 +37,7 @@ as $$
 $$;
 
 -- Só quem está logado pode checar (o cadastro público exige conta).
+-- O Supabase dá execute ao papel anon por padrão, então ele precisa ser revogado separadamente.
 revoke all on function public.find_supplier_duplicate(text, text, uuid) from public;
+revoke execute on function public.find_supplier_duplicate(text, text, uuid) from anon;
 grant execute on function public.find_supplier_duplicate(text, text, uuid) to authenticated;
