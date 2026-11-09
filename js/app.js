@@ -154,7 +154,10 @@ function atualizarEmSegundoPlano(id) {
   const antes = store.fingerprint();
   store.refresh({ maxAgeMs: 30000 })
     .then(() => {
-      if (id === renderId && store.fingerprint() !== antes) renderLocal();
+      if (id !== renderId || store.fingerprint() === antes) return;
+      // Tela com formulário não é redesenhada: isso apagaria o que a pessoa está digitando ou editando.
+      if (main.querySelector('form')) return;
+      renderLocal();
     })
     .catch(() => {});
 }
