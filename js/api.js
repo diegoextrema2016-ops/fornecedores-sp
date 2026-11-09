@@ -51,7 +51,8 @@ export const api = {
     check(await sb.auth.signInWithPassword({ email, password }));
   },
   async signOut() {
-    const { error } = await sb.auth.signOut();
+    // scope 'local' limpa a sessão deste navegador sem depender do servidor (que pode falhar com o token vencido).
+    const { error } = await sb.auth.signOut({ scope: 'local' });
     if (error) throw error;
   },
 
