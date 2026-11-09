@@ -1,11 +1,12 @@
 // Sugestão de descrição comercial com IA (função da Vercel).
 // Regras:
 //  - só responde a quem está logado no site (confere o token no Supabase);
-//  - a chave da IA fica em ANTHROPIC_API_KEY, nas variáveis de ambiente da Vercel (nunca no código);
-//  - sem chave configurada, responde { fallback: true } e o site usa sugestões prontas.
+//  - as chaves ficam nas variáveis de ambiente da Vercel, nunca no código:
+//      GEMINI_API_KEY (gratuita, Google AI Studio) tem prioridade;
+//      ANTHROPIC_API_KEY (paga) é usada se a Gemini não estiver configurada;
+//  - sem nenhuma chave, responde { fallback: true } e o site usa sugestões prontas.
 import { SUPABASE } from '../js/config.js';
 
-const MODEL = 'claude-haiku-5-5';
 // Estilos sorteados a cada pedido: é isso que faz cada sugestão sair diferente.
 const ESTILOS = [
   'direto e objetivo, indicando o que a loja vende',
@@ -41,11 +42,47 @@ async function usuarioLogado(token) {
   return r.ok;
 }
 
+// Gemini (gratuita). Modelo pode ser trocado pela variável GEMINI_MODEL.
+async function comGemini(prompt) {
+  const modelo = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+  const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelo}:generateContent`, {
+    method: 'POST',
+    headers: { 'x-goog-api-key': process.env.GEMINI_API_KEY, 'content-type': 'application/json' },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: { temperature: 1, maxOutputTokens: 400 },
+    }),
+  });
+  const json = await r.json().catch(() => ({}));
+  if (!r.ok) return { erro: `A IA (Gemini) respondeu com erro ${r.status}${json?.error?.message ? `: ${String(json.error.message).slice(0, 160)}` : '.'}` };
+  const texto = (json.candidates?.[0]?.content?.parts || []).map((p) => p.text || '').join('').trim();
+  return texto ? { texto } : { erro: 'A IA (Gemini) não devolveu texto. Tente de novo.' };
+}
+
+// Anthropic (paga). Usada só se a Gemini não estiver configurada.
+async function comAnthropic(prompt) {
+  const r = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
+    body: JSON.stringify({
+      model: 'claude-haiku-5-5',
+      max_tokens: 400,
+      temperature: 1,
+      messages: [{ role: 'user', content: prompt }],
+    }),
+  });
+  const json = await r.json().catch(() => ({}));
+  if (!r.ok) return { erro: `A IA (Anthropic) respondeu com erro ${r.status}${json?.error?.message ? `: ${String(json.error.message).slice(0, 160)}` : '.'}` };
+  const texto = (json.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('').trim();
+  return texto ? { texto } : { erro: 'A IA (Anthropic) não devolveu texto. Tente de novo.' };
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Método não permitido.' });
 
-  const chave = process.env.ANTHROPIC_API_KEY;
-  if (!chave) return res.status(200).json({ fallback: true });
+  if (!process.env.GEMINI_API_KEY && !process.env.ANTHROPIC_API_KEY) {
+    return res.status(200).json({ fallback: true });
+  }
 
   const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
   if (!token || !(await usuarioLogado(token))) {
@@ -61,28 +98,12 @@ export default async function handler(req, res) {
     outrasCidades: corpo.outrasCidades === true,
   };
   const estilo = ESTILOS[Math.floor(Math.random() * ESTILOS.length)];
+  const prompt = promptPara(dados, estilo);
 
   try {
-    const r = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'x-api-key': chave, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
-      body: JSON.stringify({
-        model: MODEL,
-        max_tokens: 400,
-        temperature: 1,
-        messages: [{ role: 'user', content: promptPara(dados, estilo) }],
-      }),
-    });
-    if (!r.ok) {
-      // Mostra o motivo (sem chave): o erro que a própria IA devolve.
-      const corpo = await r.json().catch(() => ({}));
-      const detalhe = String(corpo?.error?.message || '').slice(0, 160);
-      return res.status(502).json({ error: `A IA respondeu com erro ${r.status}${detalhe ? `: ${detalhe}` : '.'}` });
-    }
-    const json = await r.json();
-    const texto = (json.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('').trim();
-    if (!texto) return res.status(502).json({ error: 'A IA não devolveu texto. Tente de novo.' });
-    return res.status(200).json({ texto: texto.slice(0, 600) });
+    const resultado = process.env.GEMINI_API_KEY ? await comGemini(prompt) : await comAnthropic(prompt);
+    if (resultado.erro) return res.status(502).json({ error: resultado.erro });
+    return res.status(200).json({ texto: resultado.texto.slice(0, 600) });
   } catch (err) {
     return res.status(502).json({ error: `Não foi possível falar com a IA agora (${String(err?.message || err).slice(0, 120)}).` });
   }
