@@ -499,3 +499,6 @@ a.wa-link svg { color: var(--whatsapp); }
 
 /* Logo genérica para visitantes (o logo real só aparece para assinantes) */
 .logo-mask { font-weight: 800; color: var(--primary); letter-spacing: .02em; }
+
+/* Botão de sugestão de descrição no formulário de fornecedor */
+.suggest-row { display: flex; align-items: center; flex-wrap: wrap; gap: .6rem; margin: -.25rem 0 .75rem; }
