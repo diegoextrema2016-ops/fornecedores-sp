@@ -141,12 +141,12 @@ async function pedirSugestaoIA(dados) {
     const { data } = await sb.auth.getSession();
     const token = data.session?.access_token;
     if (!token) return { erro: 'Entre na sua conta para usar a IA.' };
-    // Limite de 12 segundos: se a IA demorar, a sugestão pronta entra logo.
+    // Limite de 28 segundos: dá tempo para a IA responder antes de usar a sugestão pronta.
     const r = await fetch('/api/sugerir-descricao', {
       method: 'POST',
       headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
       body: JSON.stringify(dados),
-      signal: AbortSignal.timeout(12000),
+      signal: AbortSignal.timeout(28000),
     });
     const json = await r.json().catch(() => ({}));
     if (r.ok && json.texto) return { texto: json.texto };

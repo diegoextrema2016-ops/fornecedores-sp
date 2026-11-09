@@ -27,13 +27,15 @@ async function usuarioLogado(token) {
 // Desliga o "pensamento" do modelo (mais rápido para um texto curto) e tem limite de tempo.
 async function chamarGemini(prompt, comPensamento) {
   const modelo = process.env.GEMINI_MODEL || 'gemini-3.8-flash';
-  const generationConfig = { temperature: 1, maxOutputTokens: 120 };
+  // maxOutputTokens alto: se o modelo gastar tokens pensando, o texto não sai cortado/vazio.
+  const generationConfig = { temperature: 1, maxOutputTokens: 400 };
   if (comPensamento) generationConfig.thinkingConfig = { thinkingBudget: 0 };
   return fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelo}:generateContent`, {
     method: 'POST',
     headers: { 'x-goog-api-key': process.env.GEMINI_API_KEY, 'content-type': 'application/json' },
     body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig }),
-    signal: AbortSignal.timeout(9000),
+    // Tempo para a IA responder (a função da Vercel tem 30 segundos, ver vercel.json).
+    signal: AbortSignal.timeout(22000),
   });
 }
 
