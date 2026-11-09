@@ -28,6 +28,15 @@ async function attempt(action, okMessage) {
   }
 }
 
+// Ação com resposta imediata: a tela já mostra a mudança (a cópia local foi alterada antes da gravação)
+// e a gravação roda em segundo plano. Se falhar, o store desfaz a mudança e a tela volta ao valor anterior.
+function instant(gravacao, rerender, okMessage) {
+  gravacao.then(
+    () => { if (okMessage) toast(okMessage); rerender(); },
+    (err) => { toast(err.message || 'Não foi possível concluir. Tente de novo.', 'error'); rerender(); },
+  );
+}
+
 // Casca comum do painel: barra lateral + conteúdo.
 export function adminLayout(active, title, body) {
   const link = (href, key, label) => `<a class="${active === key ? 'is-active' : ''}" href="${href}">${label}</a>`;
@@ -210,7 +219,7 @@ export function mountAdminSuppliers(root, rerender) {
     if (t.matches('[data-row-cat]')) {
       const s = store.suppliers.get(t.dataset.rowCat);
       if (s) {
-        await attempt(() => store.suppliers.save({ ...s, category: t.value }, { asAdmin: true }), `Categoria de "${s.name}" atualizada.`);
+        instant(store.suppliers.setCategory(s.id, t.value), rerender, `Categoria de "${s.name}" atualizada.`);
         rerender();
       }
     } else if (t.matches('[data-select-all]')) {
@@ -219,8 +228,9 @@ export function mountAdminSuppliers(root, rerender) {
     } else if (t.matches('[data-select]')) {
       updateCount();
     } else if (t.matches('[data-flag]')) {
-      await attempt(
-        () => store.suppliers.setFlag(t.dataset.id, t.dataset.flag, t.checked),
+      instant(
+        store.suppliers.setFlag(t.dataset.id, t.dataset.flag, t.checked),
+        rerender,
         t.dataset.flag === 'verified' ? 'Selo de verificado atualizado.' : 'Destaque atualizado.',
       );
     } else if (t.closest('[data-import-file]')) {
@@ -277,7 +287,7 @@ export function mountAdminSuppliers(root, rerender) {
 
     const st = ev.target.closest('[data-status]');
     if (st) {
-      await attempt(() => store.suppliers.setStatus(st.dataset.id, st.dataset.status),
+      instant(store.suppliers.setStatus(st.dataset.id, st.dataset.status), rerender,
         st.dataset.status === 'approved' ? 'Fornecedor aprovado e publicado.' : 'Cadastro rejeitado.');
       return rerender();
     }
@@ -361,10 +371,10 @@ async function saveCategoryOrder(slugs, rerender) {
     .map((slug, k) => ({ c: byslug.get(slug), order: k + 1 }))
     .filter(({ c, order }) => c && (c.sortOrder ?? 0) !== order);
   if (!changes.length) return;
-  const ok = await attempt(async () => {
-    for (const { c, order } of changes) await store.categories.save({ ...c, sortOrder: order });
-  }, 'Ordem das categorias atualizada.');
-  if (ok) rerender();
+  // Os valores novos entram na cópia local antes da gravação; a tela muda na hora.
+  const gravacoes = changes.map(({ c, order }) => store.categories.setFields(c.slug, { sortOrder: order }));
+  rerender();
+  instant(Promise.all(gravacoes), rerender, 'Ordem das categorias atualizada.');
 }
 
 // Sobe ou desce uma categoria (botões ▲ ▼).
@@ -513,7 +523,7 @@ export function mountAdminCategories(root, rerender) {
     }
     if (toggle) {
       const c = store.categories.get(toggle.dataset.catToggle);
-      await attempt(() => store.categories.save({ ...c, status: c.status === 'inactive' ? 'active' : 'inactive' }), 'Situação atualizada.');
+      instant(store.categories.setFields(c.slug, { status: c.status === 'inactive' ? 'active' : 'inactive' }), rerender, 'Situação atualizada.');
       rerender();
     }
     if (del) {
@@ -655,8 +665,8 @@ export function mountAdminUsers(root, rerender) {
   root.addEventListener('change', async (ev) => {
     const sel = ev.target.closest('[data-user-type]');
     if (!sel) return;
-    const ok = await attempt(() => store.users.setType(sel.dataset.userType, sel.value), 'Tipo de usuário atualizado.');
-    if (ok) rerender();
+    instant(store.users.setType(sel.dataset.userType, sel.value), rerender, 'Tipo de usuário atualizado.');
+    rerender();
   });
 }
 
