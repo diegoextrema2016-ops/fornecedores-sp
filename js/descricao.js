@@ -11,6 +11,8 @@ const ABERTURAS_GERAIS = [
   'Fornecedor de atacado em São Paulo, com produtos para revenda.',
   'Produtos para quem vende e quer comprar com preço de atacado.',
   'Fornecedor com opções variadas para abastecer o seu negócio.',
+  'Para quem compra para revender: preço de atacado e produtos prontos para vender.',
+  'Abastecimento para lojas e revendedores, com atendimento direto pelo WhatsApp.',
 ];
 const PRODUTOS = [
   'peças prontas para revenda',
@@ -19,6 +21,10 @@ const PRODUTOS = [
   'produtos com bom custo-benefício',
   'itens selecionados para revenda',
   'opções para diferentes públicos',
+  'novidades que giram rápido na loja',
+  'peças com boa saída para revenda',
+  'estoque variado para repor sua prateleira',
+  'produtos escolhidos a dedo para revenda',
 ];
 const VENDA_ATACADO = ['Vendemos no atacado.', 'Atendemos compras no atacado.'];
 const VENDA_VAREJO = ['Também atendemos no varejo.', 'Vendemos também no varejo.'];
@@ -27,6 +33,8 @@ const FECHAMENTOS = [
   'Chame no WhatsApp e confira as condições.',
   'Atendimento direto para pedidos e orçamentos.',
   'Entre em contato e confira as condições de compra.',
+  'Fale com a equipe e veja os modelos disponíveis.',
+  'Manda uma mensagem e receba a tabela de preços.',
 ];
 
 // Monta uma descrição aleatória a partir da categoria e das opções de venda marcadas.

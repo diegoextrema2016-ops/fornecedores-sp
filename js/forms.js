@@ -3,6 +3,7 @@ import { CATEGORIES, REGIONS, SUPPLIER_TYPES } from './data.js';
 import { validateSupplier, escapeHtml as e, onlyDigits } from './utils.js';
 import { store } from './store.js';
 import { sugerirDescricao } from './descricao.js';
+import { sb } from './api.js';
 
 // Opções de categoria: as ativas do store, mais a categoria atual do fornecedor (mesmo que esteja inativa).
 // Opções de bairro/cidade vindas do store (ordem alfabética).
@@ -132,23 +133,49 @@ export function supplierFormHtml(s = {}, { admin = false, loggedEmail = '' } = {
   </form>`;
 }
 
-// Botão "Sugerir descrição": preenche o campo com um texto de exemplo, usando a categoria e as vendas já marcadas.
+// Botão "Sugerir descrição": pede uma descrição à IA (função do site, exige login).
+// Se a IA não estiver disponível, usa sugestões prontas, também variadas.
+async function pedirSugestaoIA(dados) {
+  try {
+    const { data } = await sb.auth.getSession();
+    const token = data.session?.access_token;
+    if (!token) return '';
+    const r = await fetch('/api/sugerir-descricao', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
+      body: JSON.stringify(dados),
+    });
+    const json = await r.json().catch(() => ({}));
+    return r.ok && json.texto ? json.texto : '';
+  } catch {
+    return '';
+  }
+}
+
 if (typeof document !== 'undefined') {
-  document.addEventListener('click', (ev) => {
+  document.addEventListener('click', async (ev) => {
     const botao = ev.target.closest?.('[data-suggest-description]');
     if (!botao) return;
     const form = botao.closest('form');
     const campo = form?.querySelector('#description');
     if (!campo) return;
     const cat = form.elements.category;
-    const categoria = cat && cat.selectedIndex > 0 ? cat.options[cat.selectedIndex].text : '';
-    campo.value = sugerirDescricao({
-      categoria,
+    const dados = {
+      categoria: cat && cat.selectedIndex > 0 ? cat.options[cat.selectedIndex].text : '',
       atacado: form.elements.saleWholesale?.checked === true,
       varejo: form.elements.saleRetail?.checked === true,
       lojistas: form.elements.saleResellers?.checked === true,
       outrasCidades: form.elements.shipsOtherCities?.checked === true,
-    });
+    };
+    const textoBotao = botao.textContent;
+    botao.disabled = true;
+    botao.textContent = 'Gerando...';
+    try {
+      campo.value = (await pedirSugestaoIA(dados)) || sugerirDescricao(dados);
+    } finally {
+      botao.disabled = false;
+      botao.textContent = textoBotao;
+    }
     campo.dispatchEvent(new Event('input', { bubbles: true }));
     campo.focus();
   });
