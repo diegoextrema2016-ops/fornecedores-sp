@@ -189,6 +189,43 @@ if (typeof document !== 'undefined') {
   });
 }
 
+// Lê os valores do formulário para um objeto. Imagens são lidas à parte (async).
+export function readSupplierForm(form) {
+  const fd = new FormData(form);
+  const str = (k) => (fd.get(k) ?? '').toString().trim();
+  const bool = (k) => form.elements[k]?.checked === true;
+  return {
+    name: str('name'),
+    responsible: str('responsible'),
+    email: str('email'),
+    whatsapp: onlyDigits(str('whatsapp')) ? str('whatsapp') : '',
+    whatsappUrl: str('whatsappUrl'),
+    instagram: str('instagram'),
+    site: str('site'),
+    category: str('category'),
+    subcategory: str('subcategory'),
+    supplierType: str('supplierType'),
+    address: str('address'),
+    number: str('number'),
+    complement: str('complement'),
+    bairro: str('bairro'),
+    city: str('city') || 'São Paulo',
+    state: (str('state') || 'SP').toUpperCase().slice(0, 2),
+    cep: str('cep'),
+    description: str('description').slice(0, 600),
+    tags: str('tags').split(',').map((t) => t.trim().toLowerCase()).filter(Boolean).slice(0, 12),
+    saleWholesale: bool('saleWholesale'),
+    saleRetail: bool('saleRetail'),
+    saleResellers: bool('saleResellers'),
+    shipsOtherCities: bool('shipsOtherCities'),
+    minOrder: str('minOrder'),
+    hours: str('hours'),
+    acceptTerms: bool('acceptTerms'),
+    ...(form.elements.status ? { status: str('status') } : {}),
+    ...(form.elements.verified ? { verified: bool('verified'), featured: bool('featured'), isDemo: bool('isDemo') } : {}),
+  };
+}
+
 // Valida e mostra erros embaixo de cada campo. Retorna o objeto validado ou null.
 export function checkSupplierForm(form) {
   const data = readSupplierForm(form);
