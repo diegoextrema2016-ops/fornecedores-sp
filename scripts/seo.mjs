@@ -23,6 +23,7 @@ export const esc = (v = '') => String(v ?? '').replace(/[&<>"']/g, (c) => ENTITI
 
 const BASE = SITE.url.replace(/\/$/, '');
 export const absUrl = (path = '/') => BASE + (path.startsWith('/') ? path : `/${path}`);
+const DEFAULT_OG_IMAGE = absUrl('/img/og-banner.jpg');
 
 // Remove marcas de tamanho e espaços desnecessários de um texto livre.
 const clean = (v = '') => String(v ?? '').replace(/\s+/g, ' ').trim();
@@ -87,7 +88,7 @@ export const itemListJsonLd = (name, suppliers) => ({
 // ---------- Cabeçalho e documento ----------
 
 // faviconLink vem do index.html, para manter o mesmo ícone em todas as páginas.
-export function documentHtml({ title, description, path, noindex = false, jsonld = [], image = '', mainHtml = '', nav = '', footer = '', ogType = 'website' }) {
+export function documentHtml({ title, description, path, noindex = false, jsonld = [], image = DEFAULT_OG_IMAGE, mainHtml = '', nav = '', footer = '', ogType = 'website' }) {
   const canonical = absUrl(path);
   const jsonScripts = jsonld
     .map((obj) => `<script type="application/ld+json">${JSON.stringify(obj).replace(/</g, '\\u003c')}</script>`)
@@ -108,7 +109,11 @@ export function documentHtml({ title, description, path, noindex = false, jsonld
   <meta property="og:title" content="${esc(title)}">
   <meta property="og:description" content="${esc(description)}">
   <meta property="og:url" content="${esc(canonical)}">
-  ${image ? `<meta property="og:image" content="${esc(image)}">` : ''}
+  ${image ? `<meta property="og:image" content="${esc(image)}">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:image" content="${esc(image)}">` : ''}
   ${FAVICON}
   ${SHARED_HEAD_LINKS}
   ${jsonScripts}
