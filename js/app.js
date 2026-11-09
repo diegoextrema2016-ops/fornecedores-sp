@@ -39,14 +39,14 @@ const routes = [
 
   // Painel administrativo: exige sessão de administrador.
   [/^\/admin$/, () => adm.adminDashboard(), { admin: true }],
-  [/^\/admin\/pendentes$/, (_p, q) => withMount(adm.adminSuppliers(q, { preset: 'pending' }), (r) => adm.mountAdminSuppliers(r, render)), { admin: true }],
-  [/^\/admin\/fornecedores$/, (_p, q) => withMount(adm.adminSuppliers(q), (r) => adm.mountAdminSuppliers(r, render)), { admin: true }],
+  [/^\/admin\/pendentes$/, (_p, q) => withMount(adm.adminSuppliers(q, { preset: 'pending' }), (r) => adm.mountAdminSuppliers(r, renderLocal)), { admin: true }],
+  [/^\/admin\/fornecedores$/, (_p, q) => withMount(adm.adminSuppliers(q), (r) => adm.mountAdminSuppliers(r, renderLocal)), { admin: true }],
   [/^\/admin\/novo$/, () => withMount(adm.adminSupplierForm(null), (r) => adm.mountAdminSupplierForm(r, null)), { admin: true }],
   [/^\/admin\/fornecedor\/([^/]+)\/editar$/, (p) => withMount(adm.adminSupplierForm(p[1]), (r) => adm.mountAdminSupplierForm(r, p[1])), { admin: true }],
-  [/^\/admin\/categorias$/, () => withMount(adm.adminCategories(), (r) => adm.mountAdminCategories(r, render)), { admin: true }],
-  [/^\/admin\/regioes$/, () => withMount(adm.adminRegions(), (r) => adm.mountAdminRegions(r, render)), { admin: true }],
-  [/^\/admin\/usuarios$/, () => withMount(adm.adminUsers(), (r) => adm.mountAdminUsers(r, render)), { admin: true }],
-  [/^\/admin\/pagamentos$/, () => withMount(adm.adminPayments(), (r) => adm.mountAdminPayments(r, render)), { admin: true }],
+  [/^\/admin\/categorias$/, () => withMount(adm.adminCategories(), (r) => adm.mountAdminCategories(r, renderLocal)), { admin: true }],
+  [/^\/admin\/regioes$/, () => withMount(adm.adminRegions(), (r) => adm.mountAdminRegions(r, renderLocal)), { admin: true }],
+  [/^\/admin\/usuarios$/, () => withMount(adm.adminUsers(), (r) => adm.mountAdminUsers(r, renderLocal)), { admin: true }],
+  [/^\/admin\/pagamentos$/, () => withMount(adm.adminPayments(), (r) => adm.mountAdminPayments(r, renderLocal)), { admin: true }],
   [/^\/admin\/migracao$/, () => withMount(adm.adminBackup(), (r) => adm.mountAdminBackup(r, render)), { admin: true }],
 ];
 
@@ -84,12 +84,18 @@ function setMeta(page, path) {
 // Evita que uma renderização antiga sobrescreva a mais recente (cliques rápidos ou atualizações em sequência).
 let renderId = 0;
 
-async function render() {
+// Redesenha a tela só com a cópia que já está na memória (sem baixar tudo do banco de novo).
+// Usado depois de cada ação do painel, que já atualiza a cópia local antes de gravar.
+function renderLocal() {
+  return render({ fromMemory: true });
+}
+
+async function render({ fromMemory = false } = {}) {
   const id = ++renderId;
   const { path, query } = parseLocation();
 
   try {
-    await store.refresh({ maxAgeMs: 30000 });
+    if (!fromMemory) await store.refresh({ maxAgeMs: 30000 });
   } catch (err) {
     if (id !== renderId) return;
     headerHost.innerHTML = header({ session: null, route: '/' });

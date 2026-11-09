@@ -224,6 +224,8 @@ async function saveSupplier(data, { asAdmin = false, checkDuplicates = false } =
   return app;
 }
 
+// Muda a cópia local na hora (a tela já mostra o novo valor) e grava no banco em seguida.
+// Se a gravação falhar, a cópia volta ao valor anterior e o erro segue para quem chamou.
 async function patchSupplier(id, changes) {
   const current = state.suppliers.find((s) => s.id === id);
   if (!current) return null;
@@ -231,8 +233,19 @@ async function patchSupplier(id, changes) {
   if ('status' in changes) row.approval_status = changes.status;
   if ('verified' in changes) row.verified = Boolean(changes.verified);
   if ('featured' in changes) row.featured = Boolean(changes.featured);
-  await api.updateSupplier(id, row);
+  if ('category' in changes) {
+    const cat = state.categories.find((c) => c.slug === changes.category);
+    if (!cat) throw new Error('Categoria não encontrada.');
+    row.category_id = cat.id;
+  }
+  const before = Object.fromEntries(Object.keys(changes).map((k) => [k, current[k]]));
   Object.assign(current, changes);
+  try {
+    await api.updateSupplier(id, row);
+  } catch (err) {
+    Object.assign(current, before);
+    throw err;
+  }
   return current;
 }
 
@@ -252,6 +265,9 @@ const suppliers = {
   save: saveSupplier,
   setStatus(id, status) {
     return patchSupplier(id, { status });
+  },
+  setCategory(id, slug) {
+    return patchSupplier(id, { category: slug });
   },
   setFlag(id, flag, value) {
     if (!['verified', 'featured'].includes(flag)) throw new Error('Flag inválida');
@@ -286,6 +302,19 @@ const categories = {
     return state.categories.find((c) => c.slug === slug) || null;
   },
   save: saveCategory,
+  // Muda só alguns campos (ordem, situação) já na cópia local e grava. Se falhar, desfaz.
+  async setFields(slug, fields) {
+    const current = state.categories.find((c) => c.slug === slug);
+    if (!current) throw new Error('Categoria não encontrada.');
+    const before = Object.fromEntries(Object.keys(fields).map((k) => [k, current[k]]));
+    Object.assign(current, fields);
+    try {
+      return await saveCategory({ ...current });
+    } catch (err) {
+      Object.assign(current, before);
+      throw err;
+    }
+  },
   // Só remove se nenhum fornecedor usar a categoria. Caso contrário, retorna { ok:false }.
   async remove(slug) {
     if (state.suppliers.some((s) => s.category === slug)) {
@@ -334,8 +363,14 @@ const users = {
     return state.users.slice();
   },
   async setType(id, type) {
-    await api.setUserType(id, type);
+    const anterior = state.users.find((u) => u.id === id)?.type;
     state.users = state.users.map((u) => (u.id === id ? { ...u, type } : u));
+    try {
+      await api.setUserType(id, type);
+    } catch (err) {
+      state.users = state.users.map((u) => (u.id === id ? { ...u, type: anterior } : u));
+      throw err;
+    }
   },
 };
 
