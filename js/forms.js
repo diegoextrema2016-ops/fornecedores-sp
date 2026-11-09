@@ -2,6 +2,7 @@
 import { CATEGORIES, REGIONS, SUPPLIER_TYPES } from './data.js';
 import { validateSupplier, escapeHtml as e, onlyDigits } from './utils.js';
 import { store } from './store.js';
+import { sugerirDescricao } from './descricao.js';
 
 // Opções de categoria: as ativas do store, mais a categoria atual do fornecedor (mesmo que esteja inativa).
 // Opções de bairro/cidade vindas do store (ordem alfabética).
@@ -93,6 +94,10 @@ export function supplierFormHtml(s = {}, { admin = false, loggedEmail = '' } = {
       <legend>Apresentação</legend>
       ${field('description', `Descrição comercial${star} (até 600 caracteres)`,
         `<textarea id="description" name="description" rows="4" maxlength="600" ${R ? 'required' : ''}>${v('description')}</textarea>`, 'field-wide')}
+      <div class="suggest-row field-wide">
+        <button type="button" class="btn btn-secondary" data-suggest-description>Sugerir descrição</button>
+        <span class="muted small">Gera um texto de exemplo para você ajustar. Clique de novo para outra sugestão.</span>
+      </div>
       ${text('tags', 'Palavras-chave (separadas por vírgula)', { wide: true, value: (s.tags || []).join(', '), ph: 'Ex.: vestido, blusa, atacado' })}
       <div class="form-grid">
         ${field('logo', 'Logo (JPG, PNG ou WebP; é reduzida automaticamente)', `<input id="logo" name="logo" type="file" accept="image/jpeg,image/png,image/webp">`)}
@@ -125,6 +130,28 @@ export function supplierFormHtml(s = {}, { admin = false, loggedEmail = '' } = {
       <a class="btn btn-ghost" href="/">Cancelar</a>
     </div>
   </form>`;
+}
+
+// Botão "Sugerir descrição": preenche o campo com um texto de exemplo, usando a categoria e as vendas já marcadas.
+if (typeof document !== 'undefined') {
+  document.addEventListener('click', (ev) => {
+    const botao = ev.target.closest?.('[data-suggest-description]');
+    if (!botao) return;
+    const form = botao.closest('form');
+    const campo = form?.querySelector('#description');
+    if (!campo) return;
+    const cat = form.elements.category;
+    const categoria = cat && cat.selectedIndex > 0 ? cat.options[cat.selectedIndex].text : '';
+    campo.value = sugerirDescricao({
+      categoria,
+      atacado: form.elements.saleWholesale?.checked === true,
+      varejo: form.elements.saleRetail?.checked === true,
+      lojistas: form.elements.saleResellers?.checked === true,
+      outrasCidades: form.elements.shipsOtherCities?.checked === true,
+    });
+    campo.dispatchEvent(new Event('input', { bubbles: true }));
+    campo.focus();
+  });
 }
 
 // Lê os valores do formulário para um objeto. Imagens são lidas à parte (async).
