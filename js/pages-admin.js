@@ -5,7 +5,7 @@ import { store } from './store.js';
 import { escapeHtml as e, formatDate, formatCount, slugify } from './utils.js';
 import { toast, confirmDialog, emptyState, pagination } from './ui.js';
 import { PLANS } from './config.js';
-import { supplierFormHtml, checkSupplierForm, readImages, LIMITS, bindPasteFill } from './forms.js';
+import { supplierFormHtml, checkSupplierForm, readImages, LIMITS } from './forms.js';
 import { parseCsv, planImport, applyImport } from './import.js';
 import { paginate } from './search.js';
 import { readLocalBackup, parseBackup, importBackup } from './backup.js';
@@ -320,7 +320,6 @@ export function adminSupplierForm(id) {
 export function mountAdminSupplierForm(root, id) {
   const form = root.querySelector('#supplier-form');
   if (!form) return;
-  bindPasteFill(form, { categories: store.categories.list(), regions: store.regions.list() });
   form.addEventListener('submit', async (ev) => {
     ev.preventDefault();
     const data = checkSupplierForm(form);

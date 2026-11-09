@@ -2,8 +2,6 @@
 import { CATEGORIES, REGIONS, SUPPLIER_TYPES } from './data.js';
 import { validateSupplier, escapeHtml as e, onlyDigits } from './utils.js';
 import { store } from './store.js';
-import { parseSupplierText, EXTRACT_FIELDS } from './extract.js';
-import { formatPhone } from './utils.js';
 
 // Opções de categoria: as ativas do store, mais a categoria atual do fornecedor (mesmo que esteja inativa).
 // Opções de bairro/cidade vindas do store (ordem alfabética).
@@ -47,17 +45,6 @@ export function supplierFormHtml(s = {}, { admin = false, loggedEmail = '' } = {
 
   return `
   <form class="card form supplier-form" id="supplier-form" novalidate>
-    <fieldset class="form-section paste-box">
-      <legend>Preencher com informações do fornecedor</legend>
-      <label for="paste-text">Colar informações do fornecedor</label>
-      <textarea id="paste-text" rows="5" placeholder="Cole aqui a bio do Instagram, telefone, WhatsApp, endereço, site..."></textarea>
-      <div class="paste-actions">
-        <button class="btn btn-secondary" type="button" id="paste-fill">Preencher automaticamente</button>
-        <span class="muted small">Preenche só os campos vazios. Confira tudo antes de salvar.</span>
-      </div>
-      <div class="paste-result" id="paste-result" role="status" hidden></div>
-    </fieldset>
-
     <fieldset class="form-section">
       <legend>Dados da empresa</legend>
       <div class="form-grid">
@@ -138,66 +125,6 @@ export function supplierFormHtml(s = {}, { admin = false, loggedEmail = '' } = {
       <a class="btn btn-ghost" href="#/">Cancelar</a>
     </div>
   </form>`;
-}
-
-// Liga o campo "Colar informações" ao formulário. Só preenche campos vazios e mostra o resultado.
-// Nada é salvo aqui: o usuário confere os campos e clica em Salvar.
-export function bindPasteFill(form, { categories = [], regions = [] } = {}) {
-  const button = form.querySelector('#paste-fill');
-  const box = form.querySelector('#paste-text');
-  const out = form.querySelector('#paste-result');
-  if (!button || !box || !out) return;
-
-  const show = (html) => {
-    out.innerHTML = html;
-    out.hidden = false;
-  };
-
-  button.addEventListener('click', () => {
-    const text = box.value.trim();
-    if (!text) {
-      show('<p class="paste-error">Cole as informações do fornecedor antes de preencher.</p>');
-      box.focus();
-      return;
-    }
-    const found = parseSupplierText(text, { categories, regions });
-    const filled = [];
-    const kept = [];
-    const missing = [];
-
-    for (const [key, label] of EXTRACT_FIELDS) {
-      let value = found[key] || '';
-      if (!value) {
-        missing.push(label);
-        continue;
-      }
-      const el = form.elements[key];
-      if (!el) continue;
-      if (el.value && el.value.trim()) {
-        kept.push(label);
-        continue;
-      }
-      if (key === 'whatsapp') value = formatPhone(value);
-      el.value = value;
-      // Lista suspensa: só conta como preenchida se a opção existir.
-      if (el.tagName === 'SELECT' && el.value !== value) {
-        missing.push(label);
-        el.value = '';
-        continue;
-      }
-      filled.push(label);
-    }
-
-    const list = (items) => (items.length ? items.map((i) => e(i)).join(', ') : '<em>nenhum</em>');
-    const notes = found.notes.map((n) => `<li>${e(n)}</li>`).join('');
-    show(`
-      <p><strong>Preenchidos:</strong> ${list(filled)}</p>
-      ${kept.length ? `<p><strong>Mantidos (já tinham valor):</strong> ${list(kept)}</p>` : ''}
-      <p><strong>Não encontrados (ficaram vazios):</strong> ${list(missing)}</p>
-      ${notes ? `<ul class="paste-notes">${notes}</ul>` : ''}
-    `);
-    out.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-  });
 }
 
 // Lê os valores do formulário para um objeto. Imagens são lidas à parte (async).
