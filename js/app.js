@@ -69,7 +69,7 @@ async function render() {
   const { path, query } = parseHash();
 
   try {
-    await store.refresh();
+    await store.refresh({ maxAgeMs: 30000 });
   } catch (err) {
     if (id !== renderId) return;
     headerHost.innerHTML = header({ session: null, route: '/' });

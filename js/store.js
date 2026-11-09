@@ -79,19 +79,25 @@ async function persistImage(value, supplierId, name) {
 
 // ---------- Carregamento ----------
 let inFlight = null;
+let lastRefreshAt = 0; // quando a cópia foi carregada pela última vez (ms)
 
-function refresh() {
+// maxAgeMs: se a cópia é mais nova que isso e quem navega não é administrador, usa a cópia atual.
+// Sem maxAgeMs (ou 0), sempre busca no banco. Login, logout e cadastros zeram a cópia.
+function refresh({ maxAgeMs = 0 } = {}) {
+  const usable = maxAgeMs > 0 && Date.now() - lastRefreshAt < maxAgeMs && state.session?.role !== 'admin';
+  if (usable && !inFlight) return Promise.resolve();
   if (!inFlight) inFlight = doRefresh().finally(() => { inFlight = null; });
   return inFlight;
 }
 
 async function doRefresh() {
   const user = await api.currentUser();
-  const catalog = await api.loadCatalog();
+  // Catálogo e fornecedores são independentes: buscamos os dois ao mesmo tempo.
+  const [catalog, rawSuppliers] = await Promise.all([api.loadCatalog(), api.loadSuppliers()]);
   const categories = catalog.categories.map((c) =>
     M.categoryFromRow(c, catalog.subcategories.filter((s) => s.category_id === c.id)));
   const slugMap = new Map(categories.map((c) => [c.id, c.slug]));
-  const suppliers = (await api.loadSuppliers()).map((r) => M.supplierFromRow(r, slugMap));
+  const suppliers = rawSuppliers.map((r) => M.supplierFromRow(r, slugMap));
 
   let session = null;
   let favorites = guestFavorites();
@@ -100,31 +106,38 @@ async function doRefresh() {
   let allSubscriptions = [];
 
   if (user) {
-    const profile = await api.loadProfile(user.id);
+    const [profile, loadedFavorites, subs] = await Promise.all([
+      api.loadProfile(user.id),
+      api.loadFavorites(user.id),
+      api.loadSubscriptions(user.id),
+    ]);
     const base = profile
       ? M.userFromRow(profile)
       : { id: user.id, name: user.user_metadata?.name || user.email, email: user.email, type: 'comprador' };
     session = { ...base, role: base.type === 'admin' ? 'admin' : 'user' };
-    favorites = await api.loadFavorites(user.id);
+    favorites = loadedFavorites;
     const guest = guestFavorites();
     if (guest.length) {
       await api.addFavorites(user.id, guest);
       setGuestFavorites([]);
       favorites = [...new Set([...favorites, ...guest])];
     }
-    subscriptions = (await api.loadSubscriptions(user.id)).map(M.subscriptionFromRow);
+    subscriptions = subs.map(M.subscriptionFromRow);
     if (session.role === 'admin') {
-      users = (await api.loadUsers()).map(M.userFromRow);
-      allSubscriptions = (await api.loadAllSubscriptions()).map(M.subscriptionAdminFromRow);
+      const [allUsers, allSubs] = await Promise.all([api.loadUsers(), api.loadAllSubscriptions()]);
+      users = allUsers.map(M.userFromRow);
+      allSubscriptions = allSubs.map(M.subscriptionAdminFromRow);
     }
   }
 
   Object.assign(state, { session, categories, suppliers, favorites, subscriptions, users, allSubscriptions, regions: catalog.regions.map(M.regionFromRow) });
+  lastRefreshAt = Date.now();
 }
 
 // ---------- Autenticação ----------
 const auth = {
   async signUp({ name, email, password }) {
+    lastRefreshAt = 0;
     try {
       return await api.signUp({ name: name.trim(), email: email.trim().toLowerCase(), password, redirectTo: SITE.url });
     } catch (err) {
@@ -132,6 +145,7 @@ const auth = {
     }
   },
   async signIn(email, password) {
+    lastRefreshAt = 0;
     try {
       await api.signIn(email.trim().toLowerCase(), password);
     } catch (err) {
@@ -139,6 +153,7 @@ const auth = {
     }
   },
   async signOut() {
+    lastRefreshAt = 0;
     try {
       await api.signOut();
     } catch (err) {
@@ -150,6 +165,7 @@ const auth = {
 // ---------- Fornecedores ----------
 async function saveSupplier(data, { asAdmin = false } = {}) {
   if (!state.session) throw new Error('Entre na sua conta para salvar fornecedores.');
+  lastRefreshAt = 0;
   const existing = data.id ? state.suppliers.find((s) => s.id === data.id) : null;
   if (data.id && !existing) throw new Error('Fornecedor não encontrado.');
 
@@ -347,6 +363,7 @@ const subscriptions = {
   // Registra o pedido de assinatura por Pix como pendente. Só o administrador confirma e ativa.
   async requestPix({ planId, amount }) {
     if (!state.session) throw new Error('Entre na sua conta para assinar.');
+    lastRefreshAt = 0;
     const pending = state.subscriptions.find((s) =>
       s.status === 'pending' && Date.now() - new Date(s.createdAt || 0).getTime() < PENDING_TTL_MS);
     if (pending) return pending;
