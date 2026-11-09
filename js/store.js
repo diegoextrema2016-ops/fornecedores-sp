@@ -155,11 +155,18 @@ const auth = {
   },
   async signOut() {
     lastRefreshAt = 0;
+    // Espera uma atualização em andamento, para ela não devolver a sessão antiga depois do logout.
+    if (inFlight) await inFlight.catch(() => {});
     try {
       await api.signOut();
-    } catch (err) {
-      throw new Error(M.authErrorMessage(err));
+    } catch {
+      // Mesmo com erro, a sessão deste navegador é descartada abaixo.
     }
+    state.session = null;
+    state.favorites = [];
+    state.subscriptions = [];
+    state.users = [];
+    state.allSubscriptions = [];
   },
 };
 
