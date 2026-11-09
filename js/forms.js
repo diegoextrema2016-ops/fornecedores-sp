@@ -25,7 +25,8 @@ const MAX_PHOTOS = 6;
 
 export function supplierFormHtml(s = {}, { admin = false, loggedEmail = '' } = {}) {
   const v = (k, d = '') => e(s[k] ?? d);
-  const chk = (k) => (s[k] ? 'checked' : '');
+  // chk(k, padrão): quando o fornecedor ainda não tem o valor (cadastro novo), usa o padrão.
+  const chk = (k, padrao = false) => ((s[k] ?? padrao) ? 'checked' : '');
   // No modo administrador nenhum campo é obrigatório: sem asteriscos e sem 'required'.
   const R = !admin;
   const star = admin ? '' : ' *';
@@ -56,7 +57,7 @@ export function supplierFormHtml(s = {}, { admin = false, loggedEmail = '' } = {
         ${text('site', 'Site', { ph: 'www.sualoja.com.br' })}
         ${select('category', `Categoria${star}`, categoryOptions(s.category), s.category, R)}
         ${text('subcategory', 'Subcategoria')}
-        ${select('supplierType', `Tipo de fornecedor${star}`, SUPPLIER_TYPES.map((t) => [t.value, t.label]), s.supplierType, R)}
+        ${select('supplierType', `Tipo de fornecedor${star}`, SUPPLIER_TYPES.map((t) => [t.value, t.label]), s.supplierType || (admin ? 'atacadista' : ''), R)}
       </div>
     </fieldset>
 
@@ -76,10 +77,10 @@ export function supplierFormHtml(s = {}, { admin = false, loggedEmail = '' } = {
     <fieldset class="form-section">
       <legend>Vendas</legend>
       <div class="checks">
-        <label class="check"><input type="checkbox" name="saleWholesale" ${chk('saleWholesale')}> Venda no atacado</label>
+        <label class="check"><input type="checkbox" name="saleWholesale" ${chk('saleWholesale', admin)}> Venda no atacado</label>
         <label class="check"><input type="checkbox" name="saleRetail" ${chk('saleRetail')}> Venda no varejo</label>
         <label class="check"><input type="checkbox" name="saleResellers" ${chk('saleResellers')}> Venda para lojistas</label>
-        <label class="check"><input type="checkbox" name="shipsOtherCities" ${chk('shipsOtherCities')}> Envio para outras cidades</label>
+        <label class="check"><input type="checkbox" name="shipsOtherCities" ${chk('shipsOtherCities', admin)}> Envio para outras cidades</label>
       </div>
       <span class="field-error" id="err-sale" role="alert"></span>
       <div class="form-grid">
@@ -106,7 +107,7 @@ export function supplierFormHtml(s = {}, { admin = false, loggedEmail = '' } = {
       <div class="form-grid">
         ${select('status', 'Status', [['pending', 'Pendente'], ['approved', 'Aprovado'], ['rejected', 'Rejeitado']], s.status || 'pending')}
         <div class="checks">
-          <label class="check"><input type="checkbox" name="verified" ${chk('verified')}> Fornecedor verificado</label>
+          <label class="check"><input type="checkbox" name="verified" ${admin ? 'checked' : chk('verified')}> Fornecedor verificado</label>
           <label class="check"><input type="checkbox" name="featured" ${chk('featured')}> Em destaque na home</label>
           <label class="check"><input type="checkbox" name="isDemo" ${chk('isDemo')}> Marcar como demonstração</label>
         </div>
