@@ -51,7 +51,9 @@ function withMount(page, mount) {
 }
 
 function parseHash() {
-  const raw = location.hash.replace(/^#/, '') || '/';
+  let raw = location.hash.replace(/^#/, '') || '/';
+  // Retorno do link de confirmação do e-mail: o Supabase lê os tokens e limpa o endereço; enquanto isso, mostra a início.
+  if (raw.startsWith('access_token=') || raw.startsWith('error=')) raw = '/';
   const [path, qs = ''] = raw.split('?');
   return { path: path.replace(/\/+$/, '') || '/', query: new URLSearchParams(qs) };
 }
