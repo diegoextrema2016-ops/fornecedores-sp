@@ -66,6 +66,7 @@ export function home() {
     title: 'Fornecedores Atacado SP | Brás, Moda, Tênis e Eletrônicos',
     description: 'Encontre fornecedores de atacado em São Paulo, Brás e 25 de Março. Explore lojas de roupas, moda feminina, tênis, eletrônicos e muito mais.',
     html: `
+    ${bannersHtml()}
     <section class="hero">
       <div class="container hero-inner">
         <p class="eyebrow">25 de Março · Brás · Pari · Bom Retiro</p>
@@ -84,7 +85,6 @@ export function home() {
       </div>
     </section>
 
-    ${bannersHtml()}
     <section class="section container">
       <div class="section-head">
         <div><h2>Categorias</h2><p class="muted">Escolha um segmento e veja os fornecedores.</p></div>
