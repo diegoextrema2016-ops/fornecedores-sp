@@ -48,7 +48,8 @@ fornecedores-sp/
 ├── supabase/
 │   ├── schema.sql                      # estrutura base do banco (projeto novo)
 │   ├── migration-002-fase1.sql         # perfil automático, regiões no banco, pedidos Pix
-│   └── migration-003-site-conectado.sql# subcategoria em texto e leitura pública das categorias
+│   ├── migration-003-site-conectado.sql# subcategoria em texto e leitura pública das categorias
+│   └── migration-004-duplicados.sql    # checagem de duplicados por Instagram e WhatsApp
 ├── tests/                  # testes automatizados (node --test)
 ├── robots.txt
 └── sitemap.xml
@@ -95,12 +96,15 @@ Rode os arquivos **nesta ordem**, no SQL Editor:
 1. `supabase/schema.sql`
 2. `supabase/migration-002-fase1.sql`
 3. `supabase/migration-003-site-conectado.sql`
+4. `supabase/migration-004-duplicados.sql`
 
-As migrações 002 e 003 podem ser rodadas mais de uma vez sem erro.
+As migrações 002, 003 e 004 podem ser rodadas mais de uma vez sem erro.
 
 ### Projeto que já existe
 
-Se o banco já tem a Fase 1 aplicada, rode só `migration-003-site-conectado.sql`.
+Se o banco já tem a Fase 1 aplicada, rode `migration-003-site-conectado.sql` e depois `migration-004-duplicados.sql`.
+
+**Atenção:** sem a migração 004, salvar um fornecedor pelo formulário falha com erro, porque a checagem de duplicados não encontra a função no banco. Rode a 004 antes de publicar esta versão do site.
 
 ### Criar a conta do administrador
 
@@ -132,6 +136,22 @@ Se o banco já tem a Fase 1 aplicada, rode só `migration-003-site-conectado.sql
 Não há confirmação automática. Hoje o administrador confere cada Pix manualmente.
 
 ---
+
+## Cadastro com informações coladas
+
+No cadastro (público e no painel do administrador) há o bloco **Preencher com informações do fornecedor**:
+
+1. Copie a bio e as informações do perfil (Instagram, site, etc.) e cole no campo.
+2. Clique em **Preencher automaticamente**.
+3. O sistema reconhece Instagram, WhatsApp (ou link wa.me), e-mail, site, endereço, número, CEP, bairro, categoria e descrição. Só preenche campos vazios; campos que você já digitou são mantidos.
+4. Confira tudo. O que não aparece no texto fica vazio, nada é inventado, e nada é salvo sem clicar em **Salvar**.
+
+Regras:
+
+- Telefone sem a palavra WhatsApp vai para o campo WhatsApp com um aviso para conferir.
+- Categoria só é sugerida quando uma única categoria bate com o texto.
+- Ao salvar pelo formulário, o site confere no banco se o Instagram ou o WhatsApp já pertencem a outro fornecedor e bloqueia o cadastro, mostrando qual fornecedor já usa o dado.
+- Restauração de backup e importação de planilha não passam por essa checagem.
 
 ## Painel administrativo
 
