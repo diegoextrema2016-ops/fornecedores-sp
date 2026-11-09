@@ -338,6 +338,7 @@ export function mountAdminSupplierForm(root, id) {
     if (!data) return;
     const button = form.querySelector('button[type="submit"]');
     button.disabled = true;
+    button.textContent = 'Salvando...';
     try {
       const existing = id ? store.suppliers.get(id) : null;
       const newLogo = await readImages(form.elements.logo.files, { maxBytes: LIMITS.MAX_LOGO_BYTES, max: 1 });
@@ -355,6 +356,7 @@ export function mountAdminSupplierForm(root, id) {
     } catch (err) {
       toast(err.message || 'Erro ao salvar.', 'error');
       button.disabled = false;
+      button.textContent = 'Salvar fornecedor';
     }
   });
 }
@@ -490,15 +492,15 @@ export function mountAdminCategories(root, rerender) {
       form.querySelector('#err-name').textContent = 'Já existe uma categoria com esse nome.';
       return;
     }
-    const ok = await attempt(() => store.categories.save({
+    instant(store.categories.save({
       slug,
       name,
       icon: f.icon.value.trim() || '📦',
       description: f.description.value.trim(),
       subcategories: f.subcategories.value.split(',').map((s) => s.trim()).filter(Boolean),
       status: f.active.checked ? 'active' : 'inactive',
-    }), 'Categoria salva.');
-    if (ok) rerender();
+    }), rerender, 'Categoria salva.');
+    rerender();
   });
   cancel.addEventListener('click', reset);
   root.addEventListener('click', async (ev) => {
@@ -598,8 +600,8 @@ export function mountAdminRegions(root, rerender) {
       form.querySelector('#err-reg-name').textContent = 'Já existe com esse nome.';
       return;
     }
-    const ok = await attempt(() => store.regions.save({ slug, name, description: f.description.value.trim() }), 'Salvo.');
-    if (ok) rerender();
+    instant(store.regions.save({ slug, name, description: f.description.value.trim() }), rerender, 'Salvo.');
+    rerender();
   });
   cancel.addEventListener('click', reset);
   root.addEventListener('click', async (ev) => {

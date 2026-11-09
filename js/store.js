@@ -290,10 +290,23 @@ async function saveCategory(data) {
   const slug = data.slug || slugify(data.name);
   const existing = state.categories.find((c) => c.slug === slug);
   const record = { subcategories: [], status: 'active', description: '', icon: '📦', sortOrder: 0, ...existing, ...data, slug };
-  const saved = await api.upsertCategory(M.categoryToRow(record), record.subcategories || []);
-  const mapped = M.categoryFromRow(saved, (record.subcategories || []).map((name) => ({ name })));
-  upsertBy(state.categories, mapped, 'slug');
-  return mapped;
+  // Mostra na hora: a cópia local recebe a mudança antes da gravação; se falhar, volta ao que era.
+  const anterior = existing ? { ...existing } : null;
+  upsertBy(state.categories, {
+    id: existing?.id, slug, name: record.name, description: record.description || '', icon: record.icon || '📦',
+    status: record.status === 'inactive' ? 'inactive' : 'active', sortOrder: record.sortOrder ?? 0,
+    subcategories: record.subcategories || [],
+  }, 'slug');
+  try {
+    const saved = await api.upsertCategory(M.categoryToRow(record), record.subcategories || []);
+    const mapped = M.categoryFromRow(saved, (record.subcategories || []).map((name) => ({ name })));
+    upsertBy(state.categories, mapped, 'slug');
+    return mapped;
+  } catch (err) {
+    if (anterior) upsertBy(state.categories, anterior, 'slug');
+    else state.categories = state.categories.filter((c) => c.slug !== slug);
+    throw err;
+  }
 }
 
 const categories = {
@@ -308,12 +321,13 @@ const categories = {
   async setFields(slug, fields) {
     const current = state.categories.find((c) => c.slug === slug);
     if (!current) throw new Error('Categoria não encontrada.');
-    const before = Object.fromEntries(Object.keys(fields).map((k) => [k, current[k]]));
-    Object.assign(current, fields);
+    const anterior = { ...current };
+    const nova = { ...current, ...fields };
+    upsertBy(state.categories, nova, 'slug');
     try {
-      return await saveCategory({ ...current });
+      return await saveCategory(nova);
     } catch (err) {
-      Object.assign(current, before);
+      upsertBy(state.categories, anterior, 'slug');
       throw err;
     }
   },
@@ -343,10 +357,18 @@ const regions = {
     const slug = data.slug || slugify(data.name);
     const existing = state.regions.find((r) => r.slug === slug);
     const record = { description: '', sortOrder: 0, ...existing, ...data, slug };
-    const saved = await api.upsertRegion(M.regionToRow(record));
-    const mapped = M.regionFromRow(saved);
-    upsertBy(state.regions, mapped, 'slug');
-    return mapped;
+    const anterior = existing ? { ...existing } : null;
+    upsertBy(state.regions, { slug, name: record.name, description: record.description || '', sortOrder: record.sortOrder ?? 0 }, 'slug');
+    try {
+      const saved = await api.upsertRegion(M.regionToRow(record));
+      const mapped = M.regionFromRow(saved);
+      upsertBy(state.regions, mapped, 'slug');
+      return mapped;
+    } catch (err) {
+      if (anterior) upsertBy(state.regions, anterior, 'slug');
+      else state.regions = state.regions.filter((r) => r.slug !== slug);
+      throw err;
+    }
   },
   // Só remove se nenhum fornecedor estiver nesta região. Caso contrário, retorna { ok:false }.
   async remove(slug) {
