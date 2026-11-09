@@ -97,7 +97,7 @@ O build lê apenas dados públicos com a chave publicável (`js/config.js`). Nã
 | `SITE.googleMapsApiKey` | Opcional. Com uma chave da Google Maps Embed API, o mapa aparece embutido. Sem chave, a página usa links. |
 | `SUPABASE.url`, `SUPABASE.anonKey` | Projeto e chave **publicável** (anon). **Nunca** coloque a `service_role` aqui. |
 | `SUPABASE.imageBucket` | Bucket de imagens (`supplier-images`). |
-| `PLANS` | Planos de acesso. Hoje há um: R$ 29,90 por 365 dias. |
+| `PLANS` | Planos de acesso. Hoje há um à venda: R$ 29,90 por 30 dias (mensal). O plano anual antigo fica com `offered: false`, só para assinaturas já existentes. |
 | `PIX` | Chave Pix (CPF) e dados mostrados no pagamento. |
 
 Se o preço mudar, também regere o QR code (`img/pix-29-90.png`) e ajuste `PLANS`.
@@ -171,7 +171,7 @@ Se o banco já tem a Fase 1 aplicada, rode `migration-003-site-conectado.sql` e 
 1. O cliente abre um fornecedor, clica em **Ver contato completo**, escolhe o plano e paga por Pix (QR code ou copia e cola).
 2. Depois de pagar, ele confirma que já pagou. O site registra um pedido **pendente**.
 3. O administrador confere o Pix na conta bancária e abre **Pagamentos** no painel:
-   - **Confirmar Pix:** ativa a assinatura por 365 dias. Se o cliente já tinha uma assinatura válida, o prazo começa quando ela termina.
+   - **Confirmar Pix:** ativa a assinatura pelo prazo do plano (hoje 30 dias). Se o cliente já tinha uma assinatura válida, o prazo começa quando ela termina.
    - **Recusar:** marca o pedido como recusado (use se o Pix não chegou).
    - **Cancelar acesso:** tira o acesso de um cliente com assinatura ativa. O registro fica no histórico.
 

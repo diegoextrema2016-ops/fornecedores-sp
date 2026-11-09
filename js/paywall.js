@@ -63,7 +63,7 @@ function showPlans() {
     <p class="muted">Veja o WhatsApp, o Instagram e o endereço completo de todos os fornecedores.</p>
     ${status}
     <div class="plans">
-      ${PLANS.map((p) => `
+      ${PLANS.filter((p) => p.offered !== false).map((p) => `
         <div class="plan-card">
           <h4>${e(p.name)}</h4>
           <p class="plan-price"><strong>${money(p.price)}</strong> <span class="muted">/ ${p.days} dias</span></p>
