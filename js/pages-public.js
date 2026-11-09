@@ -93,7 +93,8 @@ export function home() {
         <a href="/categorias" class="link-arrow">Ver todas →</a>
       </div>
       <div class="grid grid-categories">
-        ${allCategories().slice(0, 10).map((c) => categoryCard(c, counts[c.slug] || 0)).join('')}
+        ${topCategoryCard()}
+        ${allCategories().slice(0, 9).map((c) => categoryCard(c, counts[c.slug] || 0)).join('')}
       </div>
     </section>
 
@@ -164,18 +165,25 @@ export function categoriesIndex() {
       <h1>Categorias</h1>
       <p class="lead">Encontre fornecedores pelo segmento do seu negócio.</p>
       <div class="grid grid-categories">
-        <a class="category-card category-card-top" href="/categorias/mais-acessados">
-          <span class="category-icon" aria-hidden="true">🔥</span>
-          <span class="category-body">
-            <strong>Mais acessados</strong>
-            <span class="muted small">As categorias com mais acessos aos fornecedores do site.</span>
-            <span class="category-count">${rankCategoriesByAccess(allCategories(), store.suppliers.approved()).length} categorias com fornecedores</span>
-          </span>
-        </a>
+        ${topCategoryCard()}
         ${allCategories().map((c) => categoryCard(c, counts[c.slug] || 0)).join('')}
       </div>
     </section>`,
   };
+}
+
+// Cartão "Mais acessados", sempre o primeiro da lista de categorias.
+function topCategoryCard() {
+  const n = rankCategoriesByAccess(allCategories(), store.suppliers.approved()).length;
+  return `
+  <a class="category-card category-card-top" href="/categorias/mais-acessados">
+    <span class="category-icon" aria-hidden="true">🔥</span>
+    <span class="category-body">
+      <strong>Mais acessados</strong>
+      <span class="muted small">As categorias com mais acessos aos fornecedores do site.</span>
+      <span class="category-count">${n} ${n === 1 ? 'categoria com fornecedores' : 'categorias com fornecedores'}</span>
+    </span>
+  </a>`;
 }
 
 // Categorias ordenadas pelos acessos dos seus fornecedores.
