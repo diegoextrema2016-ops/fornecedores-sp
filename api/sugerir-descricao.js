@@ -43,19 +43,31 @@ async function chamarGemini(prompt, comPensamento) {
     method: 'POST',
     headers: { 'x-goog-api-key': process.env.GEMINI_API_KEY, 'content-type': 'application/json' },
     body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig }),
-    // Tempo para a IA responder (a função da Vercel tem 30 segundos, ver vercel.json).
-    signal: AbortSignal.timeout(22000),
+    // Tempo por tentativa (com a nova tentativa cabe nos 30 segundos da Vercel, ver vercel.json).
+    signal: AbortSignal.timeout(12000),
   });
 }
 
 async function comGemini(prompt) {
-  let r = await chamarGemini(prompt, true);
+  let pensamento = true;
+  let r = await chamarGemini(prompt, pensamento);
   // Se o modelo não aceitar essa opção, tenta de novo sem ela.
   if (r.status === 400) {
     const texto = await r.clone().text();
-    if (/thinking/i.test(texto)) r = await chamarGemini(prompt, false);
+    if (/thinking/i.test(texto)) {
+      pensamento = false;
+      r = await chamarGemini(prompt, pensamento);
+    }
+  }
+  // Modelo ocupado (503/429/500): espera 2 segundos e tenta mais uma vez.
+  if ([429, 500, 503].includes(r.status)) {
+    await new Promise((ok) => setTimeout(ok, 2000));
+    r = await chamarGemini(prompt, pensamento);
   }
   const json = await r.json().catch(() => ({}));
+  if (r.status === 503 || r.status === 429) {
+    return { erro: 'A IA (Gemini) está muito ocupada agora. Tente de novo em alguns instantes.' };
+  }
   if (!r.ok) return { erro: `A IA (Gemini) respondeu com erro ${r.status}${json?.error?.message ? `: ${String(json.error.message).slice(0, 160)}` : '.'}` };
   const texto = (json.candidates?.[0]?.content?.parts || []).map((p) => p.text || '').join('').trim();
   return texto ? { texto } : { erro: 'A IA (Gemini) não devolveu texto. Tente de novo.' };
