@@ -46,3 +46,21 @@ test('página de categoria e de bairro pré-geradas não contêm dados de contat
     for (const secret of FORBIDDEN) assert.ok(!html.includes(secret), `vazou: ${secret}`);
   }
 });
+
+// Listagens estáticas (o que aparece antes do site carregar) mostram o mesmo que o visitante vê:
+// nem nome, nem @ do Instagram, nem logo. O nome só aparece na ficha do fornecedor.
+test('listagens estáticas não mostram nome, @ nem Instagram do fornecedor', () => {
+  const pages = [
+    seo.suppliersIndexPage({ suppliers: [supplier], regionName, categoryName: () => 'Moda feminina' }),
+    seo.categoryPage({ category, suppliers: [supplier], regionName }),
+    seo.regionPage({ region, suppliers: [supplier], categoryName: () => 'Moda feminina' }),
+  ];
+  for (const html of pages) {
+    const main = html.slice(html.indexOf('<main'), html.indexOf('</main>'));
+    const visible = main.replace(/href="[^"]*"/g, '');
+    assert.ok(!visible.includes('Loja Teste'), 'nome real aparece na listagem');
+    assert.ok(!visible.includes('loja_teste'), 'Instagram aparece na listagem');
+    assert.ok(!visible.includes('@'), 'há @ visível na listagem');
+    assert.ok(visible.includes('Fornecedor em Brás'), 'cartão de visitante ausente');
+  }
+});
