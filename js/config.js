@@ -49,7 +49,7 @@ export const PIX = {
 };
 
 // Banners da home, em faixa que rola para o lado (um por vez no celular).
-// src: imagem em img/banners/. href: para onde leva ao clicar (opcional).
+// src: imagem para computador. mobileSrc: imagem para celular (opcional, até 820px). href: para onde leva ao clicar (opcional).
 export const BANNERS = [
-  { src: '/img/banners/banner-1.jpg', alt: 'Fornecedores de SP: o maior guia de fornecedores de São Paulo', href: '/categorias' },
+  { src: '/img/banners/banner-1.jpg', mobileSrc: '/img/banners/banner-1-celular.jpg', alt: 'Fornecedores de SP: o maior guia de fornecedores de São Paulo', href: '/categorias' },
 ];

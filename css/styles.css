@@ -474,6 +474,6 @@ a.wa-link svg { color: var(--whatsapp); }
 .banner-track { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scroll-behavior: smooth; gap: 0; scrollbar-width: none; }
 .banner-track::-webkit-scrollbar { display: none; }
 .banner-slide { flex: 0 0 100%; scroll-snap-align: start; }
-.banner-slide a, .banner-slide img { display: block; width: 100%; height: auto; }
+.banner-slide a, .banner-slide img, .banner-slide picture { display: block; width: 100%; height: auto; }
 .banner-slide img { border-radius: 0; background: #0b0b12; }
 

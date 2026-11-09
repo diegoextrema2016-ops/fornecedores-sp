@@ -616,7 +616,7 @@ function bannersHtml() {
     <section class="banner-section" aria-label="Destaques">
       <div class="banner-track">
         ${BANNERS.map((b, i) => {
-          const img = `<img src="${e(b.src)}" alt="${e(b.alt)}" width="1600" height="533" ${i === 0 ? 'fetchpriority="high"' : 'loading="lazy"'} decoding="async">`;
+          const img = `<picture>${b.mobileSrc ? `<source media="(max-width: 820px)" srcset="${e(b.mobileSrc)}">` : ''}<img src="${e(b.src)}" alt="${e(b.alt)}" ${i === 0 ? 'fetchpriority="high"' : 'loading="lazy"'} decoding="async"></picture>`;
           return `<div class="banner-slide">${b.href ? `<a href="${e(b.href)}">${img}</a>` : img}</div>`;
         }).join('')}
       </div>
