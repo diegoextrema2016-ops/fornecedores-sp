@@ -7,32 +7,13 @@
 //  - sem nenhuma chave, responde { fallback: true } e o site usa sugestões prontas.
 import { SUPABASE } from '../js/config.js';
 
-// Estilos sorteados a cada pedido: é isso que faz cada sugestão sair diferente.
-const ESTILOS = [
-  'direto e objetivo, indicando o que a loja vende',
-  'acolhedor, falando com quem quer abastecer a loja',
-  'focado em revenda, destacando margem e variedade para quem compra para vender de novo',
-  'destacando a variedade de produtos e o atendimento direto',
-  'curto e chamativo, com uma frase de convite no final',
-  'profissional, falando de pedidos, orçamento e condições de compra',
-];
-
-function promptPara({ categoria, atacado, varejo, lojistas, outrasCidades }, estilo) {
-  const vendas = [
-    atacado && 'venda no atacado',
-    varejo && 'venda no varejo',
-    lojistas && 'atende lojistas e revendedores',
-    outrasCidades && 'envia para outras cidades',
-  ].filter(Boolean);
+// Só a categoria entra no pedido: texto curto e rápido.
+function promptPara({ categoria }) {
   return [
-    'Escreva uma descrição comercial para um fornecedor de atacado de São Paulo.',
-    `Categoria: ${categoria}.`,
-    vendas.length ? `Dados que podem ser citados: ${vendas.join('; ')}.` : '',
-    `Estilo desta vez: ${estilo}.`,
-    'Regras: português do Brasil; entre 200 e 450 caracteres; um ou dois parágrafos curtos.',
-    'Não invente tempo de mercado, prêmios, certificações, preços, endereço ou telefone.',
-    'Responda somente com o texto da descrição, sem aspas e sem título.',
-  ].filter(Boolean).join('\n');
+    `Escreva uma descrição comercial curta, em português do Brasil, com no máximo 2 frases, para um fornecedor de atacado de São Paulo da categoria "${categoria}".`,
+    'Fale do produto e do atacado. Não invente tempo de mercado, prêmios, preços, endereço ou telefone.',
+    'Responda somente com o texto, sem aspas e sem título.',
+  ].join(' ');
 }
 
 async function usuarioLogado(token) {
@@ -46,13 +27,13 @@ async function usuarioLogado(token) {
 // Desliga o "pensamento" do modelo (mais rápido para um texto curto) e tem limite de tempo.
 async function chamarGemini(prompt, comPensamento) {
   const modelo = process.env.GEMINI_MODEL || 'gemini-3.8-flash';
-  const generationConfig = { temperature: 1, maxOutputTokens: 300 };
+  const generationConfig = { temperature: 1, maxOutputTokens: 120 };
   if (comPensamento) generationConfig.thinkingConfig = { thinkingBudget: 0 };
   return fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelo}:generateContent`, {
     method: 'POST',
     headers: { 'x-goog-api-key': process.env.GEMINI_API_KEY, 'content-type': 'application/json' },
     body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig }),
-    signal: AbortSignal.timeout(15000),
+    signal: AbortSignal.timeout(9000),
   });
 }
 
@@ -100,15 +81,8 @@ export default async function handler(req, res) {
   }
 
   const corpo = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
-  const dados = {
-    categoria: String(corpo.categoria || 'produtos para revenda').slice(0, 80),
-    atacado: corpo.atacado === true,
-    varejo: corpo.varejo === true,
-    lojistas: corpo.lojistas === true,
-    outrasCidades: corpo.outrasCidades === true,
-  };
-  const estilo = ESTILOS[Math.floor(Math.random() * ESTILOS.length)];
-  const prompt = promptPara(dados, estilo);
+  const dados = { categoria: String(corpo.categoria || 'produtos para revenda').slice(0, 80) };
+  const prompt = promptPara(dados);
 
   try {
     const resultado = process.env.GEMINI_API_KEY ? await comGemini(prompt) : await comAnthropic(prompt);
