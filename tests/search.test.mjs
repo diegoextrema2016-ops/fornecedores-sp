@@ -140,3 +140,20 @@ test('administrador: nenhum campo é obrigatório (required: false)', () => {
   assert.equal(validateSupplier({ name: '', cep: '123' }, { requireTerms: false, required: false }).ok, false, 'formato continua valendo quando preenchido');
   assert.equal(validateSupplier({ name: '' }).ok, false, 'cadastro público continua exigindo');
 });
+
+import { rankCategoriesByAccess } from '../js/search.js';
+
+test('rankCategoriesByAccess soma acessos por categoria e ordena do mais acessado', () => {
+  const cats = [{ slug: 'a', name: 'Alfa' }, { slug: 'b', name: 'Beta' }, { slug: 'c', name: 'Gama' }];
+  const sups = [
+    { category: 'a', views: 10 }, { category: 'a', views: 5 },
+    { category: 'b', views: 40 },
+    { category: 'c', views: 0 },
+    { category: 'x', views: 999 },
+  ];
+  const ranked = rankCategoriesByAccess(cats, sups);
+  assert.deepEqual(ranked.map((r) => r.category.slug), ['b', 'a', 'c']);
+  assert.equal(ranked[1].accesses, 15);
+  assert.equal(ranked[1].suppliers, 2);
+  assert.deepEqual(rankCategoriesByAccess(cats, []), []);
+});

@@ -97,3 +97,18 @@ export function paginate(list, page = 1, pageSize = 12) {
     pageSize,
   };
 }
+
+// Ranking de categorias por acessos: soma das visualizações dos fornecedores aprovados de cada categoria.
+// Só entram categorias com pelo menos um fornecedor. Empate: ordem alfabética.
+export function rankCategoriesByAccess(categories, suppliers) {
+  const totals = {};
+  for (const s of suppliers) {
+    const t = totals[s.category] || (totals[s.category] = { accesses: 0, suppliers: 0 });
+    t.accesses += Number(s.views) || 0;
+    t.suppliers += 1;
+  }
+  return categories
+    .filter((c) => totals[c.slug])
+    .map((c) => ({ category: c, ...totals[c.slug] }))
+    .sort((a, b) => b.accesses - a.accesses || a.category.name.localeCompare(b.category.name, 'pt-BR'));
+}

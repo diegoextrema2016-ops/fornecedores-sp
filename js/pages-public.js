@@ -4,7 +4,7 @@ import { CATEGORIES, REGIONS, SUPPLIER_TYPES } from './data.js';
 import { store } from './store.js';
 import { go } from './nav.js';
 import { canSeeContacts } from './access.js';
-import { filterSuppliers, sortSuppliers, paginate } from './search.js';
+import { filterSuppliers, sortSuppliers, paginate, rankCategoriesByAccess } from './search.js';
 import { escapeHtml as e, formatCount, mapsLink, whatsappTarget, instagramHandle, normalizeUrl, formatPhone, maskPhone, maskHandle } from './utils.js';
 import {
   icon, categoryCard, supplierCard, pagination, emptyState, breadcrumbs, skeletonCards, demoBanner,
@@ -161,7 +161,41 @@ export function categoriesIndex() {
     <section class="container section-tight">
       <h1>Categorias</h1>
       <p class="lead">Encontre fornecedores pelo segmento do seu negócio.</p>
-      <div class="grid grid-categories">${allCategories().map((c) => categoryCard(c, counts[c.slug] || 0)).join('')}</div>
+      <div class="grid grid-categories">
+        <a class="category-card category-card-top" href="/categorias/mais-acessados">
+          <span class="category-icon" aria-hidden="true">🔥</span>
+          <span class="category-body">
+            <strong>Mais acessados</strong>
+            <span class="muted small">As categorias com mais acessos aos fornecedores do site.</span>
+            <span class="category-count">${rankCategoriesByAccess(allCategories(), store.suppliers.approved()).length} categorias com fornecedores</span>
+          </span>
+        </a>
+        ${allCategories().map((c) => categoryCard(c, counts[c.slug] || 0)).join('')}
+      </div>
+    </section>`,
+  };
+}
+
+// Categorias ordenadas pelos acessos dos seus fornecedores.
+export function mostAccessedPage() {
+  const ranked = rankCategoriesByAccess(allCategories(), store.suppliers.approved());
+  const items = ranked.map((r, i) => `
+      <li class="ranked-item">
+        <span class="rank-badge" aria-hidden="true">${i + 1}</span>
+        <a class="ranked-link" href="/categorias/${e(r.category.slug)}">
+          <strong>${e(r.category.name)}</strong>
+          <span class="muted small">${formatCount(r.accesses)} ${r.accesses === 1 ? 'acesso' : 'acessos'} · ${formatCount(r.suppliers)} ${r.suppliers === 1 ? 'fornecedor' : 'fornecedores'}</span>
+        </a>
+      </li>`).join('');
+  return {
+    title: `Categorias mais acessadas | ${SITE.shortName}`,
+    description: 'Veja as categorias de fornecedores de São Paulo com mais acessos no site.',
+    html: `
+    ${breadcrumbs([{ label: 'Início', href: '/' }, { label: 'Categorias', href: '/categorias' }, { label: 'Mais acessados' }])}
+    <section class="container section-tight">
+      <h1>Categorias mais acessadas</h1>
+      <p class="lead">Ordenadas pelo total de acessos aos fornecedores de cada categoria.</p>
+      ${items ? `<ol class="plain-list ranked-list">${items}</ol>` : emptyState('Ainda não há acessos', 'Assim que os fornecedores começarem a receber visitas, as categorias aparecem aqui.', '<a class="btn btn-primary" href="/categorias">Ver todas as categorias</a>')}
     </section>`,
   };
 }
