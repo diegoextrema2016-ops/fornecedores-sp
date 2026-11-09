@@ -47,3 +47,9 @@ export const PIX = {
   city: 'SAO PAULO',
   qrImage: '/img/pix-29-90.png', // QR do valor de R$ 29,90; regere se o preço mudar
 };
+
+// Banners da home, em faixa que rola para o lado (um por vez no celular).
+// src: imagem em img/banners/. href: para onde leva ao clicar (opcional).
+export const BANNERS = [
+  { src: '/img/banners/banner-1.jpg', alt: 'Fornecedores de SP: o maior guia de fornecedores de São Paulo', href: '/categorias' },
+];
