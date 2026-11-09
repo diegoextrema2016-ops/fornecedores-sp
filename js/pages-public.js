@@ -69,7 +69,7 @@ export function home() {
     <section class="hero">
       <div class="container hero-inner">
         <p class="eyebrow">25 de Março · Brás · Pari · Bom Retiro</p>
-        <h1>Encontre fornecedores de São Paulo.</h1>
+        <h1>Os melhores fornecedores de São Paulo em um só lugar.</h1>
         <p class="lead">Descubra lojas, distribuidores e fornecedores para comprar no atacado e abastecer seu negócio.</p>
         <form class="search-hero" role="search" data-search-form data-target="/fornecedores">
           <label class="sr-only" for="hero-q">Buscar</label>
