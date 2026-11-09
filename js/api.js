@@ -4,7 +4,8 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 import { SUPABASE } from './config.js';
 
 export const sb = createClient(SUPABASE.url, SUPABASE.anonKey, {
-  auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false },
+  // detectSessionInUrl: lê o retorno do link de confirmação (tokens no endereço depois do #) e abre a sessão.
+  auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
 });
 
 const BUCKET = SUPABASE.imageBucket;
