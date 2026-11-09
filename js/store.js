@@ -135,6 +135,7 @@ async function doRefresh() {
   Object.assign(state, { session, categories, suppliers, favorites, subscriptions, users, allSubscriptions, regions: catalog.regions.map(M.regionFromRow) });
   lastRefreshAt = Date.now();
   everLoaded = true;
+  saveAdminSnapshot();
 }
 
 // ---------- Autenticação ----------
@@ -169,6 +170,7 @@ const auth = {
     state.subscriptions = [];
     state.users = [];
     state.allSubscriptions = [];
+    clearAdminSnapshot();
   },
 };
 
@@ -494,6 +496,42 @@ function patchSubscription(id, fields) {
   state.allSubscriptions = apply(state.allSubscriptions);
   state.subscriptions = apply(state.subscriptions);
 }
+
+// Cópia do painel guardada só nesta aba (sessionStorage, apagada ao fechar a aba). Assim, ao atualizar a página
+// do painel, a tela aparece na hora com os últimos dados, e o banco atualiza em segundo plano.
+const ADMIN_SNAPSHOT_KEY = 'spf:admin-snapshot';
+
+function saveAdminSnapshot() {
+  if (typeof sessionStorage === 'undefined' || state.session?.role !== 'admin') return;
+  try {
+    sessionStorage.setItem(ADMIN_SNAPSHOT_KEY, JSON.stringify({
+      session: state.session, categories: state.categories, regions: state.regions, suppliers: state.suppliers,
+      favorites: state.favorites, subscriptions: state.subscriptions, users: state.users, allSubscriptions: state.allSubscriptions,
+    }));
+  } catch {
+    // Espaço cheio ou armazenamento bloqueado: segue sem a cópia.
+  }
+}
+
+function clearAdminSnapshot() {
+  try { sessionStorage.removeItem(ADMIN_SNAPSHOT_KEY); } catch {}
+}
+
+function restoreAdminSnapshot() {
+  if (typeof sessionStorage === 'undefined') return;
+  try {
+    const snap = JSON.parse(sessionStorage.getItem(ADMIN_SNAPSHOT_KEY) || 'null');
+    if (!snap || snap.session?.role !== 'admin') return;
+    Object.assign(state, {
+      session: snap.session, categories: snap.categories || [], regions: snap.regions || [], suppliers: snap.suppliers || [],
+      favorites: snap.favorites || [], subscriptions: snap.subscriptions || [], users: snap.users || [], allSubscriptions: snap.allSubscriptions || [],
+    });
+    everLoaded = true;
+  } catch {
+    clearAdminSnapshot();
+  }
+}
+restoreAdminSnapshot();
 
 // Impressão do conteúdo da cópia: serve para saber se uma atualização em segundo plano trouxe mudanças.
 function fingerprint() {
