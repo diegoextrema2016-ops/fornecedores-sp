@@ -81,6 +81,7 @@ async function persistImage(value, supplierId, name) {
 // ---------- Carregamento ----------
 let inFlight = null;
 let lastRefreshAt = 0; // quando a cópia foi carregada pela última vez (ms)
+let everLoaded = false; // a cópia já foi carregada ao menos uma vez nesta visita
 
 // maxAgeMs: se a cópia é mais nova que isso e quem navega não é administrador, usa a cópia atual.
 // Sem maxAgeMs (ou 0), sempre busca no banco. Login, logout e cadastros zeram a cópia.
@@ -133,6 +134,7 @@ async function doRefresh() {
 
   Object.assign(state, { session, categories, suppliers, favorites, subscriptions, users, allSubscriptions, regions: catalog.regions.map(M.regionFromRow) });
   lastRefreshAt = Date.now();
+  everLoaded = true;
 }
 
 // ---------- Autenticação ----------
@@ -471,8 +473,15 @@ function patchSubscription(id, fields) {
   state.subscriptions = apply(state.subscriptions);
 }
 
+// Impressão do conteúdo da cópia: serve para saber se uma atualização em segundo plano trouxe mudanças.
+function fingerprint() {
+  return JSON.stringify([state.categories, state.regions, state.suppliers, state.favorites, state.subscriptions, state.users, state.allSubscriptions]);
+}
+
 export const store = {
   refresh,
+  loaded: () => everLoaded,
+  fingerprint,
   auth,
   session,
   suppliers,
