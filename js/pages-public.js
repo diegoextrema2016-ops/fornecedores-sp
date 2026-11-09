@@ -401,6 +401,8 @@ export function supplierPage({ slug }) {
     store.suppliers.incrementViews(s.id);
   }
   const unlocked = canSeeContacts();
+  // Dado escondido do visitante não é "não informado": ele existe, só está reservado a assinantes.
+  const semDado = unlocked ? 'Não informado' : 'Disponível para assinantes';
   const links = supplierMapLinks(s);
   const wa = whatsappTarget(s, `${SITE.whatsappDefaultMessage} (${s.name})`);
   const fav = store.favorites.has(s.id);
@@ -453,10 +455,10 @@ export function supplierPage({ slug }) {
         ${blurGate(`<section class="card">
           <h2>Contato e localização</h2>
           <dl class="info-list">
-            <dt>Endereço</dt><dd>${e(fullAddress || 'Não informado')}</dd>
-            <dt>WhatsApp</dt><dd>${s.whatsapp ? e(unlocked ? formatPhone(s.whatsapp) : maskPhone(s.whatsapp)) : (s.whatsappUrl ? (unlocked ? `<a href="${e(wa)}" target="_blank" rel="noopener noreferrer">Abrir link do WhatsApp</a>` : 'Link disponível para assinantes') : 'Não informado')}</dd>
-            <dt>Instagram</dt><dd>${links.ig ? (unlocked ? `<a href="${e(links.ig)}" target="_blank" rel="noopener noreferrer">@${e(instagramHandle(s.instagram))}</a>` : e(maskHandle(s.instagram))) : 'Não informado'}</dd>
-            <dt>Site</dt><dd>${links.site ? (unlocked ? `<a href="${e(links.site)}" target="_blank" rel="noopener noreferrer">${e(s.site)}</a>` : 'Disponível para assinantes') : 'Não informado'}</dd>
+            <dt>Endereço</dt><dd>${e(fullAddress || semDado)}</dd>
+            <dt>WhatsApp</dt><dd>${s.whatsapp ? e(unlocked ? formatPhone(s.whatsapp) : maskPhone(s.whatsapp)) : (s.whatsappUrl ? (unlocked ? `<a href="${e(wa)}" target="_blank" rel="noopener noreferrer">Abrir link do WhatsApp</a>` : 'Disponível para assinantes') : semDado)}</dd>
+            <dt>Instagram</dt><dd>${links.ig ? (unlocked ? `<a href="${e(links.ig)}" target="_blank" rel="noopener noreferrer">@${e(instagramHandle(s.instagram))}</a>` : e(maskHandle(s.instagram))) : semDado}</dd>
+            <dt>Site</dt><dd>${links.site ? (unlocked ? `<a href="${e(links.site)}" target="_blank" rel="noopener noreferrer">${e(s.site)}</a>` : 'Disponível para assinantes') : semDado}</dd>
             <dt>Envio</dt><dd>${s.shipsOtherCities ? 'Envia para outras cidades' : 'Somente retirada/local'}</dd>
           </dl>
         </section>`)}
