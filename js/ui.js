@@ -71,7 +71,7 @@ export function footer() {
         <a href="/termos">Termos de uso</a>
       </nav>
     </div>
-    <div class="container footer-bottom muted">© ${year} ${e(SITE.name)}. Dados de demonstração são identificados como tal.</div>
+    <div class="container footer-bottom muted">© ${year} ${e(SITE.name)}.</div>
   </footer>`;
 }
 
