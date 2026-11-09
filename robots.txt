@@ -7,4 +7,4 @@ Disallow: /cadastro
 Disallow: /favoritos
 Disallow: /sair
 
-Sitemap: https://fornecedoresdesp.com.br/sitemap.xml
+Sitemap: https://www.fornecedoresdesp.com.br/sitemap.xml
