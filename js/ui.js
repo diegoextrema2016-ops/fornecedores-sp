@@ -173,7 +173,10 @@ export function supplierCard(s, { categoryName = '', regionName = '', favorite =
   const waText = s.whatsapp
     ? (unlocked ? formatPhone(s.whatsapp) : maskPhone(s.whatsapp))
     : (unlocked ? 'Abrir link do WhatsApp' : 'Link do WhatsApp');
-  const contactLine = !hasPhone
+  // Visitante não recebe o contato, então não dá para saber se o fornecedor tem WhatsApp: nunca dizemos "Sem WhatsApp".
+  const contactLine = !unlocked
+    ? `<p class="contact-line small">${icon.wa} <span>WhatsApp para assinantes</span></p>`
+    : !hasPhone
     ? ''
     : unlocked && wa
       ? `<a class="contact-line small wa-link" href="${e(wa)}" target="_blank" rel="noopener noreferrer" aria-label="Abrir WhatsApp de ${e(s.name)}">${icon.wa} <span>${e(waText)}</span></a>`
@@ -181,10 +184,11 @@ export function supplierCard(s, { categoryName = '', regionName = '', favorite =
   const igLine = ig
     ? `<p class="small muted">Instagram: ${e(unlocked ? '@' + ig : maskHandle(s.instagram))}</p>`
     : '';
+  const unlockButton = '<button class="btn btn-primary" type="button" data-action="unlock">Ver contato completo</button>';
   const primaryAction = unlocked && wa
     ? `<a class="btn btn-whatsapp" href="${e(wa)}" target="_blank" rel="noopener noreferrer">${icon.wa} WhatsApp</a>`
-    : (hasPhone
-      ? `<button class="btn btn-primary" type="button" data-action="unlock">Ver contato completo</button>`
+    : (!unlocked || hasPhone
+      ? unlockButton
       : '<span class="btn btn-disabled" aria-disabled="true">Sem WhatsApp</span>');
   return `
   <article class="supplier-card">
