@@ -1,16 +1,34 @@
 // Geração do HTML público para mecanismos de busca (usado pelo build na Vercel).
 // Funções puras: recebem dados já lidos do banco e devolvem texto HTML, XML ou JSON.
 // Regra: só usa informações que existem nos dados. O que estiver vazio não aparece.
-import { SITE, BANNERS } from '../js/config.js';
+import { SITE, BANNERS, SUPABASE } from '../js/config.js';
 import { SUPPLIER_TYPES } from '../js/data.js';
 
 // Categorias com restrição legal (venda proibida pela Anvisa, por exemplo) ficam fora do Google.
 export const RESTRICTED_CATEGORY_SLUGS = ['vapers-e-acessorios'];
 
+// Conexões antecipadas (banco e biblioteca do Supabase) e módulos do site baixados em paralelo, para abrir mais rápido.
+const APP_MODULES = ['access', 'api', 'app', 'backup', 'config', 'data', 'extract', 'forms', 'import', 'mapping', 'nav',
+  'pages-account', 'pages-admin', 'pages-public', 'paywall', 'search', 'store', 'ui', 'utils'];
+const SUPABASE_HOST = (() => { try { return new URL(SUPABASE.url).origin; } catch { return ''; } })();
 export const SHARED_HEAD_LINKS = `<link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  ${SUPABASE_HOST ? `<link rel="preconnect" href="${SUPABASE_HOST}" crossorigin>` : ''}
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
-  <link rel="stylesheet" href="/css/styles.css">`;
+  <link rel="stylesheet" href="/css/styles.css">
+  ${APP_MODULES.map((m) => `<link rel="modulepreload" href="/js/${m}.js">`).join('\n  ')}`;
+
+// Imagem principal da home (banner): pré-carregada para aparecer logo.
+function bannerPreloadLinks() {
+  const b = BANNERS[0];
+  if (!b) return '';
+  const webp = (src) => src.replace(/\.(jpe?g|png)$/i, '.webp');
+  return [
+    b.mobileSrc ? `<link rel="preload" as="image" type="image/webp" href="${esc(webp(b.mobileSrc))}" media="(max-width: 820px)" fetchpriority="high">` : '',
+    `<link rel="preload" as="image" type="image/webp" href="${esc(webp(b.src))}" media="(min-width: 821px)" fetchpriority="high">`,
+  ].join('\n  ');
+}
 
 // Ícone da página (o mesmo do index.html), preenchido pelo build.
 let FAVICON = '';
@@ -116,6 +134,7 @@ export function documentHtml({ title, description, path, noindex = false, jsonld
   <meta name="twitter:image" content="${esc(image)}">` : ''}
   ${FAVICON}
   ${SHARED_HEAD_LINKS}
+  ${path === '/' ? bannerPreloadLinks() : ''}
   ${jsonScripts}
 </head>
 <body>
