@@ -63,8 +63,8 @@ export function home() {
   const blurred = !canSeeContacts();
   const popular = ['Eletrônicos', 'Moda feminina', 'Tênis', 'Acessórios', 'Perfumes'];
   return {
-    title: `${SITE.name} | Fornecedores de São Paulo`,
-    description: SITE.description,
+    title: 'Fornecedores Atacado SP | Brás, Moda, Tênis e Eletrônicos',
+    description: 'Encontre fornecedores de atacado em São Paulo, Brás e 25 de Março. Explore lojas de roupas, moda feminina, tênis, eletrônicos e muito mais.',
     html: `
     <section class="hero">
       <div class="container hero-inner">
@@ -169,8 +169,8 @@ export function categoryPage({ slug }, query) {
   const cat = store.categories.get(slug);
   if (!cat) return notFound();
   return listingPage({
-    title: cat.name,
-    description: `${cat.description || ''} Fornecedores de ${cat.name} em São Paulo.`,
+    title: `Fornecedores de ${cat.name} em São Paulo | Atacado`,
+    description: `${cat.description || ''} Fornecedores de ${cat.name} no atacado de São Paulo.`.trim(),
     crumbs: [{ label: 'Início', href: '/' }, { label: 'Categorias', href: '/categorias' }, { label: cat.name }],
     heading: `${cat.name}`,
     intro: cat.description,
@@ -184,7 +184,7 @@ export function regionPage({ slug }, query) {
   const region = store.regions.get(slug);
   if (!region) return notFound();
   return listingPage({
-    title: `Fornecedores na ${region.name} | ${SITE.shortName}`,
+    title: `Fornecedores no ${region.name} | São Paulo`,
     description: `${region.description} Encontre fornecedores na ${region.name}, São Paulo.`,
     crumbs: [{ label: 'Início', href: '/' }, { label: 'Regiões' }, { label: region.name }],
     heading: `Fornecedores na ${region.name}`,
@@ -363,7 +363,7 @@ export function supplierPage({ slug }) {
     ? [s.address && `${s.address}${s.number ? `, ${s.number}` : ''}`, s.complement, s.bairro && regName[s.bairro], s.city, s.state, s.cep].filter(Boolean).join(' · ')
     : [s.bairro && regName[s.bairro], s.city].filter(Boolean).join(' · ') + ' · endereço completo para assinantes';
   const shareUrl = `${SITE.url}/fornecedor/${s.slug}`;
-  const pageTitle = `${s.name} | Fornecedor em ${regName[s.bairro] || s.city}`;
+  const pageTitle = `${s.name} | Fornecedor em ${regName[s.bairro] || s.city || 'São Paulo'}`;
 
   return {
     title: pageTitle,
