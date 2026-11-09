@@ -4,6 +4,7 @@ import { validateSupplier, escapeHtml as e, onlyDigits } from './utils.js';
 import { store } from './store.js';
 import { sugerirDescricao } from './descricao.js';
 import { sb } from './api.js';
+import { toast } from './ui.js';
 
 // Opções de categoria: as ativas do store, mais a categoria atual do fornecedor (mesmo que esteja inativa).
 // Opções de bairro/cidade vindas do store (ordem alfabética).
@@ -96,8 +97,8 @@ export function supplierFormHtml(s = {}, { admin = false, loggedEmail = '' } = {
       ${field('description', `Descrição comercial${star} (até 600 caracteres)`,
         `<textarea id="description" name="description" rows="4" maxlength="600" ${R ? 'required' : ''}>${v('description')}</textarea>`, 'field-wide')}
       <div class="suggest-row field-wide">
-        <button type="button" class="btn btn-secondary" data-suggest-description>Sugerir descrição</button>
-        <span class="muted small">Gera um texto de exemplo para você ajustar. Clique de novo para outra sugestão.</span>
+        <button type="button" class="btn btn-secondary" data-suggest-description>Sugerir com IA</button>
+        <span class="muted small">A IA escreve um texto novo a cada clique. Se ela não responder, aparece o motivo e uma sugestão pronta.</span>
       </div>
       ${text('tags', 'Palavras-chave (separadas por vírgula)', { wide: true, value: (s.tags || []).join(', '), ph: 'Ex.: vestido, blusa, atacado' })}
       <div class="form-grid">
@@ -133,22 +134,24 @@ export function supplierFormHtml(s = {}, { admin = false, loggedEmail = '' } = {
   </form>`;
 }
 
-// Botão "Sugerir descrição": pede uma descrição à IA (função do site, exige login).
-// Se a IA não estiver disponível, usa sugestões prontas, também variadas.
+// Botão "Sugerir descrição": pede o texto à IA (função do site; exige login).
+// Se a IA não responder, mostra o motivo e usa uma sugestão pronta.
 async function pedirSugestaoIA(dados) {
   try {
     const { data } = await sb.auth.getSession();
     const token = data.session?.access_token;
-    if (!token) return '';
+    if (!token) return { erro: 'Entre na sua conta para usar a IA.' };
     const r = await fetch('/api/sugerir-descricao', {
       method: 'POST',
       headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
       body: JSON.stringify(dados),
     });
     const json = await r.json().catch(() => ({}));
-    return r.ok && json.texto ? json.texto : '';
-  } catch {
-    return '';
+    if (r.ok && json.texto) return { texto: json.texto };
+    if (json.fallback) return { erro: 'A IA ainda não está configurada no site. Usando sugestão pronta.' };
+    return { erro: json.error || `Não foi possível gerar com a IA (código ${r.status}).` };
+  } catch (err) {
+    return { erro: `Falha de conexão com a IA: ${String(err?.message || err)}` };
   }
 }
 
@@ -169,9 +172,15 @@ if (typeof document !== 'undefined') {
     };
     const textoBotao = botao.textContent;
     botao.disabled = true;
-    botao.textContent = 'Gerando...';
+    botao.textContent = 'Gerando com IA...';
     try {
-      campo.value = (await pedirSugestaoIA(dados)) || sugerirDescricao(dados);
+      const resposta = await pedirSugestaoIA(dados);
+      if (resposta.texto) {
+        campo.value = resposta.texto;
+      } else {
+        toast(resposta.erro, 'error');
+        campo.value = sugerirDescricao(dados);
+      }
     } finally {
       botao.disabled = false;
       botao.textContent = textoBotao;
@@ -179,43 +188,6 @@ if (typeof document !== 'undefined') {
     campo.dispatchEvent(new Event('input', { bubbles: true }));
     campo.focus();
   });
-}
-
-// Lê os valores do formulário para um objeto. Imagens são lidas à parte (async).
-export function readSupplierForm(form) {
-  const fd = new FormData(form);
-  const str = (k) => (fd.get(k) ?? '').toString().trim();
-  const bool = (k) => form.elements[k]?.checked === true;
-  return {
-    name: str('name'),
-    responsible: str('responsible'),
-    email: str('email'),
-    whatsapp: onlyDigits(str('whatsapp')) ? str('whatsapp') : '',
-    whatsappUrl: str('whatsappUrl'),
-    instagram: str('instagram'),
-    site: str('site'),
-    category: str('category'),
-    subcategory: str('subcategory'),
-    supplierType: str('supplierType'),
-    address: str('address'),
-    number: str('number'),
-    complement: str('complement'),
-    bairro: str('bairro'),
-    city: str('city') || 'São Paulo',
-    state: (str('state') || 'SP').toUpperCase().slice(0, 2),
-    cep: str('cep'),
-    description: str('description').slice(0, 600),
-    tags: str('tags').split(',').map((t) => t.trim().toLowerCase()).filter(Boolean).slice(0, 12),
-    saleWholesale: bool('saleWholesale'),
-    saleRetail: bool('saleRetail'),
-    saleResellers: bool('saleResellers'),
-    shipsOtherCities: bool('shipsOtherCities'),
-    minOrder: str('minOrder'),
-    hours: str('hours'),
-    acceptTerms: bool('acceptTerms'),
-    ...(form.elements.status ? { status: str('status') } : {}),
-    ...(form.elements.verified ? { verified: bool('verified'), featured: bool('featured'), isDemo: bool('isDemo') } : {}),
-  };
 }
 
 // Valida e mostra erros embaixo de cada campo. Retorna o objeto validado ou null.

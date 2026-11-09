@@ -73,12 +73,17 @@ export default async function handler(req, res) {
         messages: [{ role: 'user', content: promptPara(dados, estilo) }],
       }),
     });
-    if (!r.ok) return res.status(502).json({ error: 'A IA não respondeu. Tente de novo.' });
+    if (!r.ok) {
+      // Mostra o motivo (sem chave): o erro que a própria IA devolve.
+      const corpo = await r.json().catch(() => ({}));
+      const detalhe = String(corpo?.error?.message || '').slice(0, 160);
+      return res.status(502).json({ error: `A IA respondeu com erro ${r.status}${detalhe ? `: ${detalhe}` : '.'}` });
+    }
     const json = await r.json();
     const texto = (json.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('').trim();
     if (!texto) return res.status(502).json({ error: 'A IA não devolveu texto. Tente de novo.' });
     return res.status(200).json({ texto: texto.slice(0, 600) });
-  } catch {
-    return res.status(502).json({ error: 'Não foi possível falar com a IA agora.' });
+  } catch (err) {
+    return res.status(502).json({ error: `Não foi possível falar com a IA agora (${String(err?.message || err).slice(0, 120)}).` });
   }
 }
