@@ -41,7 +41,7 @@ export const esc = (v = '') => String(v ?? '').replace(/[&<>"']/g, (c) => ENTITI
 
 const BASE = SITE.url.replace(/\/$/, '');
 export const absUrl = (path = '/') => BASE + (path.startsWith('/') ? path : `/${path}`);
-const DEFAULT_OG_IMAGE = absUrl('/img/og-banner.jpg');
+const DEFAULT_OG_IMAGE = absUrl('/img/og-banner-2.jpg');
 
 // Remove marcas de tamanho e espaços desnecessários de um texto livre.
 const clean = (v = '') => String(v ?? '').replace(/\s+/g, ' ').trim();
