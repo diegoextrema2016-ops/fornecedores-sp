@@ -1,5 +1,6 @@
 // Páginas públicas. Cada página exporta uma função (params, query) => { title, description, html, mount? }.
 import { SITE, BANNERS } from './config.js';
+import { api } from './api.js';
 import { CATEGORIES, REGIONS, SUPPLIER_TYPES } from './data.js';
 import { store } from './store.js';
 import { go } from './nav.js';
@@ -80,9 +81,9 @@ export function home() {
           <input id="hero-q" name="q" type="search" placeholder="Busque produtos, fornecedores ou categorias..." autocomplete="off">
           <button class="btn btn-primary" type="submit">Buscar</button>
         </form>
-        <div class="chips" aria-label="Pesquisas populares">
+        <div class="chips" aria-label="Pesquisas populares" data-populares>
           <span class="muted small">Populares:</span>
-          ${popular.map((p) => `<a class="chip" href="/fornecedores?q=${encodeURIComponent(p)}">${e(p)}</a>`).join('')}
+          ${popular.map(chipPopular).join('')}
         </div>
       </div>
     </section>
@@ -141,8 +142,31 @@ export function home() {
     mount: (root) => {
       root.querySelectorAll('[data-search-form]').forEach((f) => wireSearchForm(f));
       wireFavorites(root);
+      // Troca a lista inicial pelas buscas mais feitas no site, quando houver buscas suficientes.
+      api.buscasPopulares(5).then((termos) => {
+        const box = root.querySelector('[data-populares]');
+        if (!box || termos.length < 3) return;
+        box.innerHTML = `<span class="muted small">Populares:</span>${termos.map((t) => chipPopular(t.charAt(0).toUpperCase() + t.slice(1))).join('')}`;
+      }).catch(() => {});
     },
   };
+}
+
+// Registra a busca digitada pelo visitante: uma vez por termo em cada visita, sem contar paginação nem atalhos da home.
+function registraBusca(query) {
+  const termo = (query.get('q') || '').trim();
+  if (!termo || query.get('pagina') || query.get('origem') === 'popular') return;
+  const chave = termo.toLowerCase();
+  let feitas = [];
+  try { feitas = JSON.parse(sessionStorage.getItem('spf:buscas') || '[]'); } catch { feitas = []; }
+  if (feitas.includes(chave)) return;
+  try { sessionStorage.setItem('spf:buscas', JSON.stringify([...feitas, chave].slice(-50))); } catch { /* sem armazenamento: segue sem o controle */ }
+  api.registraBusca(termo).catch(() => {});
+}
+
+// Atalho de busca da home. Vai para a lista com origem=popular, para não contar o clique como busca nova.
+function chipPopular(termo) {
+  return `<a class="chip" href="/fornecedores?q=${encodeURIComponent(termo)}&origem=popular">${e(termo)}</a>`;
 }
 
 function wireSearchForm(form) {
@@ -304,6 +328,7 @@ function listingPage({ title, description, crumbs, heading, intro, fixed, base, 
       </div>
     </section>`,
     mount: (root) => {
+      registraBusca(query);
       const form = root.querySelector('[data-filter-form]');
       // Trocar a categoria atualiza a lista de subcategorias na hora (sem recarregar a página).
       const catSel = root.querySelector('#f-cat');
