@@ -2,8 +2,9 @@
 // Regras:
 //  - só responde a quem está logado no site (confere o token no Supabase);
 //  - as chaves ficam nas variáveis de ambiente da Vercel, nunca no código:
-//      GEMINI_API_KEY (gratuita, Google AI Studio) tem prioridade;
-//      ANTHROPIC_API_KEY (paga) é usada se a Gemini não estiver configurada;
+//      GROQ_API_KEY (gratuita, console.groq.com) tem prioridade;
+//      GEMINI_API_KEY (gratuita, Google AI Studio) é usada se a Groq não estiver configurada;
+//      ANTHROPIC_API_KEY (paga) é usada se nenhuma das outras estiver configurada;
 //  - sem nenhuma chave, responde { fallback: true } e o site usa sugestões prontas.
 import { SUPABASE } from '../js/config.js';
 
@@ -46,6 +47,38 @@ async function chamarGemini(prompt, comPensamento) {
     // Tempo por tentativa (com a nova tentativa cabe nos 30 segundos da Vercel, ver vercel.json).
     signal: AbortSignal.timeout(12000),
   });
+}
+
+// Groq (gratuita, muito rápida). Usa o formato da OpenAI. Modelo pode ser trocado por GROQ_MODEL.
+async function chamarGroq(prompt) {
+  const modelo = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
+  return fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${process.env.GROQ_API_KEY}`, 'content-type': 'application/json' },
+    body: JSON.stringify({
+      model: modelo,
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 1,
+      max_tokens: 300,
+    }),
+    signal: AbortSignal.timeout(12000),
+  });
+}
+
+async function comGroq(prompt) {
+  let r = await chamarGroq(prompt);
+  // Serviço ocupado: espera 2 segundos e tenta mais uma vez.
+  if ([429, 500, 503].includes(r.status)) {
+    await new Promise((ok) => setTimeout(ok, 2000));
+    r = await chamarGroq(prompt);
+  }
+  const json = await r.json().catch(() => ({}));
+  if (r.status === 503 || r.status === 429) {
+    return { erro: 'A IA (Groq) está muito ocupada agora. Tente de novo em alguns instantes.' };
+  }
+  if (!r.ok) return { erro: `A IA (Groq) respondeu com erro ${r.status}${json?.error?.message ? `: ${String(json.error.message).slice(0, 160)}` : '.'}` };
+  const texto = String(json?.choices?.[0]?.message?.content || '').trim();
+  return texto ? { texto } : { erro: 'A IA (Groq) não devolveu texto. Tente de novo.' };
 }
 
 async function comGemini(prompt) {
@@ -94,7 +127,7 @@ async function comAnthropic(prompt) {
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Método não permitido.' });
 
-  if (!process.env.GEMINI_API_KEY && !process.env.ANTHROPIC_API_KEY) {
+  if (!process.env.GROQ_API_KEY && !process.env.GEMINI_API_KEY && !process.env.ANTHROPIC_API_KEY) {
     return res.status(200).json({ fallback: true });
   }
 
@@ -111,7 +144,11 @@ export default async function handler(req, res) {
   const prompt = promptPara(dados);
 
   try {
-    const resultado = process.env.GEMINI_API_KEY ? await comGemini(prompt) : await comAnthropic(prompt);
+    const resultado = process.env.GROQ_API_KEY
+      ? await comGroq(prompt)
+      : process.env.GEMINI_API_KEY
+        ? await comGemini(prompt)
+        : await comAnthropic(prompt);
     if (resultado.erro) return res.status(502).json({ error: resultado.erro });
     return res.status(200).json({ texto: resultado.texto.slice(0, 600) });
   } catch (err) {
