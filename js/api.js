@@ -111,6 +111,15 @@ export const api = {
     check(await sb.rpc('increment_supplier_views', { p_supplier_id: supplierId }));
   },
 
+  // ----- Buscas feitas no site (Populares da home) -----
+  async registraBusca(termo) {
+    check(await sb.rpc('registra_busca', { p_termo: termo }));
+  },
+  async buscasPopulares(limite = 5) {
+    const linhas = check(await sb.rpc('buscas_populares', { p_limite: limite }));
+    return (linhas || []).map((r) => r.termo);
+  },
+
   // ----- Escrita: categorias e regiões (somente administrador, o banco confere) -----
   async upsertCategory(row, subcategoryNames = []) {
     const saved = check(await sb.from('categories').upsert(row, { onConflict: 'slug' }).select().single());
