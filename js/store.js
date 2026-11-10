@@ -13,6 +13,7 @@ import * as M from './mapping.js';
 import { instagramKey, phoneKey } from './extract.js';
 
 const GUEST_FAV_KEY = 'spf:v2:guest-favorites';
+const SESSION_CACHE_KEY = 'spf:session-cache';
 const PENDING_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 // Cópia em memória, recarregada por refresh().
@@ -85,8 +86,11 @@ let everLoaded = false; // a cópia já foi carregada ao menos uma vez nesta vis
 
 // maxAgeMs: se a cópia é mais nova que isso e quem navega não é administrador, usa a cópia atual.
 // Sem maxAgeMs (ou 0), sempre busca no banco. Login, logout e cadastros zeram a cópia.
+// Janela mínima de 5 minutos: trocar de página não baixa a lista de fornecedores de novo a cada clique.
+const JANELA_DE_CACHE_MS = 5 * 60 * 1000;
 function refresh({ maxAgeMs = 0 } = {}) {
-  const usable = maxAgeMs > 0 && Date.now() - lastRefreshAt < maxAgeMs && state.session?.role !== 'admin';
+  const janela = Math.max(maxAgeMs, JANELA_DE_CACHE_MS);
+  const usable = maxAgeMs > 0 && Date.now() - lastRefreshAt < janela && state.session?.role !== 'admin';
   if (usable && !inFlight) return Promise.resolve();
   if (!inFlight) inFlight = doRefresh().finally(() => { inFlight = null; });
   return inFlight;
@@ -136,6 +140,7 @@ async function doRefresh() {
   lastRefreshAt = Date.now();
   everLoaded = true;
   saveAdminSnapshot();
+  saveSessionCache();
 }
 
 // ---------- Autenticação ----------
@@ -514,7 +519,10 @@ function saveAdminSnapshot() {
 }
 
 function clearAdminSnapshot() {
-  try { sessionStorage.removeItem(ADMIN_SNAPSHOT_KEY); } catch {}
+  try {
+    sessionStorage.removeItem(ADMIN_SNAPSHOT_KEY);
+    sessionStorage.removeItem(SESSION_CACHE_KEY);
+  } catch {}
 }
 
 function restoreAdminSnapshot() {
@@ -532,6 +540,37 @@ function restoreAdminSnapshot() {
   }
 }
 restoreAdminSnapshot();
+
+// Cópia de quem não é administrador, guardada só nesta aba (sessionStorage): ao atualizar a página,
+// o site abre na hora com os últimos dados. Some ao fechar a aba e ao sair da conta.
+function saveSessionCache() {
+  if (typeof sessionStorage === 'undefined' || state.session?.role === 'admin') return;
+  try {
+    sessionStorage.setItem(SESSION_CACHE_KEY, JSON.stringify({
+      at: lastRefreshAt, session: state.session, categories: state.categories, regions: state.regions,
+      suppliers: state.suppliers, favorites: state.favorites, subscriptions: state.subscriptions,
+    }));
+  } catch {
+    // Espaço cheio ou armazenamento bloqueado: segue sem a cópia.
+  }
+}
+
+function restoreSessionCache() {
+  if (typeof sessionStorage === 'undefined' || state.session?.role === 'admin') return;
+  try {
+    const snap = JSON.parse(sessionStorage.getItem(SESSION_CACHE_KEY) || 'null');
+    if (!snap || snap.session?.role === 'admin' || !Array.isArray(snap.suppliers)) return;
+    Object.assign(state, {
+      session: snap.session || null, categories: snap.categories || [], regions: snap.regions || [],
+      suppliers: snap.suppliers, favorites: snap.favorites || [], subscriptions: snap.subscriptions || [],
+    });
+    lastRefreshAt = Number(snap.at) || 0;
+    everLoaded = true;
+  } catch {
+    try { sessionStorage.removeItem(SESSION_CACHE_KEY); } catch {}
+  }
+}
+restoreSessionCache();
 
 // Impressão do conteúdo da cópia: serve para saber se uma atualização em segundo plano trouxe mudanças.
 function fingerprint() {
