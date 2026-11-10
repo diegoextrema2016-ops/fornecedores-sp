@@ -188,6 +188,11 @@ function bulkBarHtml() {
         ${cats.map((c) => `<option value="${e(c.slug)}">${e(c.name)}</option>`).join('')}
       </select>
       <button class="btn btn-secondary btn-sm" type="button" data-bulk-apply>Aplicar categoria</button>
+      <select data-bulk-sub aria-label="Subcategoria para adicionar">
+        <option value="">Adicionar subcategoria...</option>
+        ${cats.filter((c) => (c.subcategories || []).length).map((c) => `<optgroup label="${e(c.name)}">${c.subcategories.map((n) => `<option value="${e(c.slug)}||${e(n)}">${e(n)}</option>`).join('')}</optgroup>`).join('')}
+      </select>
+      <button class="btn btn-secondary btn-sm" type="button" data-bulk-sub-apply>Aplicar subcategoria</button>
       <span class="muted small" data-bulk-count>0 selecionados</span>
     </div>`;
 }
@@ -276,6 +281,34 @@ export function mountAdminSuppliers(root, rerender) {
         }
       }, `${ids.length} fornecedor(es) movidos.`);
       return rerender();
+    }
+
+    if (ev.target.closest('[data-bulk-sub-apply]')) {
+      const valor = root.querySelector('[data-bulk-sub]').value;
+      const ids = [...root.querySelectorAll('[data-select]:checked')].map((c) => c.dataset.select);
+      if (!valor) return toast('Escolha a subcategoria.', 'error');
+      if (!ids.length) return toast('Marque pelo menos um fornecedor.', 'error');
+      const [slug, nome] = valor.split('||');
+      // Só entram os selecionados da categoria da subcategoria; os de outras categorias ficam de fora.
+      const alvos = ids.map((id) => store.suppliers.get(id)).filter((s) => s && s.category === slug);
+      if (!alvos.length) return toast(`Nenhum dos selecionados é da categoria "${catName(slug)}".`, 'error');
+      const fora = ids.length - alvos.length;
+      const ok = await confirmDialog({
+        title: 'Adicionar subcategoria?',
+        text: `"${nome}" será adicionada a ${alvos.length} fornecedor(es).${fora ? ` ${fora} selecionado(s) de outras categorias ficam de fora.` : ''} As subcategorias que eles já têm são mantidas.`,
+        confirmLabel: 'Adicionar',
+      });
+      if (!ok) return;
+      const gravacoes = alvos.flatMap((s) => {
+        const lista = subcategoriasDoFornecedor(s.subcategory);
+        if (lista.some((p) => normalize(p) === normalize(nome))) return [];
+        return [store.suppliers.setSubcategory(s.id, [...lista, nome].join(', '))];
+      });
+      const gravacao = Promise.all(gravacoes);
+      rerender(); // aparece na hora; a gravação segue em segundo plano
+      instant(gravacao, rerender, `"${nome}" adicionada a ${alvos.length} fornecedor(es).`);
+      gravacao.then(() => { publicarPaginas(); avisarOutrasAbas(); }).catch(() => {});
+      return;
     }
 
     if (ev.target.closest('[data-import-run]') && pendingPlan) {
