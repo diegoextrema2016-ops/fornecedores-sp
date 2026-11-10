@@ -2,7 +2,7 @@
 import { CATEGORIES, REGIONS, SUPPLIER_TYPES } from './data.js';
 import { validateSupplier, escapeHtml as e, onlyDigits } from './utils.js';
 import { store } from './store.js';
-import { sugerirDescricao } from './descricao.js';
+import { sugerirDescricao, sugerirPalavras } from './descricao.js';
 import { sb } from './api.js';
 import { toast } from './ui.js';
 
@@ -105,6 +105,10 @@ export function supplierFormHtml(s = {}, { admin = false, loggedEmail = '' } = {
         <span class="muted small">A IA escreve um texto novo a cada clique. Se ela não responder, aparece o motivo e uma sugestão pronta.</span>
       </div>
       ${text('tags', 'Palavras-chave (separadas por vírgula)', { wide: true, value: (s.tags || []).join(', '), ph: 'Ex.: vestido, blusa, atacado' })}
+      <div class="suggest-row field-wide">
+        <button type="button" class="btn btn-secondary" data-suggest-tags>Sugerir palavras-chave com IA</button>
+        <span class="muted small">Acrescenta palavras a partir da descrição e da categoria. As que você já escreveu continuam.</span>
+      </div>
       <div class="form-grid">
         ${field('logo', 'Logo (JPG, PNG ou WebP; é reduzida automaticamente)', `<input id="logo" name="logo" type="file" accept="image/jpeg,image/png,image/webp">`)}
         ${field('photos', `Fotos da loja (até ${MAX_PHOTOS}; são reduzidas automaticamente)`, `<input id="photos" name="photos" type="file" accept="image/jpeg,image/png,image/webp" multiple>`)}
@@ -190,6 +194,45 @@ if (typeof document !== 'undefined') {
       botao.disabled = false;
       botao.textContent = textoBotao;
     }
+    campo.dispatchEvent(new Event('input', { bubbles: true }));
+    campo.focus();
+  });
+}
+
+// Botão "Sugerir palavras-chave": acrescenta palavras ao campo, sem apagar as que já estão.
+if (typeof document !== 'undefined') {
+  document.addEventListener('click', async (ev) => {
+    const botao = ev.target.closest?.('[data-suggest-tags]');
+    if (!botao) return;
+    const form = botao.closest('form');
+    const campo = form?.elements.tags;
+    if (!campo) return;
+    const cat = form.elements.category;
+    const dados = {
+      categoria: cat && cat.selectedIndex > 0 ? cat.options[cat.selectedIndex].text : '',
+      instrucao: (form.querySelector('#instrucao-ia')?.value || '').trim().slice(0, 300),
+      descricao: (form.querySelector('#description')?.value || '').trim().slice(0, 600),
+    };
+    const textoBotao = botao.textContent;
+    botao.disabled = true;
+    botao.textContent = 'Gerando...';
+    let novas = '';
+    try {
+      const resposta = await pedirSugestaoIA({ ...dados, tipo: 'palavras' });
+      if (resposta.texto) {
+        novas = resposta.texto;
+      } else {
+        toast(resposta.erro, 'error');
+        novas = sugerirPalavras(dados);
+      }
+    } finally {
+      botao.disabled = false;
+      botao.textContent = textoBotao;
+    }
+    // Junta as palavras que já estavam no campo com as novas, sem repetir.
+    const atuais = campo.value.split(',').map((p) => p.trim()).filter(Boolean);
+    const todas = [...new Set([...atuais, ...novas.split(',').map((p) => p.trim().toLowerCase()).filter(Boolean)])];
+    campo.value = todas.join(', ');
     campo.dispatchEvent(new Event('input', { bubbles: true }));
     campo.focus();
   });
