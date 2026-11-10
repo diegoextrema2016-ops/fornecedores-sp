@@ -22,8 +22,9 @@ function categoryOptions(current = '') {
     .map((c) => [c.slug, c.name]);
 }
 
-const MAX_LOGO_BYTES = 150 * 1024;
-const MAX_PHOTO_BYTES = 250 * 1024;
+// Imagens menores: a página abre mais rápido com pouca internet (fotos novas ficam até ~900px e ~150 KB).
+const MAX_LOGO_BYTES = 60 * 1024;
+const MAX_PHOTO_BYTES = 150 * 1024;
 const MAX_PHOTOS = 6;
 
 export function supplierFormHtml(s = {}, { admin = false, loggedEmail = '' } = {}) {
@@ -300,12 +301,12 @@ export function checkSupplierForm(form) {
 }
 
 // Lê arquivos de imagem com validação de tipo e tamanho. Retorna data URLs.
-export async function readImages(files, { maxBytes, max = 1 }) {
+export async function readImages(files, { maxBytes, max = 1, maxSide = 1000 }) {
   const list = [...files].slice(0, max);
   const out = [];
   for (const file of list) {
     if (!file.type.startsWith('image/')) throw new Error(`"${file.name}" não é uma imagem.`);
-    out.push(await shrinkImage(file, maxBytes));
+    out.push(await shrinkImage(file, maxBytes, maxSide));
   }
   return out;
 }

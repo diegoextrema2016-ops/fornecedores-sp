@@ -356,8 +356,8 @@ export function mountAdminSupplierForm(root, id) {
     button.textContent = 'Salvando...';
     try {
       const existing = id ? store.suppliers.get(id) : null;
-      const newLogo = await readImages(form.elements.logo.files, { maxBytes: LIMITS.MAX_LOGO_BYTES, max: 1 });
-      const newPhotos = await readImages(form.elements.photos.files, { maxBytes: LIMITS.MAX_PHOTO_BYTES, max: LIMITS.MAX_PHOTOS });
+      const newLogo = await readImages(form.elements.logo.files, { maxBytes: LIMITS.MAX_LOGO_BYTES, max: 1, maxSide: 500 });
+      const newPhotos = await readImages(form.elements.photos.files, { maxBytes: LIMITS.MAX_PHOTO_BYTES, max: LIMITS.MAX_PHOTOS, maxSide: 900 });
       const saved = await store.suppliers.save({
         ...(existing || {}),
         ...data,
