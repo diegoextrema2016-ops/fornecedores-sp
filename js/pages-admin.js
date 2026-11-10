@@ -304,7 +304,11 @@ export function mountAdminSuppliers(root, rerender) {
         danger: true,
       });
       if (ok) {
-        await attempt(() => store.suppliers.remove(del.dataset.delete), 'Fornecedor excluído.');
+        // O fornecedor sai da lista na hora; se o banco recusar, a tela volta ao normal.
+        const gravacao = store.suppliers.remove(del.dataset.delete);
+        rerender();
+        const deu = await attempt(() => gravacao, 'Fornecedor excluído.');
+        if (deu) publicarPaginas();
         rerender();
       }
     }

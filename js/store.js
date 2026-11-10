@@ -287,8 +287,15 @@ const suppliers = {
     api.incrementViews(id).catch(() => {});
   },
   async remove(id) {
-    await api.deleteSupplier(id);
-    state.suppliers = state.suppliers.filter((s) => s.id !== id);
+    // Some da cópia na hora; se o banco recusar, o fornecedor volta à lista.
+    const anterior = state.suppliers;
+    state.suppliers = anterior.filter((s) => s.id !== id);
+    try {
+      await api.deleteSupplier(id);
+    } catch (err) {
+      state.suppliers = anterior;
+      throw err;
+    }
   },
 };
 
