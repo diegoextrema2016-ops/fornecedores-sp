@@ -290,10 +290,12 @@ const suppliers = {
     // Some da cópia na hora; se o banco recusar, o fornecedor volta à lista.
     const anterior = state.suppliers;
     state.suppliers = anterior.filter((s) => s.id !== id);
+    saveAdminSnapshot(); // ao atualizar a página, ele já não volta
     try {
       await api.deleteSupplier(id);
     } catch (err) {
       state.suppliers = anterior;
+      saveAdminSnapshot();
       throw err;
     }
   },
