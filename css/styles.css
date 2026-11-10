@@ -502,3 +502,10 @@ a.wa-link svg { color: var(--whatsapp); }
 
 /* Botão de sugestão de descrição no formulário de fornecedor */
 .suggest-row { display: flex; align-items: center; flex-wrap: wrap; gap: .6rem; margin: -.25rem 0 .75rem; }
+
+/* Subcategorias no formulário do fornecedor e no painel */
+.field-title { display: block; font-weight: 600; margin-bottom: .35rem; }
+.subcat-options { display: flex; flex-wrap: wrap; gap: .4rem 1rem; }
+.subcat-manager-list { display: grid; gap: .5rem; margin-top: .75rem; }
+.subcat-row { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+.subcat-row input { flex: 1 1 200px; }

@@ -242,6 +242,7 @@ async function patchSupplier(id, changes) {
   if ('status' in changes) row.approval_status = changes.status;
   if ('verified' in changes) row.verified = Boolean(changes.verified);
   if ('featured' in changes) row.featured = Boolean(changes.featured);
+  if ('subcategory' in changes) row.subcategory = String(changes.subcategory || '');
   if ('category' in changes) {
     const cat = state.categories.find((c) => c.slug === changes.category);
     if (!cat) throw new Error('Categoria não encontrada.');
@@ -277,6 +278,10 @@ const suppliers = {
   },
   setCategory(id, slug) {
     return patchSupplier(id, { category: slug });
+  },
+  // Subcategorias do fornecedor, separadas por vírgula (ex.: "Jeans, Vestidos").
+  setSubcategory(id, texto) {
+    return patchSupplier(id, { subcategory: texto });
   },
   setFlag(id, flag, value) {
     if (!['verified', 'featured'].includes(flag)) throw new Error('Flag inválida');

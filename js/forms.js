@@ -27,6 +27,49 @@ const MAX_LOGO_BYTES = 60 * 1024;
 const MAX_PHOTO_BYTES = 150 * 1024;
 const MAX_PHOTOS = 6;
 
+// Subcategorias do fornecedor: caixas de seleção com as subcategorias da categoria escolhida.
+// O texto final vai para o campo oculto "subcategory" (mesmo nome de antes), separado por vírgula.
+function subcategoriaCampo(s = {}) {
+  const mapa = Object.fromEntries((store ? store.categories.list() : []).map((c) => [c.slug, c.subcategories || []]));
+  const atuais = String(s.subcategory || '').split(',').map((p) => p.trim()).filter(Boolean);
+  const cadastradas = mapa[s.category] || [];
+  // Subcategorias antigas (digitadas livremente) continuam marcadas, mesmo fora da lista.
+  const opcoes = [...cadastradas, ...atuais.filter((n) => !cadastradas.includes(n))];
+  const caixa = (n) => `<label class="check"><input type="checkbox" data-subcat-option value="${e(n)}" ${atuais.includes(n) ? 'checked' : ''}> <span>${e(n)}</span></label>`;
+  return `
+    <div class="field field-wide subcat-picker" data-subcats="${e(JSON.stringify(mapa))}">
+      <span class="field-title">Subcategorias (marque as que se aplicam)</span>
+      <div class="subcat-options">${opcoes.length ? opcoes.map(caixa).join('')
+        : '<span class="muted small">Esta categoria ainda não tem subcategorias. O administrador cadastra no painel.</span>'}</div>
+      <input type="hidden" id="subcategory" name="subcategory" value="${e(atuais.join(', '))}">
+    </div>`;
+}
+
+// Ao marcar ou trocar a categoria, atualiza as caixas de subcategoria e o campo oculto.
+if (typeof document !== 'undefined') {
+  const sincronizaSubcategorias = (picker) => {
+    const valor = [...picker.querySelectorAll('[data-subcat-option]:checked')].map((i) => i.value).join(', ');
+    picker.querySelector('input[name="subcategory"]').value = valor;
+  };
+  document.addEventListener('change', (ev) => {
+    const alvo = ev.target;
+    if (alvo.matches?.('[data-subcat-option]')) {
+      sincronizaSubcategorias(alvo.closest('.subcat-picker'));
+      return;
+    }
+    if (alvo.matches?.('#supplier-form select[name="category"]')) {
+      const picker = alvo.closest('form')?.querySelector('.subcat-picker');
+      if (!picker) return;
+      const mapa = JSON.parse(picker.dataset.subcats || '{}');
+      const lista = mapa[alvo.value] || [];
+      picker.querySelector('.subcat-options').innerHTML = lista.length
+        ? lista.map((n) => `<label class="check"><input type="checkbox" data-subcat-option value="${e(n)}"> <span>${e(n)}</span></label>`).join('')
+        : '<span class="muted small">Esta categoria ainda não tem subcategorias. O administrador cadastra no painel.</span>';
+      sincronizaSubcategorias(picker);
+    }
+  });
+}
+
 export function supplierFormHtml(s = {}, { admin = false, loggedEmail = '' } = {}) {
   const v = (k, d = '') => e(s[k] ?? d);
   // chk(k, padrão): quando o fornecedor ainda não tem o valor (cadastro novo), usa o padrão.
@@ -60,7 +103,7 @@ export function supplierFormHtml(s = {}, { admin = false, loggedEmail = '' } = {
         ${text('instagram', 'Instagram (@usuario)', { ph: '@sualoja' })}
         ${text('site', 'Site', { ph: 'www.sualoja.com.br' })}
         ${select('category', `Categoria${star}`, categoryOptions(s.category), s.category, R)}
-        ${text('subcategory', 'Subcategoria')}
+        ${subcategoriaCampo(s)}
         ${select('supplierType', `Tipo de fornecedor${star}`, SUPPLIER_TYPES.map((t) => [t.value, t.label]), (admin ? 'atacadista' : s.supplierType || ''), R)}
       </div>
     </fieldset>
