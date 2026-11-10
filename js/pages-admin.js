@@ -105,8 +105,10 @@ export function adminDashboard() {
 export function adminSuppliers(query, { preset = '' } = {}) {
   const status = preset || query.get('status') || 'all';
   const search = (query.get('busca') || '').toLowerCase();
+  const categoria = query.get('categoria') || '';
   let list = store.suppliers.list();
   if (status !== 'all') list = list.filter((s) => s.status === status);
+  if (categoria) list = list.filter((s) => s.category === categoria);
   if (search) list = list.filter((s) => `${s.name} ${s.email || ''} ${s.responsible || ''}`.toLowerCase().includes(search));
   list.sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
   // 50 fornecedores por página
@@ -115,6 +117,7 @@ export function adminSuppliers(query, { preset = '' } = {}) {
   const makeHref = (n) => {
     const q = new URLSearchParams();
     if (!preset && status !== 'all') q.set('status', status);
+    if (!preset && categoria) q.set('categoria', categoria);
     if (search) q.set('busca', search);
     q.set('pagina', n);
     return `${base}?${q.toString()}`;
@@ -122,12 +125,17 @@ export function adminSuppliers(query, { preset = '' } = {}) {
   const tabs = [['all', 'Todos'], ['pending', 'Pendentes'], ['approved', 'Aprovados'], ['rejected', 'Rejeitados']];
   const active = preset || 'all';
   const key = preset ? 'pending' : 'suppliers';
+  const categoriasFiltro = store.categories.list().filter((c) => c.status !== 'inactive' || c.slug === categoria);
 
   return adminLayout(key, preset ? 'Pendentes de aprovação' : 'Fornecedores', `
     ${preset ? '' : `<div class="tabs" role="tablist">${tabs.map(([v, l]) =>
       `<a role="tab" class="tab ${status === v ? 'is-active' : ''}" href="/admin/fornecedores?status=${v}">${l}</a>`).join('')}</div>`}
     ${preset ? '' : importPanelHtml()}
     <form class="toolbar" data-admin-search>
+      <select name="categoria" aria-label="Filtrar por categoria" style="max-width:220px">
+        <option value="">Todas as categorias</option>
+        ${categoriasFiltro.map((c) => `<option value="${e(c.slug)}" ${c.slug === categoria ? 'selected' : ''}>${e(c.name)}</option>`).join('')}
+      </select>
       <input type="search" name="busca" value="${e(search)}" placeholder="Buscar por nome, e-mail ou responsável">
       <button class="btn btn-secondary" type="submit">Buscar</button>
     </form>
@@ -317,15 +325,25 @@ export function mountAdminSuppliers(root, rerender) {
     }
   });
 
-  root.querySelector('[data-admin-search]')?.addEventListener('submit', (ev) => {
-    ev.preventDefault();
-    const busca = new FormData(ev.currentTarget).get('busca')?.toString().trim() || '';
+  const buscaForm = root.querySelector('[data-admin-search]');
+  const enviaBusca = () => {
+    const dados = new FormData(buscaForm);
+    const busca = dados.get('busca')?.toString().trim() || '';
+    const categoria = dados.get('categoria')?.toString() || '';
     const { path, search } = currentLocation();
     const current = new URLSearchParams(search);
     current.set('busca', busca);
+    if (categoria) current.set('categoria', categoria);
+    else current.delete('categoria');
     current.delete('pagina');
     go(`${path}?${current.toString()}`);
+  };
+  buscaForm?.addEventListener('submit', (ev) => {
+    ev.preventDefault();
+    enviaBusca();
   });
+  // Escolher uma categoria já mostra os fornecedores dela, sem precisar clicar em Buscar.
+  buscaForm?.querySelector('select[name="categoria"]')?.addEventListener('change', enviaBusca);
 }
 
 // ---------- Criar / editar fornecedor ----------
