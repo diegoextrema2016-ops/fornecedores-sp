@@ -51,7 +51,7 @@ async function chamarGemini(prompt, comPensamento) {
 
 // Groq (gratuita, muito rápida). Usa o formato da OpenAI. Modelo pode ser trocado por GROQ_MODEL.
 async function chamarGroq(prompt) {
-  const modelo = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
+  const modelo = process.env.GROQ_MODEL || 'openai/gpt-oss-120b';
   return fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
     headers: { Authorization: `Bearer ${process.env.GROQ_API_KEY}`, 'content-type': 'application/json' },
@@ -59,7 +59,9 @@ async function chamarGroq(prompt) {
       model: modelo,
       messages: [{ role: 'user', content: prompt }],
       temperature: 1,
-      max_tokens: 300,
+      // Modelo de raciocínio: "low" deixa a resposta rápida; o limite maior evita texto cortado.
+      reasoning_effort: 'low',
+      max_tokens: 1200,
     }),
     signal: AbortSignal.timeout(12000),
   });
