@@ -69,12 +69,11 @@ export function home() {
     title: 'Fornecedores Atacado SP | Brás, Moda, Tênis e Eletrônicos',
     description: 'Encontre fornecedores de atacado em São Paulo, Brás e 25 de Março. Explore lojas de roupas, moda feminina, tênis, eletrônicos e muito mais.',
     html: `
-    ${bannersHtml()}
     <section class="hero">
       <div class="container hero-inner">
         <p class="eyebrow">25 de Março · Brás · Pari · Bom Retiro</p>
-        <h1>Os melhores fornecedores de São Paulo em um só lugar.</h1>
-        <p class="lead">Descubra lojas, distribuidores e fornecedores para comprar no atacado e abastecer seu negócio.</p>
+        <h1>Encontre fornecedores de atacado em São Paulo</h1>
+        <p class="lead">Compare lojas e distribuidores por categoria, subcategoria e bairro, e encontre o fornecedor certo para o seu negócio.</p>
         <form class="search-hero" role="search" data-search-form data-target="/fornecedores">
           <label class="sr-only" for="hero-q">Buscar</label>
           <span class="search-icon">${icon.search}</span>
@@ -87,6 +86,8 @@ export function home() {
         </div>
       </div>
     </section>
+
+    ${bannersHtml()}
 
     <section class="section container">
       <div class="section-head">
@@ -120,7 +121,7 @@ export function home() {
       <div class="steps">
         <div><span class="step-n">1</span><h3>Pesquise</h3><p class="muted">Por produto, fornecedor, categoria ou bairro.</p></div>
         <div><span class="step-n">2</span><h3>Compare</h3><p class="muted">Veja tipo de venda, atacado, varejo e pedido mínimo.</p></div>
-        <div><span class="step-n">3</span><h3>Converse</h3><p class="muted">Fale direto com o fornecedor pelo WhatsApp.</p></div>
+        <div><span class="step-n">3</span><h3>Fale com o fornecedor</h3><p class="muted">Com o acesso de assinante, o WhatsApp e o endereço de cada fornecedor ficam liberados.</p></div>
       </div>
     </section>
 

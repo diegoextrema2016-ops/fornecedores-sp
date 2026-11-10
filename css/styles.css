@@ -192,6 +192,8 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .
 .badge-approved { background: #e8f8ee; color: #137333; }
 .badge-rejected { background: #fdecec; color: #b42318; }
 .tag { display: inline-block; font-size: .78rem; padding: .18rem .55rem; border-radius: 999px; background: var(--primary-50); color: var(--primary); font-weight: 500; }
+.tag-sub { background: var(--surface-2); color: var(--text-2); }
+.supplier-subs { margin: 0; display: flex; flex-wrap: wrap; gap: .35rem; }
 .tag-soft { background: var(--surface); color: var(--muted); }
 .tags { display: flex; flex-wrap: wrap; gap: .35rem; }
 
