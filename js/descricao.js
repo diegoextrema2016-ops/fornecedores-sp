@@ -60,3 +60,19 @@ export function sugerirDescricao(
   frases.push(pick(FECHAMENTOS));
   return frases.join(' ').slice(0, 600);
 }
+
+const PALAVRAS_IGNORADAS = new Set([
+  'para', 'com', 'sem', 'uma', 'um', 'uns', 'umas', 'que', 'por', 'pelo', 'pela', 'dos', 'das', 'nos', 'nas',
+  'and', 'the', 'de', 'do', 'da', 'em', 'no', 'na', 'os', 'as', 'se', 'ao', 'aos', 'sua', 'seu', 'seus', 'suas',
+  'mais', 'muito', 'nosso', 'nossa', 'voce', 'você', 'ate', 'até', 'também', 'tambem', 'sao', 'são', 'somos',
+  'loja', 'fornecedor', 'fornecedora',
+]);
+
+// Palavras-chave sem IA: tira as palavras da categoria, da orientação e da descrição (sem repetir).
+export function sugerirPalavras({ categoria = '', instrucao = '', descricao = '' } = {}) {
+  const texto = [categoria, instrucao, descricao].join(' ').toLowerCase();
+  const palavras = texto
+    .split(/[^\p{L}\p{N}]+/u)
+    .filter((p) => p.length >= 3 && !PALAVRAS_IGNORADAS.has(p));
+  return [...new Set(palavras)].slice(0, 8).join(', ');
+}

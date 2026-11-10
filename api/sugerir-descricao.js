@@ -26,6 +26,16 @@ function promptPara({ categoria, instrucao }) {
   return partes.join(' ');
 }
 
+// Palavras-chave: lista curta, separada por vírgula, só com o que está nos textos do fornecedor.
+function promptPalavras({ categoria, instrucao, descricao }) {
+  return [
+    `Crie de 5 a 8 palavras-chave curtas, em português do Brasil, para um fornecedor de atacado da categoria "${categoria}".`,
+    descricao ? `Descrição do fornecedor: "${descricao}".` : '',
+    instrucao ? `Orientação do fornecedor: "${instrucao}".` : '',
+    'Use somente palavras ligadas aos produtos citados. Não invente marcas. Responda somente com as palavras separadas por vírgula, em minúsculas, sem frases.',
+  ].filter(Boolean).join(' ');
+}
+
 async function usuarioLogado(token) {
   const r = await fetch(`${SUPABASE.url}/auth/v1/user`, {
     headers: { apikey: SUPABASE.anonKey, Authorization: `Bearer ${token}` },
@@ -142,8 +152,9 @@ export default async function handler(req, res) {
   const dados = {
     categoria: String(corpo.categoria || 'produtos para revenda').slice(0, 80),
     instrucao: String(corpo.instrucao || '').replace(/["\n\r]/g, ' ').trim().slice(0, 300),
+    descricao: String(corpo.descricao || '').replace(/["\n\r]/g, ' ').trim().slice(0, 600),
   };
-  const prompt = promptPara(dados);
+  const prompt = corpo.tipo === 'palavras' ? promptPalavras(dados) : promptPara(dados);
 
   try {
     const resultado = process.env.GROQ_API_KEY
