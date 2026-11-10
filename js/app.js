@@ -212,6 +212,18 @@ window.addEventListener('scroll', () => {
 // Erros de gravação em segundo plano (ex.: favorito) aparecem como aviso.
 window.addEventListener('spf:error', (ev) => toast(ev.detail, 'error'));
 
+// Outras abas do painel: quando um fornecedor muda em uma aba, esta aba recarrega a lista.
+// Se houver formulário aberto aqui, não redesenha, para não apagar o que está sendo editado.
+try {
+  const canal = new BroadcastChannel('spf-dados');
+  canal.onmessage = () => {
+    if (main.querySelector('form')) return;
+    store.refresh().then(() => renderLocal()).catch(() => {});
+  };
+} catch {
+  // navegador sem BroadcastChannel: segue normal
+}
+
 // Navegação interna: links do próprio site trocam a tela sem recarregar a página.
 document.addEventListener('click', (ev) => {
   if (ev.defaultPrevented || ev.button !== 0 || ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.altKey) return;

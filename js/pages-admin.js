@@ -308,7 +308,10 @@ export function mountAdminSuppliers(root, rerender) {
         const gravacao = store.suppliers.remove(del.dataset.delete);
         rerender();
         const deu = await attempt(() => gravacao, 'Fornecedor excluído.');
-        if (deu) publicarPaginas();
+        if (deu) {
+          publicarPaginas();
+          avisarOutrasAbas();
+        }
         rerender();
       }
     }
@@ -333,6 +336,17 @@ export function adminSupplierForm(id) {
     <p class="muted">Use para cadastrar fornecedores manualmente ou corrigir dados.</p>
     ${supplierFormHtml(existing || {}, { admin: true })}
     <p class="muted small">Logo e fotos atuais serão mantidos se você não enviar novos arquivos.</p>`);
+}
+
+// Avisa as outras abas do painel que a lista de fornecedores mudou (elas atualizam sozinhas).
+function avisarOutrasAbas() {
+  try {
+    const canal = new BroadcastChannel('spf-dados');
+    canal.postMessage('fornecedores');
+    canal.close();
+  } catch {
+    // navegador sem BroadcastChannel: a outra aba atualiza ao recarregar
+  }
 }
 
 // Pede ao site que refaça as páginas públicas (listagens) sem esperar a resposta.
