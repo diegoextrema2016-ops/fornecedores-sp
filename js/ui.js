@@ -2,6 +2,7 @@
 import { SITE } from './config.js';
 import { escapeHtml as e, whatsappTarget, mapsLink, formatCount, instagramHandle, normalizeUrl, formatPhone, maskPhone, maskHandle } from './utils.js';
 import { canSeeContacts } from './access.js';
+import { subcategoriasDoFornecedor } from './search.js';
 
 export const icon = {
   search: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>',
@@ -209,7 +210,8 @@ export function supplierCard(s, { categoryName = '', regionName = '', favorite =
       <button class="fav-btn ${favorite ? 'is-on' : ''}" type="button" data-action="fav" data-id="${e(s.id)}" aria-pressed="${favorite}" aria-label="${favorite ? 'Remover dos favoritos' : 'Salvar nos favoritos'}">${icon.heart}</button>
     </div>
     <p class="supplier-location muted small">${icon.pin} ${e(location)}</p>
-    <p class="supplier-desc">${e(s.description || 'Descrição não informada.')}</p>
+    ${subcategoriasTags(s)}
+    ${s.description ? `<p class="supplier-desc">${e(s.description)}</p>` : ''}
     <p class="supplier-sale small">${saleLabels(s).map((l) => `<span class="tag">${e(l)}</span>`).join('')}</p>
     ${contactLine}
     ${igLine}
@@ -218,6 +220,15 @@ export function supplierCard(s, { categoryName = '', regionName = '', favorite =
       ${primaryAction}
     </div>
   </article>`;
+}
+
+// Subcategorias do fornecedor, até 3 (o restante aparece como "+n").
+function subcategoriasTags(s) {
+  const lista = subcategoriasDoFornecedor(s.subcategory);
+  if (!lista.length) return '';
+  const mostra = lista.slice(0, 3).map((n) => `<span class="tag tag-sub">${e(n)}</span>`).join('');
+  const resto = lista.length > 3 ? `<span class="tag tag-sub">+${lista.length - 3}</span>` : '';
+  return `<p class="supplier-subs small" aria-label="Subcategorias">${mostra}${resto}</p>`;
 }
 
 export function saleLabels(s) {
