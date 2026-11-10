@@ -7,6 +7,7 @@ import { escapeHtml as e, formatDate, formatCount, slugify } from './utils.js';
 import { toast, confirmDialog, emptyState, pagination } from './ui.js';
 import { PLANS } from './config.js';
 import { supplierFormHtml, checkSupplierForm, readImages, LIMITS } from './forms.js';
+import { sb } from './api.js';
 import { parseCsv, planImport, applyImport } from './import.js';
 import { paginate } from './search.js';
 import { readLocalBackup, parseBackup, importBackup } from './backup.js';
@@ -289,6 +290,7 @@ export function mountAdminSuppliers(root, rerender) {
     if (st) {
       instant(store.suppliers.setStatus(st.dataset.id, st.dataset.status), rerender,
         st.dataset.status === 'approved' ? 'Fornecedor aprovado e publicado.' : 'Cadastro rejeitado.');
+      if (st.dataset.status === 'approved') publicarPaginas();
       return rerender();
     }
 
@@ -329,6 +331,19 @@ export function adminSupplierForm(id) {
     <p class="muted small">Logo e fotos atuais serão mantidos se você não enviar novos arquivos.</p>`);
 }
 
+// Pede ao site que refaça as páginas públicas (listagens) sem esperar a resposta.
+// Não trava a tela: se falhar, o fornecedor continua salvo e aparece nas páginas que leem o banco.
+async function publicarPaginas() {
+  try {
+    const { data } = await sb.auth.getSession();
+    const token = data.session?.access_token;
+    if (!token) return;
+    fetch('/api/publicar', { method: 'POST', headers: { authorization: `Bearer ${token}` } }).catch(() => {});
+  } catch {
+    // sem ação: a publicação automática não é obrigatória para salvar
+  }
+}
+
 export function mountAdminSupplierForm(root, id) {
   const form = root.querySelector('#supplier-form');
   if (!form) return;
@@ -352,6 +367,7 @@ export function mountAdminSupplierForm(root, id) {
         photos: newPhotos.length ? newPhotos : existing?.photos || [],
       }, { asAdmin: true, checkDuplicates: true });
       toast('Fornecedor salvo.');
+      publicarPaginas();
       go(saved.status === 'approved' ? `/fornecedor/${saved.slug}` : '/admin/fornecedores');
     } catch (err) {
       toast(err.message || 'Erro ao salvar.', 'error');
