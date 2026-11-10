@@ -243,7 +243,7 @@ export function regionPage({ slug }, query) {
 export function suppliersPage(_params, query) {
   return listingPage({
     title: `Todos os fornecedores | ${SITE.shortName}`,
-    description: 'Lista de fornecedores de São Paulo com filtros por categoria, região, tipo de venda e WhatsApp.',
+    description: 'Lista de fornecedores de São Paulo com filtros por categoria, subcategoria, tipo de venda e WhatsApp.',
     crumbs: [{ label: 'Início', href: '/' }, { label: 'Fornecedores' }],
     heading: 'Fornecedores',
     intro: 'Pesquise por nome, produto, categoria ou localização. Use os filtros para refinar.',
@@ -259,8 +259,6 @@ function listingPage({ title, description, crumbs, heading, intro, fixed, base, 
     q: query.get('q') || '',
     category: query.get('categoria') || '',
     subcategory: query.get('subcategoria') || '',
-    bairro: query.get('bairro') || '',
-    supplierType: query.get('tipo') || '',
     wholesale: query.get('atacado') === '1',
     retail: query.get('varejo') === '1',
     whatsapp: query.get('whatsapp') === '1',
@@ -312,11 +310,9 @@ function listingPage({ title, description, crumbs, heading, intro, fixed, base, 
       const subSel = root.querySelector('#f-sub');
       if (catSel && subSel) {
         catSel.addEventListener('change', () => {
-          const mapa = JSON.parse(subSel.dataset.subcats || '{}');
-          const lista = mapa[catSel.value] || [];
-          subSel.innerHTML = `<option value="">${catSel.value ? (lista.length ? 'Todas' : 'Sem subcategorias') : 'Escolha uma categoria'}</option>`
-            + lista.map((n) => `<option value="${e(n)}">${e(n)}</option>`).join('');
-          subSel.disabled = !lista.length;
+          const op = subcategoriaOpcoes(catSel.value);
+          subSel.innerHTML = op.html;
+          subSel.disabled = !op.temAlguma;
         });
       }
       if (form) {
@@ -326,10 +322,13 @@ function listingPage({ title, description, crumbs, heading, intro, fixed, base, 
           const params = new URLSearchParams();
           const put = (k, v) => v && params.set(k, v);
           put('q', fd.get('q')?.toString().trim());
-          if (!fixed.category) put('categoria', fd.get('categoria'));
-          put('subcategoria', fd.get('subcategoria'));
-          if (!fixed.bairro) put('bairro', fd.get('bairro'));
-          put('tipo', fd.get('tipo'));
+          // Sem categoria escolhida, a subcategoria vem como "slug||nome": separa os dois.
+          const sub = String(fd.get('subcategoria') || '');
+          const partes = sub.split('||');
+          const slugSub = partes.length > 1 ? partes[0] : null;
+          const nomeSub = partes.length > 1 ? partes[1] : sub;
+          if (!fixed.category) put('categoria', slugSub || fd.get('categoria'));
+          put('subcategoria', nomeSub);
           for (const k of ['atacado', 'varejo', 'whatsapp', 'verificado']) if (fd.get(k)) params.set(k, '1');
           put('ordem', fd.get('ordem') !== 'relevance' ? fd.get('ordem') : '');
           const qs = params.toString();
@@ -341,18 +340,39 @@ function listingPage({ title, description, crumbs, heading, intro, fixed, base, 
   };
 }
 
+// Opções do campo Subcategoria.
+// Com categoria escolhida: só as dela, com o nome como valor.
+// Sem categoria: todas, agrupadas por categoria, com valor "slug||nome" (o envio separa os dois).
+function subcategoriaOpcoes(catAtual, atual = '') {
+  const cats = allCategories();
+  if (catAtual) {
+    const lista = cats.find((c) => c.slug === catAtual)?.subcategories || [];
+    return {
+      temAlguma: lista.length > 0,
+      html: `<option value="">${lista.length ? 'Todas' : 'Sem subcategorias'}</option>`
+        + lista.map((n) => `<option value="${e(n)}" ${atual === n ? 'selected' : ''}>${e(n)}</option>`).join(''),
+    };
+  }
+  const grupos = cats.filter((c) => (c.subcategories || []).length);
+  let marcado = false;
+  const grupoHtml = grupos.map((c) => `<optgroup label="${e(c.name)}">${c.subcategories.map((n) => {
+    const sel = !marcado && atual === n;
+    if (sel) marcado = true;
+    return `<option value="${e(c.slug)}||${e(n)}" ${sel ? 'selected' : ''}>${e(n)}</option>`;
+  }).join('')}</optgroup>`).join('');
+  return {
+    temAlguma: grupos.length > 0,
+    html: `<option value="">${grupos.length ? 'Todas as subcategorias' : 'Sem subcategorias'}</option>${grupoHtml}`,
+  };
+}
+
 function filterForm({ f, fixed, base, sort }) {
-  // Subcategorias por categoria: o dropdown mostra só as da categoria escolhida.
-  const subMap = Object.fromEntries(store.categories.list().map((c) => [c.slug, c.subcategories || []]));
   const catAtual = fixed.category || f.category;
-  const subs = catAtual ? (subMap[catAtual] || []) : [];
+  const op = subcategoriaOpcoes(catAtual, f.subcategory);
   const subcategoriaCampo = `
     <div class="field">
       <label for="f-sub">Subcategoria</label>
-      <select id="f-sub" name="subcategoria" data-subcats="${e(JSON.stringify(subMap))}" ${subs.length ? '' : 'disabled'}>
-        <option value="">${catAtual ? (subs.length ? 'Todas' : 'Sem subcategorias') : 'Escolha uma categoria'}</option>
-        ${subs.map((n) => `<option value="${e(n)}" ${f.subcategory === n ? 'selected' : ''}>${e(n)}</option>`).join('')}
-      </select>
+      <select id="f-sub" name="subcategoria" ${op.temAlguma ? '' : 'disabled'}>${op.html}</select>
     </div>`;
   const check =(name, label, checked) => `
     <label class="check"><input type="checkbox" name="${name}" ${checked ? 'checked' : ''}> <span>${label}</span></label>`;
@@ -371,21 +391,6 @@ function filterForm({ f, fixed, base, sort }) {
       </select>
     </div>`}
     ${subcategoriaCampo}
-    ${fixed.bairro ? '' : `
-    <div class="field">
-      <label for="f-bairro">Região / bairro</label>
-      <select id="f-bairro" name="bairro">
-        <option value="">Todas</option>
-        ${store.regions.list().slice().sort((a, b) => a.name.localeCompare(b.name, 'pt-BR')).map((r) => `<option value="${e(r.slug)}" ${f.bairro === r.slug ? 'selected' : ''}>${e(r.name)}</option>`).join('')}
-      </select>
-    </div>`}
-    <div class="field">
-      <label for="f-tipo">Tipo de fornecedor</label>
-      <select id="f-tipo" name="tipo">
-        <option value="">Todos</option>
-        ${SUPPLIER_TYPES.map((t) => `<option value="${e(t.value)}" ${f.supplierType === t.value ? 'selected' : ''}>${e(t.label)}</option>`).join('')}
-      </select>
-    </div>
     <fieldset class="field">
       <legend>Venda</legend>
       ${check('atacado', 'Venda no atacado', f.wholesale)}
