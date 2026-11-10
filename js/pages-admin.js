@@ -143,7 +143,7 @@ export function adminSuppliers(query, { preset = '' } = {}) {
     ${bulkBarHtml()}
     <div class="table-wrap">
       <table class="table">
-        <thead><tr><th><span class="sr-only">Selecionar</span></th><th>Empresa</th><th>Categoria</th><th>Bairro</th><th>Status</th><th>Verificado</th><th>Destaque</th><th>Ações</th></tr></thead>
+        <thead><tr><th><span class="sr-only">Selecionar</span></th><th>Empresa</th><th>Categoria</th><th>Bairro</th><th>Status</th><th>Verificado</th><th>Subcategoria</th><th>Ações</th></tr></thead>
         <tbody>
         ${p.items.map((s) => `
           <tr data-row="${e(s.id)}">
@@ -153,7 +153,7 @@ export function adminSuppliers(query, { preset = '' } = {}) {
             <td>${e(regName(s.bairro) || s.bairro)}</td>
             <td><span class="badge badge-${s.status}">${STATUS_LABEL[s.status] || s.status}</span></td>
             <td><label class="switch"><input type="checkbox" data-flag="verified" data-id="${e(s.id)}" ${s.verified ? 'checked' : ''}><span class="sr-only">Verificado</span></label></td>
-            <td><label class="switch"><input type="checkbox" data-flag="featured" data-id="${e(s.id)}" ${s.featured ? 'checked' : ''}><span class="sr-only">Destaque</span></label></td>
+            <td class="muted small">${e(s.subcategory || '—')}</td>
             <td class="row-actions">
               ${s.status !== 'approved' ? `<button class="btn btn-sm btn-primary" data-status="approved" data-id="${e(s.id)}">Aprovar</button>` : ''}
               ${s.status !== 'rejected' ? `<button class="btn btn-sm btn-ghost" data-status="rejected" data-id="${e(s.id)}">Rejeitar</button>` : ''}
