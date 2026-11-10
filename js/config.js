@@ -13,7 +13,7 @@ export const SITE = {
   whatsappDefaultMessage:
     'Olá! Encontrei o fornecedor no Fornecedores Atacado SP e gostaria de mais informações.',
   // Opcional: chave da Google Maps Embed API. Deixe vazio para usar apenas links do Google Maps (sem chave).
-  googleMapsApiKey: '',
+  googleMapsApiKey: 'AIzaSyDlw-gg-zqtvYWyTneMFSt8-h1pEjIDEag',
   pageSize: 12,
 };
 
