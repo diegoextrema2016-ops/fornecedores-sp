@@ -9,7 +9,7 @@ import { PLANS } from './config.js';
 import { supplierFormHtml, checkSupplierForm, readImages, LIMITS } from './forms.js';
 import { sb } from './api.js';
 import { parseCsv, planImport, applyImport } from './import.js';
-import { paginate } from './search.js';
+import { paginate, normalize, temSubcategoria, subcategoriasDoFornecedor } from './search.js';
 import { readLocalBackup, parseBackup, importBackup } from './backup.js';
 
 const catName = (slug) => store.categories.get(String(slug))?.name || slug;
@@ -438,6 +438,13 @@ export function adminCategories() {
         <div class="form-actions"><button class="btn btn-primary" type="submit">Salvar categoria</button><button class="btn btn-ghost" type="button" id="cat-cancel" hidden>Cancelar edição</button></div>
       </form>
     </section>
+    <section class="card" id="subcat-manager">
+      <h2>Subcategorias</h2>
+      <p class="muted small">Escolha a categoria e adicione, renomeie ou exclua subcategorias. O filtro do site e os fornecedores que usam o nome são atualizados junto.</p>
+      <div class="field"><label for="sub-cat">Categoria</label>
+        <select id="sub-cat">${cats.map((c) => `<option value="${e(c.slug)}">${e(c.name)}</option>`).join('')}</select></div>
+      <div id="sub-lista"></div>
+    </section>
     <div class="table-wrap">
       <table class="table">
         <thead><tr><th>Ordem</th><th>Categoria</th><th>Slug</th><th>Fornecedores aprovados</th><th>Situação</th><th>Ações</th></tr></thead>
@@ -464,7 +471,98 @@ export function adminCategories() {
     </div>`);
 }
 
+// ---------- Subcategorias (dentro da página de categorias) ----------
+function nomeDeSubcategoriaValido(nome, lista, ignorar = -1) {
+  const limpo = String(nome || '').trim().replace(/\s+/g, ' ');
+  if (!limpo) return { erro: 'Digite um nome.' };
+  if (limpo.includes(',')) return { erro: 'Use um nome sem vírgula.' };
+  if (limpo.length > 60) return { erro: 'Use no máximo 60 caracteres.' };
+  if (lista.some((n, i) => i !== ignorar && normalize(n) === normalize(limpo))) return { erro: 'Já existe uma subcategoria com esse nome.' };
+  return { nome: limpo };
+}
+
+function desenhaSubcategorias(root) {
+  const sel = root.querySelector('#sub-cat');
+  const area = root.querySelector('#sub-lista');
+  if (!sel || !area) return;
+  const cat = store.categories.list().find((c) => c.slug === sel.value);
+  const nomes = cat?.subcategories || [];
+  area.innerHTML = `
+    <div class="subcat-manager-list">
+      ${nomes.length ? nomes.map((n, i) => `
+        <div class="subcat-row">
+          <input value="${e(n)}" data-sub-nome="${i}" aria-label="Nome da subcategoria ${e(n)}">
+          <button class="btn btn-sm btn-secondary" type="button" data-sub-salvar="${i}">Salvar nome</button>
+          <button class="btn btn-sm btn-danger" type="button" data-sub-excluir="${i}">Excluir</button>
+        </div>`).join('') : '<p class="muted small">Esta categoria ainda não tem subcategorias.</p>'}
+      <form class="subcat-row" data-sub-nova>
+        <input name="nova" placeholder="Nova subcategoria (ex.: Conjuntos)" maxlength="60" aria-label="Nova subcategoria">
+        <button class="btn btn-sm btn-primary" type="submit">Adicionar</button>
+      </form>
+    </div>`;
+}
+
+// Grava a lista da categoria e, se houve renomear ou excluir, troca o nome nos fornecedores que o usam.
+function gravaSubcategorias(rerender, slug, novaLista, antiga, novoNome, msg) {
+  const gravacoes = [store.categories.setFields(slug, { subcategories: novaLista })];
+  if (antiga) {
+    const afetados = store.suppliers.list().filter((s) => s.category === slug && temSubcategoria(s, antiga));
+    for (const s of afetados) {
+      const trocadas = subcategoriasDoFornecedor(s.subcategory)
+        .map((p) => (normalize(p) === normalize(antiga) ? novoNome : p))
+        .filter(Boolean);
+      const texto = trocadas.filter((p, i) => trocadas.findIndex((q) => normalize(q) === normalize(p)) === i).join(', ');
+      gravacoes.push(store.suppliers.setSubcategory(s.id, texto));
+    }
+  }
+  rerender(); // a mudança aparece na hora; a gravação segue em segundo plano
+  instant(Promise.all(gravacoes), rerender, msg);
+}
+
+function bindSubcategorias(root, rerender) {
+  const box = root.querySelector('#subcat-manager');
+  if (!box) return;
+  desenhaSubcategorias(root);
+  box.querySelector('#sub-cat')?.addEventListener('change', () => desenhaSubcategorias(root));
+
+  box.addEventListener('submit', (ev) => {
+    const form = ev.target.closest('[data-sub-nova]');
+    if (!form) return;
+    ev.preventDefault();
+    const slug = box.querySelector('#sub-cat').value;
+    const lista = store.categories.list().find((c) => c.slug === slug)?.subcategories || [];
+    const r = nomeDeSubcategoriaValido(form.elements.nova.value, lista);
+    if (r.erro) return toast(r.erro, 'error');
+    gravaSubcategorias(rerender, slug, [...lista, r.nome], null, null, 'Subcategoria adicionada.');
+  });
+
+  box.addEventListener('click', async (ev) => {
+    const salvar = ev.target.closest('[data-sub-salvar]');
+    const excluir = ev.target.closest('[data-sub-excluir]');
+    if (!salvar && !excluir) return;
+    const slug = box.querySelector('#sub-cat').value;
+    const lista = store.categories.list().find((c) => c.slug === slug)?.subcategories || [];
+    if (salvar) {
+      const i = Number(salvar.dataset.subSalvar);
+      const r = nomeDeSubcategoriaValido(box.querySelector(`[data-sub-nome="${i}"]`).value, lista, i);
+      if (r.erro) return toast(r.erro, 'error');
+      if (r.nome === lista[i]) return toast('Nenhuma mudança para salvar.');
+      const nova = lista.map((n, j) => (j === i ? r.nome : n));
+      return gravaSubcategorias(rerender, slug, nova, lista[i], r.nome, 'Nome da subcategoria atualizado.');
+    }
+    const i = Number(excluir.dataset.subExcluir);
+    const ok = await confirmDialog({
+      title: 'Excluir subcategoria?',
+      text: `"${lista[i]}" sai da lista e dos fornecedores que a usam.`,
+      confirmLabel: 'Excluir',
+      danger: true,
+    });
+    if (ok) gravaSubcategorias(rerender, slug, lista.filter((_, j) => j !== i), lista[i], null, 'Subcategoria excluída.');
+  });
+}
+
 export function mountAdminCategories(root, rerender) {
+  bindSubcategorias(root, rerender);
   // Arrastar e soltar (computador). Os botões ▲ ▼ continuam valendo para celular e teclado.
   let dragSlug = null;
   const clearDropMarks = () => root.querySelectorAll('.drop-before, .drop-after, .dragging')

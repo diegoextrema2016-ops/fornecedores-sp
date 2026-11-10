@@ -40,6 +40,16 @@ export function scoreSupplier(supplier, tokens, categoryName = '', regionName = 
 
 // Aplica filtros. `ctx` traz nomes de categoria/região para a busca textual.
 // filters: { query, category, bairro, supplierType, wholesale, retail, whatsapp, verified }
+// Subcategorias do fornecedor ficam num texto só, separadas por vírgula (ex.: "Jeans, Vestidos").
+export const subcategoriasDoFornecedor = (texto = '') =>
+  String(texto).split(',').map((p) => p.trim()).filter(Boolean);
+
+// Verdadeiro se o fornecedor tem a subcategoria (sem diferenciar maiúsculas e acentos).
+export function temSubcategoria(supplier, nome) {
+  const alvo = normalize(nome);
+  return Boolean(alvo) && subcategoriasDoFornecedor(supplier.subcategory).some((p) => normalize(p) === alvo);
+}
+
 export function filterSuppliers(suppliers, filters = {}, ctx = {}) {
   const tokens = tokenize(filters.query);
   const categoryName = (slug) => ctx.categoryNames?.[slug] || '';
@@ -48,6 +58,7 @@ export function filterSuppliers(suppliers, filters = {}, ctx = {}) {
   return suppliers
     .filter((s) => s.status === 'approved')
     .filter((s) => !filters.category || s.category === filters.category)
+    .filter((s) => !filters.subcategory || temSubcategoria(s, filters.subcategory))
     .filter((s) => !filters.bairro || s.bairro === filters.bairro)
     .filter((s) => !filters.supplierType || s.supplierType === filters.supplierType)
     .filter((s) => !filters.wholesale || s.saleWholesale)

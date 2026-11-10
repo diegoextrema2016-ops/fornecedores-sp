@@ -258,6 +258,7 @@ function listingPage({ title, description, crumbs, heading, intro, fixed, base, 
   const f = {
     q: query.get('q') || '',
     category: query.get('categoria') || '',
+    subcategory: query.get('subcategoria') || '',
     bairro: query.get('bairro') || '',
     supplierType: query.get('tipo') || '',
     wholesale: query.get('atacado') === '1',
@@ -306,6 +307,18 @@ function listingPage({ title, description, crumbs, heading, intro, fixed, base, 
     </section>`,
     mount: (root) => {
       const form = root.querySelector('[data-filter-form]');
+      // Trocar a categoria atualiza a lista de subcategorias na hora (sem recarregar a página).
+      const catSel = root.querySelector('#f-cat');
+      const subSel = root.querySelector('#f-sub');
+      if (catSel && subSel) {
+        catSel.addEventListener('change', () => {
+          const mapa = JSON.parse(subSel.dataset.subcats || '{}');
+          const lista = mapa[catSel.value] || [];
+          subSel.innerHTML = `<option value="">${catSel.value ? (lista.length ? 'Todas' : 'Sem subcategorias') : 'Escolha uma categoria'}</option>`
+            + lista.map((n) => `<option value="${e(n)}">${e(n)}</option>`).join('');
+          subSel.disabled = !lista.length;
+        });
+      }
       if (form) {
         form.addEventListener('submit', (ev) => {
           ev.preventDefault();
@@ -314,6 +327,7 @@ function listingPage({ title, description, crumbs, heading, intro, fixed, base, 
           const put = (k, v) => v && params.set(k, v);
           put('q', fd.get('q')?.toString().trim());
           if (!fixed.category) put('categoria', fd.get('categoria'));
+          put('subcategoria', fd.get('subcategoria'));
           if (!fixed.bairro) put('bairro', fd.get('bairro'));
           put('tipo', fd.get('tipo'));
           for (const k of ['atacado', 'varejo', 'whatsapp', 'verificado']) if (fd.get(k)) params.set(k, '1');
@@ -328,7 +342,19 @@ function listingPage({ title, description, crumbs, heading, intro, fixed, base, 
 }
 
 function filterForm({ f, fixed, base, sort }) {
-  const check = (name, label, checked) => `
+  // Subcategorias por categoria: o dropdown mostra só as da categoria escolhida.
+  const subMap = Object.fromEntries(store.categories.list().map((c) => [c.slug, c.subcategories || []]));
+  const catAtual = fixed.category || f.category;
+  const subs = catAtual ? (subMap[catAtual] || []) : [];
+  const subcategoriaCampo = `
+    <div class="field">
+      <label for="f-sub">Subcategoria</label>
+      <select id="f-sub" name="subcategoria" data-subcats="${e(JSON.stringify(subMap))}" ${subs.length ? '' : 'disabled'}>
+        <option value="">${catAtual ? (subs.length ? 'Todas' : 'Sem subcategorias') : 'Escolha uma categoria'}</option>
+        ${subs.map((n) => `<option value="${e(n)}" ${f.subcategory === n ? 'selected' : ''}>${e(n)}</option>`).join('')}
+      </select>
+    </div>`;
+  const check =(name, label, checked) => `
     <label class="check"><input type="checkbox" name="${name}" ${checked ? 'checked' : ''}> <span>${label}</span></label>`;
   return `
   <form class="filter-form" data-filter-form aria-label="Filtrar fornecedores">
@@ -344,6 +370,7 @@ function filterForm({ f, fixed, base, sort }) {
         ${allCategories().map((c) => `<option value="${e(c.slug)}" ${f.category === c.slug ? 'selected' : ''}>${e(c.name)}</option>`).join('')}
       </select>
     </div>`}
+    ${subcategoriaCampo}
     ${fixed.bairro ? '' : `
     <div class="field">
       <label for="f-bairro">Região / bairro</label>
