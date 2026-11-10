@@ -96,7 +96,7 @@ export function home() {
       </div>
       <div class="grid grid-categories">
         ${topCategoryCard()}
-        ${allCategories().slice(0, 9).map((c) => categoryCard(c, counts[c.slug] || 0)).join('')}
+        ${allCategories().filter((c) => (counts[c.slug] || 0) > 0).slice(0, 9).map((c) => categoryCard(c, counts[c.slug] || 0)).join('')}
       </div>
     </section>
 
