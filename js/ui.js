@@ -32,6 +32,11 @@ export function header({ session, route }) {
         <span class="brand-mark" aria-hidden="true">SP</span>
         <span class="brand-text"><strong>FORNECEDORES</strong><small>ATACADO SP</small></span>
       </a>
+      <form class="header-search" role="search" action="/fornecedores" method="get">
+        <label class="sr-only" for="hdr-q">Buscar fornecedores</label>
+        <input id="hdr-q" name="q" type="search" placeholder="Buscar..." autocomplete="off">
+        <button type="submit" aria-label="Buscar">${icon.search}</button>
+      </form>
       <nav class="main-nav" id="main-nav" aria-label="Principal">
         <a class="${is('/')}" href="/">Início</a>
         <a class="${is('/categorias')}" href="/categorias">Categorias</a>
