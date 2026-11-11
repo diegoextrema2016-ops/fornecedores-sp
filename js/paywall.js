@@ -3,9 +3,12 @@
 // e ativa a assinatura; só então os contatos aparecem para o cliente.
 import { PLANS, PIX } from './config.js';
 import { store } from './store.js';
-import { escapeHtml as e, formatDate, pixPayload } from './utils.js';
-import { toast } from './ui.js';
+import { escapeHtml as e, formatDate, pixPayload, whatsappLink } from './utils.js';
+import { toast, icon } from './ui.js';
 import { subscriptionInfo } from './access.js';
+
+// Canal de atendimento para o cliente enviar o comprovante do Pix.
+const CANAL_COMPROVANTE = '3599154560';
 
 const money = (v) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 
@@ -78,6 +81,11 @@ function showPlans() {
   }));
 }
 
+// Mensagem pronta para o WhatsApp, com o plano e o valor pagos.
+function mensagemComprovante(plan) {
+  return `Olá! Segue o comprovante do Pix de ${money(plan.price)} (${plan.name}) para liberação do meu acesso ao site Fornecedores Atacado SP.`;
+}
+
 // Mostra o QR e o código copia e cola, e registra o pedido como pendente.
 function showPix(plan) {
   const code = pixPayload({ key: PIX.key, amount: plan.price, name: PIX.name, city: PIX.city });
@@ -94,7 +102,11 @@ function showPix(plan) {
       <textarea id="pix-code" class="pix-code" readonly rows="3">${e(code)}</textarea>
       <button class="btn btn-ghost btn-block" type="button" id="pix-copy">Copiar código Pix</button>
     </div>
-    <div class="notice notice-warn" role="note">Depois do pagamento, o acesso é liberado pelo administrador após a conferência do Pix. Guarde o comprovante.</div>
+    <div class="notice notice-warn" role="note">
+      <p><strong>Após o pagamento</strong>, o acesso é liberado pelo administrador depois da conferência do Pix.</p>
+      <p class="small">Envie o comprovante pelo nosso canal de atendimento para agilizar a liberação do seu acesso.</p>
+    </div>
+    <a class="btn btn-whatsapp btn-block" href="${e(whatsappLink(CANAL_COMPROVANTE, mensagemComprovante(plan)))}" target="_blank" rel="noopener noreferrer">${icon.wa} Enviar comprovante pelo WhatsApp</a>
     <div class="modal-actions">
       <button class="btn btn-ghost" type="button" data-back>Voltar</button>
     </div>`);
