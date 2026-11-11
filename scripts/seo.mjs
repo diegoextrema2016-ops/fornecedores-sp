@@ -3,6 +3,7 @@
 // Regra: só usa informações que existem nos dados. O que estiver vazio não aparece.
 import { SITE, BANNERS, SUPABASE } from '../js/config.js';
 import { SUPPLIER_TYPES } from '../js/data.js';
+import { bannersMarkup, bannerPreloadLinks as preloadBanners } from '../js/banners.js';
 
 // Categorias com restrição legal (venda proibida pela Anvisa, por exemplo) ficam fora do Google.
 export const RESTRICTED_CATEGORY_SLUGS = ['vapers-e-acessorios'];
@@ -19,15 +20,9 @@ export const SHARED_HEAD_LINKS = `<link rel="preconnect" href="https://fonts.goo
   <link rel="stylesheet" href="/css/styles.css">
   ${APP_MODULES.map((m) => `<link rel="modulepreload" href="/js/${m}.js">`).join('\n  ')}`;
 
-// Imagem principal da home (banner): pré-carregada para aparecer logo.
+// Imagem principal da home (banner): pré-carregada para aparecer logo (mesma lógica do site).
 function bannerPreloadLinks() {
-  const b = BANNERS[0];
-  if (!b) return '';
-  const webp = (src) => src.replace(/\.(jpe?g|png)$/i, '.webp');
-  return [
-    b.mobileSrc ? `<link rel="preload" as="image" type="image/webp" href="${esc(webp(b.mobileSrc))}" media="(max-width: 820px)" fetchpriority="high">` : '',
-    `<link rel="preload" as="image" type="image/webp" href="${esc(webp(b.src))}" media="(min-width: 821px)" fetchpriority="high">`,
-  ].join('\n  ');
+  return preloadBanners(BANNERS, esc);
 }
 
 // Ícone da página (o mesmo do index.html), preenchido pelo build.
@@ -42,6 +37,8 @@ export const esc = (v = '') => String(v ?? '').replace(/[&<>"']/g, (c) => ENTITI
 const BASE = SITE.url.replace(/\/$/, '');
 export const absUrl = (path = '/') => BASE + (path.startsWith('/') ? path : `/${path}`);
 const DEFAULT_OG_IMAGE = absUrl('/img/og-banner-2.jpg');
+// Imagem de compartilhamento (WhatsApp, Facebook) só da home. Nome novo para não usar a versão em cache.
+const HOME_OG_IMAGE = absUrl('/img/og-home-1.jpg');
 
 // Remove marcas de tamanho e espaços desnecessários de um texto livre.
 const clean = (v = '') => String(v ?? '').replace(/\s+/g, ' ').trim();
@@ -106,7 +103,7 @@ export const itemListJsonLd = (name, suppliers) => ({
 // ---------- Cabeçalho e documento ----------
 
 // faviconLink vem do index.html, para manter o mesmo ícone em todas as páginas.
-export function documentHtml({ title, description, path, noindex = false, jsonld = [], image = DEFAULT_OG_IMAGE, mainHtml = '', nav = '', footer = '', ogType = 'website' }) {
+export function documentHtml({ title, description, path, noindex = false, jsonld = [], image = path === '/' ? HOME_OG_IMAGE : DEFAULT_OG_IMAGE, mainHtml = '', nav = '', footer = '', ogType = 'website' }) {
   const canonical = absUrl(path);
   const jsonScripts = jsonld
     .map((obj) => `<script type="application/ld+json">${JSON.stringify(obj).replace(/</g, '\\u003c')}</script>`)
@@ -169,24 +166,9 @@ export function staticHeader() {
   </header>`;
 }
 
-// Faixa de banners igual à do site (mesmo markup de js/pages-public.js).
+// Faixa de banners igual à do site (mesmo markup de js/banners.js).
 export function staticBanners() {
-  if (!BANNERS.length) return '';
-  const webp = (src) => src.replace(/\.(jpe?g|png)$/i, '.webp');
-  return `
-    <section class="banner-section" aria-label="Destaques">
-      <div class="banner-track">
-        ${BANNERS.map((b, i) => {
-          const sources = [
-            b.mobileSrc ? `<source media="(max-width: 820px)" type="image/webp" srcset="${esc(webp(b.mobileSrc))}">` : '',
-            b.mobileSrc ? `<source media="(max-width: 820px)" srcset="${esc(b.mobileSrc)}">` : '',
-            `<source type="image/webp" srcset="${esc(webp(b.src))}">`,
-          ].join('');
-          const img = `<picture>${sources}<img src="${esc(b.src)}" alt="${esc(b.alt)}" ${i === 0 ? 'fetchpriority="high"' : 'loading="lazy"'} decoding="async"></picture>`;
-          return `<div class="banner-slide">${b.href ? `<a href="${esc(b.href)}">${img}</a>` : img}</div>`;
-        }).join('')}
-      </div>
-    </section>`;
+  return bannersMarkup(BANNERS, esc);
 }
 
 export function staticNav() {
