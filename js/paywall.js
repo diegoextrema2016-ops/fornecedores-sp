@@ -102,10 +102,7 @@ function showPix(plan) {
       <textarea id="pix-code" class="pix-code" readonly rows="3">${e(code)}</textarea>
       <button class="btn btn-ghost btn-block" type="button" id="pix-copy">Copiar código Pix</button>
     </div>
-    <div class="notice notice-warn" role="note">
-      <p><strong>Após o pagamento</strong>, o acesso é liberado pelo administrador depois da conferência do Pix.</p>
-      <p class="small">Envie o comprovante pelo nosso canal de atendimento para agilizar a liberação do seu acesso.</p>
-    </div>
+    <div class="notice notice-warn" role="note"><strong>Após o pagamento</strong>, o acesso é liberado pelo administrador depois da conferência do Pix. Envie o comprovante pelo nosso canal de atendimento para agilizar a liberação do seu acesso.</div>
     <a class="btn btn-whatsapp btn-block" href="${e(whatsappLink(CANAL_COMPROVANTE, mensagemComprovante(plan)))}" target="_blank" rel="noopener noreferrer">${icon.wa} Enviar comprovante pelo WhatsApp</a>
     <div class="modal-actions">
       <button class="btn btn-ghost" type="button" data-back>Voltar</button>
