@@ -162,6 +162,15 @@ function atualizarEmSegundoPlano(id) {
     .catch(() => {});
 }
 
+// Busca do cabeçalho: vai para a lista de fornecedores sem recarregar a página.
+document.addEventListener('submit', (ev) => {
+  const form = ev.target.closest?.('.header-search');
+  if (!form) return;
+  ev.preventDefault();
+  const q = new FormData(form).get('q')?.toString().trim() || '';
+  go(q ? `/fornecedores?q=${encodeURIComponent(q)}` : '/fornecedores');
+});
+
 // Clique numa foto da ficha abre a imagem inteira
 document.addEventListener('click', (ev) => {
   const zoom = ev.target.closest('[data-photo-open]');
