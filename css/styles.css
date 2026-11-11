@@ -511,15 +511,3 @@ a.wa-link svg { color: var(--whatsapp); }
 .subcat-manager-list { display: grid; gap: .5rem; margin-top: .75rem; }
 .subcat-row { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
 .subcat-row input { flex: 1 1 200px; }
-
-/* Busca compacta no cabeçalho: só aparece no computador largo (a partir de 1200 px). */
-.header-search { display: none; align-items: center; gap: .25rem; margin-left: auto; background: var(--surface); border: 1px solid var(--border); border-radius: 999px; padding: .2rem .2rem .2rem .85rem; width: 220px; }
-.header-search input { flex: 1; min-width: 0; border: 0; outline: none; background: transparent; font: inherit; font-size: .92rem; padding: .35rem 0; color: var(--text); }
-.header-search:focus-within { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(36, 87, 245, .15); }
-.header-search button { border: 0; background: var(--primary); color: #fff; width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; cursor: pointer; flex: none; }
-.header-search button:hover { background: var(--primary-600); }
-@media (min-width: 1200px) {
-  .header-search { display: flex; }
-  .main-nav { margin-left: 0; }
-  .main-nav a { white-space: nowrap; padding-inline: .6rem; }
-}
