@@ -8,7 +8,7 @@ import { toast, icon } from './ui.js';
 import { subscriptionInfo } from './access.js';
 
 // Canal de atendimento para o cliente enviar o comprovante do Pix.
-const CANAL_COMPROVANTE = '3599154560';
+const CANAL_COMPROVANTE = '35991545650';
 
 const money = (v) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 
