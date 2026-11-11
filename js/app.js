@@ -1,7 +1,7 @@
 // Ponto de entrada: roteamento por endereço limpo (/rota?query), proteção das rotas do painel e renderização.
 import { SITE } from './config.js';
 import { store } from './store.js';
-import { header, footer, toast, openPhotoViewer } from './ui.js';
+import { header, footer, toast, openPhotoViewer, skeletonCards } from './ui.js';
 import * as pub from './pages-public.js';
 import * as acc from './pages-account.js';
 import * as adm from './pages-admin.js';
@@ -84,6 +84,16 @@ function setMeta(page, path) {
 // Evita que uma renderização antiga sobrescreva a mais recente (cliques rápidos ou atualizações em sequência).
 let renderId = 0;
 
+// Endereço da tela que está na tela agora. Na primeira carga começa com a página já pintada pelo HTML estático.
+let telaAtual = currentLocation().path;
+
+// Enquanto os dados não chegam, a troca de página aparece na hora com um esqueleto (não fica parada no clique).
+function telaCarregando() {
+  return `<section class="container section-tight" aria-busy="true">
+    <div class="grid grid-3">${skeletonCards(6)}</div>
+  </section>`;
+}
+
 // Redesenha a tela só com a cópia que já está na memória (sem baixar tudo do banco de novo).
 // Usado depois de cada ação do painel, que já atualiza a cópia local antes de gravar.
 function renderLocal() {
@@ -95,6 +105,11 @@ async function render({ fromMemory = false } = {}) {
   const { path, query } = parseLocation();
   // Só a primeira visita espera os dados. Nas seguintes a tela aparece na hora, com a cópia da memória.
   const primeiraVez = !fromMemory && !store.loaded();
+  // Clique numa página diferente sem dados ainda: mostra o esqueleto já, em vez de deixar a tela parada.
+  if (primeiraVez && telaAtual !== path) {
+    main.innerHTML = telaCarregando();
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+  }
 
   try {
     if (primeiraVez) await store.refresh({ maxAgeMs: 30000 });
@@ -141,9 +156,11 @@ async function render({ fromMemory = false } = {}) {
   if (page === null) return;
 
   main.innerHTML = page.html;
+  telaAtual = path;
   setMeta(page, path);
   page.mount?.(main);
-  window.scrollTo(0, 0);
+  // "instant": a página sobe na hora, sem a animação de rolagem suave do CSS.
+  window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
   main.focus({ preventScroll: true });
 
   // Atualiza os dados em segundo plano e redesenha só se algo mudou (sem atrasar o clique).
