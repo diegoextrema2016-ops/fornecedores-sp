@@ -9,6 +9,7 @@ const srcset = (base, ext, larguras) => larguras.map((w) => `${base}-${w}.${ext}
 const semExtensao = (src) => src.replace(/\.(jpe?g|png|webp)$/i, '');
 
 // Markup de um banner. `esc` é a função de escape de HTML de quem chama.
+// A miniatura borrada (b.blur / b.blurMobile) aparece na hora, atrás da imagem, enquanto a grande carrega.
 function bannerHtml(b, i, esc) {
   const pc = semExtensao(b.src);
   const cel = b.mobileSrc ? semExtensao(b.mobileSrc) : null;
@@ -19,7 +20,12 @@ function bannerHtml(b, i, esc) {
     `<source type="image/webp" srcset="${esc(srcset(pc, 'webp', LARGURAS_PC))}" sizes="100vw">`,
   ].join('');
   const img = `<picture>${sources}<img src="${esc(pc)}-1600.jpg" srcset="${esc(srcset(pc, 'jpg', LARGURAS_PC))}" sizes="100vw" alt="${esc(b.alt)}" ${i === 0 ? 'fetchpriority="high"' : 'loading="lazy"'} decoding="async"></picture>`;
-  return `<div class="banner-slide">${b.href ? `<a href="${esc(b.href)}">${img}</a>` : img}</div>`;
+  const blur = [
+    b.blur ? `--banner-blur-pc:url(${b.blur})` : '',
+    b.blurMobile ? `--banner-blur-cel:url(${b.blurMobile})` : '',
+  ].filter(Boolean).join(';');
+  const slide = `<div class="banner-slide"${blur ? ` style="${blur}"` : ''}>`;
+  return `${slide}${b.href ? `<a href="${esc(b.href)}">${img}</a>` : img}</div>`;
 }
 
 export function bannersMarkup(banners, esc) {
@@ -32,14 +38,15 @@ export function bannersMarkup(banners, esc) {
     </section>`;
 }
 
-// Pré-carrega o primeiro banner (versão de tamanho médio) para aparecer logo.
+// Pré-carrega o primeiro banner. Usa exatamente o mesmo conjunto de tamanhos da imagem (imagesrcset),
+// assim o navegador baixa a mesma versão que vai mostrar, sem baixar duas vezes.
 export function bannerPreloadLinks(banners, esc) {
   const b = banners[0];
   if (!b) return '';
   const pc = semExtensao(b.src);
   const cel = b.mobileSrc ? semExtensao(b.mobileSrc) : null;
   return [
-    cel ? `<link rel="preload" as="image" type="image/webp" href="${esc(`${cel}-800.webp`)}" media="(max-width: 820px)" fetchpriority="high">` : '',
-    `<link rel="preload" as="image" type="image/webp" href="${esc(`${pc}-1600.webp`)}" media="(min-width: 821px)" fetchpriority="high">`,
-  ].join('\n  ');
+    cel ? `<link rel="preload" as="image" type="image/webp" imagesrcset="${esc(srcset(cel, 'webp', LARGURAS_CEL))}" imagesizes="100vw" media="(max-width: 820px)" fetchpriority="high">` : '',
+    `<link rel="preload" as="image" type="image/webp" imagesrcset="${esc(srcset(pc, 'webp', LARGURAS_PC))}" imagesizes="100vw" media="(min-width: 821px)" fetchpriority="high">`,
+  ].filter(Boolean).join('\n  ');
 }
