@@ -714,6 +714,14 @@ export function notFound() {
 export { skeletonCards, icon };
 
 // Faixa de banners da home: um por vez, rola para o lado (swipe).
+// Larguras das versões geradas em /img/banners/ (cada arquivo existe nessas larguras, sem ampliar o original).
+const LARGURAS_PC = [960, 1280, 1600, 2172];
+const LARGURAS_CEL = [560, 800, 1122];
+
+// Monta o srcset: o navegador escolhe a menor versão que ainda fica nítida na tela (e na densidade do aparelho).
+const srcset = (base, ext, larguras) => larguras.map((w) => `${base}-${w}.${ext} ${w}w`).join(', ');
+const semExtensao = (src) => src.replace(/\.(jpe?g|png|webp)$/i, '');
+
 function bannersHtml() {
   if (!BANNERS.length) return '';
   return `
@@ -721,13 +729,14 @@ function bannersHtml() {
       <div class="banner-track">
         ${BANNERS.map((b, i) => {
           // WebP primeiro (menor); JPG como reserva. Celular usa a versão vertical.
-          const webp = (src) => src.replace(/\.(jpe?g|png)$/i, '.webp');
+          const pc = semExtensao(b.src);
+          const cel = b.mobileSrc ? semExtensao(b.mobileSrc) : null;
           const sources = [
-            b.mobileSrc ? `<source media="(max-width: 820px)" type="image/webp" srcset="${e(webp(b.mobileSrc))}">` : '',
-            b.mobileSrc ? `<source media="(max-width: 820px)" srcset="${e(b.mobileSrc)}">` : '',
-            `<source type="image/webp" srcset="${e(webp(b.src))}">`,
+            cel ? `<source media="(max-width: 820px)" type="image/webp" srcset="${e(srcset(cel, 'webp', LARGURAS_CEL))}" sizes="100vw">` : '',
+            cel ? `<source media="(max-width: 820px)" type="image/jpeg" srcset="${e(srcset(cel, 'jpg', LARGURAS_CEL))}" sizes="100vw">` : '',
+            `<source type="image/webp" srcset="${e(srcset(pc, 'webp', LARGURAS_PC))}" sizes="100vw">`,
           ].join('');
-          const img = `<picture>${sources}<img src="${e(b.src)}" alt="${e(b.alt)}" ${i === 0 ? 'fetchpriority="high"' : 'loading="lazy"'} decoding="async"></picture>`;
+          const img = `<picture>${sources}<img src="${e(pc)}-1600.jpg" srcset="${e(srcset(pc, 'jpg', LARGURAS_PC))}" sizes="100vw" alt="${e(b.alt)}" ${i === 0 ? 'fetchpriority="high"' : 'loading="lazy"'} decoding="async"></picture>`;
           return `<div class="banner-slide">${b.href ? `<a href="${e(b.href)}">${img}</a>` : img}</div>`;
         }).join('')}
       </div>
