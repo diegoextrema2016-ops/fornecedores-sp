@@ -59,6 +59,12 @@ export const PIX = {
 
 // Banners da home, em faixa que rola para o lado (um por vez no celular).
 // src: imagem para computador. mobileSrc: imagem para celular (opcional, até 820px). href: para onde leva ao clicar (opcional).
+// blur / blurMobile: miniatura borrada (poucos bytes), mostrada na hora enquanto a imagem grande carrega.
 export const BANNERS = [
-  { src: '/img/banners/banner-3.jpg', mobileSrc: '/img/banners/banner-3-celular.jpg', alt: 'Fornecedores de SP: o maior guia de fornecedores de São Paulo', href: '/categorias' },
+  {
+    src: '/img/banners/banner-3.jpg', mobileSrc: '/img/banners/banner-3-celular.jpg',
+    alt: 'Fornecedores de SP: o maior guia de fornecedores de São Paulo', href: '/categorias',
+    blur: 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDABQODxIPDRQSEBIXFRQYHjIhHhwcHj0sLiQySUBMS0dARkVQWnNiUFVtVkVGZIhlbXd7gYKBTmCNl4x9lnN+gXz/2wBDARUXFx4aHjshITt8U0ZTfHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHz/wAARCAAQADADASIAAhEBAxEB/8QAFwABAQEBAAAAAAAAAAAAAAAABAUDAf/EACMQAAICAgAGAwEAAAAAAAAAAAECAwQAEQUSEyEiQTFCUaH/xAAXAQADAQAAAAAAAAAAAAAAAAABAgME/8QAGxEBAAICAwAAAAAAAAAAAAAAAQACEjERQVH/2gAMAwEAAhEDEQA/ALESoitFGNAdxr3h1j4jLJoeK/u8NUWzMQwbSgd8eL5RiOk+/jeaQs9SIkS8U4roNhm9neZ9GwD8f3Mxebk10nOs7HeaeUIInBPvBgmyNkSfNYeS8WcAiPsN+smG7alklCklSfLLtvh5aeORjyp9h+4YSVKCyRhgQTvHrcdV5YGvrP/Z',
+    blurMobile: 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDABQODxIPDRQSEBIXFRQYHjIhHhwcHj0sLiQySUBMS0dARkVQWnNiUFVtVkVGZIhlbXd7gYKBTmCNl4x9lnN+gXz/2wBDARUXFx4aHjshITt8U0ZTfHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHz/wAARCAAtACQDASIAAhEBAxEB/8QAGgAAAgMBAQAAAAAAAAAAAAAAAwUAAgQGAf/EACgQAAIBAwQBAwQDAAAAAAAAAAECAwAEEQUSITETIkFRFBUyQ2Fjof/EABcBAAMBAAAAAAAAAAAAAAAAAAECAwT/xAAhEQACAgICAQUAAAAAAAAAAAABAgAREiEDBEEUMUJRYf/aAAwDAQACEQMRAD8AZ2lv9K3iA9TD8qpcXUls3j3kkDuhQXrzPG20sWPeKPPDF5j5YyxPvWpWyJLbkcaFCZDqkzSBEbJIznNM9LuJZSTMGBHFCQQwOdsOP520cXDGByiYOOBjugwB9hGuvMBd69HBO0YXdt96lLvsFzOTIxALHODUrSE640TI58n1HohW3IWGLge9FmfG30E574qsN2s8W5DxQReN9VsJBU1io3UvYqaJs4Xan+V6z+kbFzSTUNfKNJHECCOM0v0vVLoSOEy6nk5+accbwZCdgj5UZ4NSuQuL+fytvlYN8CpVx0yd3Ieo/I7tbRra28IfDHsms1hYPbyyvPIHz+PPVA06WTUlxK5UqMZFbvt+P3PSOlMcjuVVtaETS6NPLe8sPGxyT8UysbM2JZF2lSe6KbH+5qqdN9zO9IyA/KMrEeJivNMlmuGdBwaldLboBCo7wKlFew6ihAUBNz//2Q==',
+  },
 ];
