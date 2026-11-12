@@ -298,23 +298,30 @@ export function listJoin(items) {
 // ---------- Páginas ----------
 
 export function homePage({ categories, regions, suppliers, featured }) {
-  const n = suppliers.length;
   const title = 'Fornecedores Atacado SP | Brás, Moda, Tênis e Eletrônicos';
   const description = 'Encontre fornecedores de atacado em São Paulo, Brás e 25 de Março. Explore lojas de roupas, moda feminina, tênis, eletrônicos e muito mais.';
   const catLinks = categories.map((c) => `<li><a href="/categorias/${esc(c.slug)}">${esc(c.name)}</a></li>`).join('');
   const regLinks = regions.map((r) => `<li><a href="/regiao/${esc(r.slug)}">${esc(r.name)}</a></li>`).join('');
-  // Mesma ordem da home do site: banners, destaque (hero), categorias, bairros e destaques.
+  // Mesma ordem e mesmo texto da home do app (js/pages-public.js): hero, banners, categorias.
+  // Assim a troca da versão pré-gerada para o app não mexe no topo da página (banner não pula nem muda).
   const main = `
-  ${staticBanners()}
   <section class="hero">
     <div class="container hero-inner">
       <p class="eyebrow">25 de Março · Brás · Pari · Bom Retiro</p>
-      <h1>Os melhores fornecedores de São Paulo em um só lugar.</h1>
-      <p class="lead">Descubra lojas, distribuidores e fornecedores para comprar no atacado e abastecer seu negócio.</p>
-      <p class="muted small">Fornecedores de atacado em São Paulo. ${n ? `Reunimos ${n} fornecedores aprovados em ${categories.length} categorias,` : 'Reunimos fornecedores de atacado de São Paulo,'} com destaque para o Brás, a 25 de Março e outros polos comerciais da cidade.</p>
-      <p><a class="btn btn-primary" href="/fornecedores">Ver todos os fornecedores</a> <a class="btn btn-secondary" href="/categorias">Ver categorias</a></p>
+      <h1>Encontre fornecedores de atacado em São Paulo</h1>
+      <p class="lead">Compare lojas e distribuidores por categoria, subcategoria e bairro, e encontre o fornecedor certo para o seu negócio.</p>
+      <form class="search-hero" role="search" action="/fornecedores" method="get">
+        <label class="sr-only" for="hero-q">Buscar</label>
+        <input id="hero-q" name="q" type="search" placeholder="Busque produtos, fornecedores ou categorias..." autocomplete="off">
+        <button class="btn btn-primary" type="submit">Buscar</button>
+      </form>
+      <div class="chips" aria-label="Pesquisas populares">
+        <span class="muted small">Populares:</span>
+        ${['Eletrônicos', 'Moda feminina', 'Tênis', 'Acessórios', 'Perfumes'].map((t) => `<a class="chip" href="/fornecedores?q=${encodeURIComponent(t)}&origem=popular">${esc(t)}</a>`).join('')}
+      </div>
     </div>
   </section>
+  ${staticBanners()}
   <section class="container section-tight">
     <h2>Categorias</h2>
     <ul class="plain-list two-col">${catLinks}</ul>
