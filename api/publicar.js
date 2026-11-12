@@ -19,7 +19,15 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Método não permitido.' });
 
   const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
-  if (!token || !(await administradorLogado(token))) {
+  // Se o Supabase não responder, a checagem falha: devolvemos erro controlado, nunca uma exceção sem resposta.
+  let admin = false;
+  try {
+    admin = Boolean(token) && (await administradorLogado(token));
+  } catch (err) {
+    console.error('publicar: falha ao checar o administrador', err?.name, err?.message);
+    return res.status(502).json({ error: 'Não foi possível confirmar o acesso agora. Tente de novo em instantes.' });
+  }
+  if (!admin) {
     return res.status(403).json({ error: 'Só administradores podem publicar.' });
   }
 
