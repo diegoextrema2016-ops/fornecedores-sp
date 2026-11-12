@@ -21,7 +21,7 @@ export function loginPage() {
     title: `Entrar | ${SITE.shortName}`,
     description: 'Acesse sua conta no Fornecedores Atacado SP.',
     html: `
-    ${breadcrumbs([{ label: 'Início', href: '/' }, { label: 'Entrar' }])}
+    ${breadcrumbs([{ label: 'Início', href: '/site' }, { label: 'Entrar' }])}
     <section class="container section-tight narrow">
       <h1>Entrar</h1>
       <form class="card form" id="login-form" novalidate>
@@ -61,7 +61,7 @@ export function registerPage() {
     title: `Criar conta | ${SITE.shortName}`,
     description: 'Crie sua conta para salvar fornecedores, assinar o acesso aos contatos e cadastrar sua loja.',
     html: `
-    ${breadcrumbs([{ label: 'Início', href: '/' }, { label: 'Criar conta' }])}
+    ${breadcrumbs([{ label: 'Início', href: '/site' }, { label: 'Criar conta' }])}
     <section class="container section-tight narrow" id="register-area">
       <h1>Criar conta</h1>
       <form class="card form" id="register-form" novalidate>
@@ -114,7 +114,7 @@ export async function logout() {
   } catch (err) {
     toast(err.message, 'error');
   }
-  go('/');
+  go('/site');
 }
 
 export function cadastroPage() {
@@ -126,7 +126,7 @@ export function cadastroPage() {
       title,
       description,
       html: `
-      ${breadcrumbs([{ label: 'Início', href: '/' }, { label: 'Cadastrar fornecedor' }])}
+      ${breadcrumbs([{ label: 'Início', href: '/site' }, { label: 'Cadastrar fornecedor' }])}
       <section class="container section-tight narrow">
         <h1>Cadastre sua loja</h1>
         <div class="card">
@@ -143,7 +143,7 @@ export function cadastroPage() {
     title,
     description,
     html: `
-    ${breadcrumbs([{ label: 'Início', href: '/' }, { label: 'Cadastrar fornecedor' }])}
+    ${breadcrumbs([{ label: 'Início', href: '/site' }, { label: 'Cadastrar fornecedor' }])}
     <section class="container section-tight">
       <h1>Cadastre sua loja e seja encontrado por compradores de todo o Brasil.</h1>
       <p class="lead">Preencha os dados abaixo. Após o envio, seu cadastro fica pendente até a aprovação.</p>
@@ -175,7 +175,7 @@ export function cadastroPage() {
                 <h1>Cadastro enviado!</h1>
                 <p>Recebemos os dados de <strong>${e(saved.name)}</strong>. Nossa equipe vai analisar as informações antes de publicar.</p>
                 <p class="muted small">Você não precisa enviar de novo. Para corrigir algo, fale pelo <a href="/contato">contato</a>.</p>
-                <a class="btn btn-primary" href="/">Voltar ao início</a>
+                <a class="btn btn-primary" href="/site">Voltar ao início</a>
               </div>
             </section>`;
           window.scrollTo({ top: 0 });

@@ -148,7 +148,7 @@ const auth = {
   async signUp({ name, email, password }) {
     lastRefreshAt = 0;
     try {
-      return await api.signUp({ name: name.trim(), email: email.trim().toLowerCase(), password, redirectTo: SITE.url });
+      return await api.signUp({ name: name.trim(), email: email.trim().toLowerCase(), password, redirectTo: SITE.url + '/site' });
     } catch (err) {
       throw new Error(M.authErrorMessage(err));
     }

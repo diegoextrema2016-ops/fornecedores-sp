@@ -19,7 +19,7 @@ const isAdmin = () => store.session.get()?.role === 'admin';
 
 // Rotas: [regex, handler(params, query), opções]. Handler retorna { title, description, html, mount? } ou null (redirecionamento).
 const routes = [
-  [/^\/$/, () => pub.home()],
+  [/^\/site$/, () => pub.home()],
   [/^\/categorias$/, () => pub.categoriesIndex()],
   [/^\/categorias\/mais-acessados$/, () => pub.mostAccessedPage()],
   [/^\/categorias\/([^/]+)$/, (p, q) => pub.categoryPage({ slug: p[1] }, q)],
@@ -70,7 +70,7 @@ function migrateLegacyHash() {
   if (hash.startsWith('#/')) {
     history.replaceState(null, '', normalizeTarget(hash));
   } else if (hash.startsWith('#access_token=') || hash.startsWith('#error=')) {
-    history.replaceState(null, '', '/' + location.search);
+    history.replaceState(null, '', '/site' + location.search);
   }
 }
 
@@ -78,7 +78,7 @@ function setMeta(page, path) {
   document.title = page.title || SITE.name;
   document.querySelector('meta[name="description"]')?.setAttribute('content', page.description || SITE.description);
   const canonical = document.querySelector('link[rel="canonical"]');
-  if (canonical) canonical.setAttribute('href', SITE.url + (path === '/' ? '/' : path));
+  if (canonical) canonical.setAttribute('href', SITE.url + path);
   const robots = document.querySelector('meta[name="robots"]');
   const noindex = Boolean(page.noindex) || NOINDEX_PATH.test(path);
   if (robots) robots.setAttribute('content', noindex ? 'noindex, nofollow' : 'index, follow');
@@ -130,7 +130,7 @@ async function render({ fromMemory = false } = {}) {
     if (primeiraVez) await store.refresh({ maxAgeMs: 30000 });
   } catch (err) {
     if (id !== renderId) return;
-    headerHost.innerHTML = header({ session: null, route: '/' });
+    headerHost.innerHTML = header({ session: null, route: '/site' });
     footerHost.innerHTML = footer();
     main.innerHTML = `<section class="container section-tight narrow">
       <div class="card">
@@ -164,7 +164,7 @@ async function render({ fromMemory = false } = {}) {
 
   const isAdminRoute = Boolean(route?.[2]?.admin);
   const navKey = '/' + (path.split('/')[1] || '');
-  headerHost.innerHTML = header({ session: store.session.get(), route: navKey === '/' ? '/' : navKey });
+  headerHost.innerHTML = header({ session: store.session.get(), route: navKey });
   footerHost.innerHTML = isAdminRoute ? '' : footer();
   document.body.classList.toggle('is-admin', isAdminRoute);
 

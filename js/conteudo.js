@@ -98,7 +98,7 @@ export function planosMainHtml() {
       </article>`).join('');
   return `
     <section class="container section-tight">
-      <nav class="breadcrumbs" aria-label="Você está em"><ol><li><a href="/">Início</a></li><li aria-current="page">Planos</li></ol></nav>
+      <nav class="breadcrumbs" aria-label="Você está em"><ol><li><a href="/site">Início</a></li><li aria-current="page">Planos</li></ol></nav>
       <h1>Planos de acesso aos fornecedores</h1>
       <p class="lead">Qualquer visitante vê a descrição e as principais informações de cada fornecedor. Os contatos completos (WhatsApp, Instagram e endereço) são liberados por assinatura.</p>
       <div class="grid grid-2">${cards}</div>
@@ -111,7 +111,7 @@ export function guiasIndexMainHtml() {
   const items = GUIAS.map((g) => `<li><a href="/guias/${esc(g.slug)}"><strong>${esc(g.h1)}</strong></a><br><span class="small">${esc(g.description)}</span></li>`).join('');
   return `
     <section class="container section-tight">
-      <nav class="breadcrumbs" aria-label="Você está em"><ol><li><a href="/">Início</a></li><li aria-current="page">Guias</li></ol></nav>
+      <nav class="breadcrumbs" aria-label="Você está em"><ol><li><a href="/site">Início</a></li><li aria-current="page">Guias</li></ol></nav>
       <h1>Guias para quem compra no atacado em São Paulo</h1>
       <p class="lead">Textos práticos para quem quer encontrar fornecedores de atacado e revenda em São Paulo.</p>
       <ul class="plain-list">${items}</ul>
@@ -126,7 +126,7 @@ export function guiaMainHtml(g) {
   const regioes = (g.related?.regioes || []).map((slug) => `<li><a href="/regiao/${esc(slug)}">${esc(REGIAO_NOME[slug] || slug)}</a></li>`).join('');
   return `
     <article class="container section-tight prose">
-      <nav class="breadcrumbs" aria-label="Você está em"><ol><li><a href="/">Início</a></li><li><a href="/guias">Guias</a></li><li aria-current="page">${esc(g.h1)}</li></ol></nav>
+      <nav class="breadcrumbs" aria-label="Você está em"><ol><li><a href="/site">Início</a></li><li><a href="/guias">Guias</a></li><li aria-current="page">${esc(g.h1)}</li></ol></nav>
       <h1>${esc(g.h1)}</h1>
       <p class="lead">${esc(g.intro)}</p>
       ${sections}

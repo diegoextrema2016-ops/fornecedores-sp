@@ -210,7 +210,7 @@ export function categoriesIndex() {
     title: `Categorias de fornecedores | ${SITE.shortName}`,
     description: 'Fornecedores por categoria: eletrônicos, moda feminina, tênis, perfumes, cosméticos e mais.',
     html: `
-    ${breadcrumbs([{ label: 'Início', href: '/' }, { label: 'Categorias' }])}
+    ${breadcrumbs([{ label: 'Início', href: '/site' }, { label: 'Categorias' }])}
     <section class="container section-tight">
       <h1>Categorias</h1>
       <p class="lead">Encontre fornecedores pelo segmento do seu negócio.</p>
@@ -251,7 +251,7 @@ export function mostAccessedPage() {
     title: `Categorias mais acessadas | ${SITE.shortName}`,
     description: 'Veja as categorias de fornecedores de São Paulo com mais acessos no site.',
     html: `
-    ${breadcrumbs([{ label: 'Início', href: '/' }, { label: 'Categorias', href: '/categorias' }, { label: 'Mais acessados' }])}
+    ${breadcrumbs([{ label: 'Início', href: '/site' }, { label: 'Categorias', href: '/categorias' }, { label: 'Mais acessados' }])}
     <section class="container section-tight">
       <h1>Categorias mais acessadas</h1>
       <p class="lead">Ordenadas pelo total de acessos aos fornecedores de cada categoria.</p>
@@ -266,7 +266,7 @@ export function categoryPage({ slug }, query) {
   return listingPage({
     title: `Fornecedores de ${cat.name} em São Paulo | Atacado`,
     description: `${cat.description || ''} Fornecedores de ${cat.name} no atacado de São Paulo.`.trim(),
-    crumbs: [{ label: 'Início', href: '/' }, { label: 'Categorias', href: '/categorias' }, { label: cat.name }],
+    crumbs: [{ label: 'Início', href: '/site' }, { label: 'Categorias', href: '/categorias' }, { label: cat.name }],
     // Mesmo H1 da página pré-gerada (scripts/seo.mjs), para o Google ver o mesmo título antes e depois do JavaScript.
     heading: `Fornecedores de ${cat.name} em São Paulo`,
     intro: cat.description,
@@ -283,7 +283,7 @@ export function regionPage({ slug }, query) {
   return listingPage({
     title: `Fornecedores ${prep} ${region.name} | São Paulo`,
     description: `${region.description} Encontre fornecedores ${prep} ${region.name}, São Paulo.`,
-    crumbs: [{ label: 'Início', href: '/' }, { label: 'Mapa', href: '/mapa' }, { label: region.name }],
+    crumbs: [{ label: 'Início', href: '/site' }, { label: 'Mapa', href: '/mapa' }, { label: region.name }],
     heading: `Fornecedores ${prep} ${region.name}, São Paulo`,
     intro: REGIAO_TEXTO[slug] || region.description,
     fixed: { bairro: slug },
@@ -296,7 +296,7 @@ export function suppliersPage(_params, query) {
   return listingPage({
     title: `Todos os fornecedores | ${SITE.shortName}`,
     description: 'Lista de fornecedores de São Paulo com filtros por categoria, subcategoria, tipo de venda e WhatsApp.',
-    crumbs: [{ label: 'Início', href: '/' }, { label: 'Fornecedores' }],
+    crumbs: [{ label: 'Início', href: '/site' }, { label: 'Fornecedores' }],
     heading: 'Fornecedores',
     intro: 'Pesquise por nome, produto, categoria ou localização. Use os filtros para refinar.',
     fixed: {},
@@ -502,7 +502,7 @@ export function supplierPage({ slug }) {
     description: (s.description || `${s.name}, fornecedor de ${catName[s.category]} em ${regName[s.bairro] || 'São Paulo'}.`).slice(0, 155),
     html: `
     ${breadcrumbs([
-      { label: 'Início', href: '/' },
+      { label: 'Início', href: '/site' },
       { label: catName[s.category] || 'Categoria', href: `/categorias/${s.category}` },
       { label: s.name },
     ])}
@@ -595,7 +595,7 @@ export function mapPage() {
     title: `Mapa de fornecedores | ${SITE.shortName}`,
     description: 'Encontre fornecedores por região: 25 de Março, Brás, Pari, Bom Retiro e Santa Ifigênia.',
     html: `
-    ${breadcrumbs([{ label: 'Início', href: '/' }, { label: 'Mapa' }])}
+    ${breadcrumbs([{ label: 'Início', href: '/site' }, { label: 'Mapa' }])}
     <section class="container section-tight">
       <h1>Mapa de fornecedores por bairro</h1>
       <p class="lead">Veja os fornecedores por bairro e abra a rota no Google Maps.</p>
@@ -628,7 +628,7 @@ export function favoritesPage() {
     title: `Meus fornecedores favoritos | ${SITE.shortName}`,
     description: 'Seus fornecedores salvos.',
     html: `
-    ${breadcrumbs([{ label: 'Início', href: '/' }, { label: 'Favoritos' }])}
+    ${breadcrumbs([{ label: 'Início', href: '/site' }, { label: 'Favoritos' }])}
     <section class="container section-tight">
       <h1>Meus fornecedores favoritos</h1>
       <p class="lead">${loggedIn
@@ -649,7 +649,7 @@ export function aboutPage() {
     title: `Sobre o portal | ${SITE.shortName}`,
     description: 'Conheça o Fornecedores Atacado SP e como funciona o portal.',
     html: `
-    ${breadcrumbs([{ label: 'Início', href: '/' }, { label: 'Como funciona' }])}
+    ${breadcrumbs([{ label: 'Início', href: '/site' }, { label: 'Como funciona' }])}
     <section class="container prose" id="como-funciona">
       <h1>Como funciona</h1>
       <p>O ${e(SITE.name)} reúne fornecedores de atacado e varejo de São Paulo, com foco nos polos da 25 de Março, Brás, Pari e regiões vizinhas.</p>
@@ -675,7 +675,7 @@ export function contactPage() {
     title: `Contato | ${SITE.shortName}`,
     description: 'Fale com a equipe do Fornecedores Atacado SP.',
     html: `
-    ${breadcrumbs([{ label: 'Início', href: '/' }, { label: 'Contato' }])}
+    ${breadcrumbs([{ label: 'Início', href: '/site' }, { label: 'Contato' }])}
     <section class="container section-tight narrow">
       <h1>Contato</h1>
       <p class="lead">Dúvidas, sugestões ou problemas com o seu cadastro.</p>
@@ -724,7 +724,7 @@ function legalPage(title, body) {
   return {
     title: `${title} | ${SITE.shortName}`,
     description: title,
-    html: `${breadcrumbs([{ label: 'Início', href: '/' }, { label: title }])}
+    html: `${breadcrumbs([{ label: 'Início', href: '/site' }, { label: title }])}
       <section class="container prose"><h1>${e(title)}</h1>${body}</section>`,
   };
 }
@@ -735,7 +735,7 @@ export function notFound() {
     description: 'Página não encontrada.',
     status: 404,
     html: `<section class="container section-tight">${emptyState('Página não encontrada', 'O endereço pode estar errado ou a página foi removida.',
-      '<a class="btn btn-primary" href="/">Voltar ao início</a>')}</section>`,
+      '<a class="btn btn-primary" href="/site">Voltar ao início</a>')}</section>`,
   };
 }
 

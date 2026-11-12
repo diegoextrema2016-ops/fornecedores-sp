@@ -67,6 +67,11 @@ async function main() {
   for (const dir of ['css', 'js', 'img']) {
     if (existsSync(join(ROOT, dir))) await cp(join(ROOT, dir), join(OUT, dir), { recursive: true });
   }
+  // Landing de apresentação: é a página inicial do domínio (/). A home completa fica em /site.
+  await mkdir(join(OUT, 'apresentacao'), { recursive: true });
+  await cp(join(ROOT, 'apresentacao', 'landing.css'), join(OUT, 'apresentacao', 'landing.css'));
+  await cp(join(ROOT, 'apresentacao', 'landing.js'), join(OUT, 'apresentacao', 'landing.js'));
+  await cp(join(ROOT, 'apresentacao', 'index.html'), join(OUT, 'index.html'));
 
   const categories = data.categories.filter((c) => c.status !== 'inactive');
   const regions = data.regions;
@@ -91,7 +96,8 @@ async function main() {
   const sortedByName = (arr) => arr.slice().sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
 
   // Início, listagens e páginas institucionais
-  await write('index.html', seo.homePage({ categories: listedCategories, regions: listedRegions, suppliers, featured }));
+  await write('site/index.html', seo.homePage({ categories: listedCategories, regions: listedRegions, suppliers, featured }));
+  sitemap.push({ path: '/site' });
   sitemap.push({ path: '/' });
 
   await write('categorias/index.html', seo.categoriesIndexPage({

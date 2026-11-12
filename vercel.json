@@ -30,8 +30,8 @@
   ],
   "rewrites": [
     { "source": "/admin/:path*", "destination": "/admin/index.html" },
-    { "source": "/fornecedor/:slug", "destination": "/index.html" },
-    { "source": "/categorias/:slug", "destination": "/index.html" },
-    { "source": "/regiao/:slug", "destination": "/index.html" }
+    { "source": "/fornecedor/:slug", "destination": "/site/index.html" },
+    { "source": "/categorias/:slug", "destination": "/site/index.html" },
+    { "source": "/regiao/:slug", "destination": "/site/index.html" }
   ]
 }

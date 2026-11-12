@@ -181,7 +181,7 @@ export function supplierFormHtml(s = {}, { admin = false, loggedEmail = '' } = {
 
     <div class="form-actions">
       <button class="btn btn-primary btn-lg" type="submit">${admin ? 'Salvar fornecedor' : 'Enviar cadastro'}</button>
-      <a class="btn btn-ghost" href="/">Cancelar</a>
+      <a class="btn btn-ghost" href="/site">Cancelar</a>
     </div>
   </form>`;
 }

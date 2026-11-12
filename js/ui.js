@@ -28,12 +28,12 @@ export function header({ session, route }) {
   <a class="skip-link" href="#main">Pular para o conteúdo</a>
   <header class="site-header" id="site-header">
     <div class="container header-inner">
-      <a class="brand" href="/" aria-label="${e(SITE.name)} - início">
+      <a class="brand" href="/site" aria-label="${e(SITE.name)} - início">
         <span class="brand-mark" aria-hidden="true">SP</span>
         <span class="brand-text"><strong>FORNECEDORES</strong><small>ATACADO SP</small></span>
       </a>
       <nav class="main-nav" id="main-nav" aria-label="Principal">
-        <a class="${is('/')}" href="/">Início</a>
+        <a class="${is('/site')}" href="/site">Início</a>
         <a class="${is('/categorias')}" href="/categorias">Categorias</a>
         <a class="${is('/fornecedores')}" href="/fornecedores">Fornecedores</a>
         <a class="${is('/mapa')}" href="/mapa">Mapa</a>

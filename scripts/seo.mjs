@@ -65,7 +65,7 @@ export const organizationJsonLd = () => ({
   '@context': 'https://schema.org',
   '@type': 'Organization',
   name: SITE.name,
-  url: absUrl('/'),
+  url: absUrl('/site'),
   email: SITE.contactEmail,
   description: SITE.description,
 });
@@ -74,7 +74,7 @@ export const websiteJsonLd = () => ({
   '@context': 'https://schema.org',
   '@type': 'WebSite',
   name: SITE.name,
-  url: absUrl('/'),
+  url: absUrl('/site'),
   inLanguage: 'pt-BR',
   description: SITE.description,
   potentialAction: {
@@ -104,7 +104,7 @@ export const articleJsonLd = ({ title, description, path }) => ({
   inLanguage: 'pt-BR',
   mainEntityOfPage: absUrl(path),
   author: { '@type': 'Organization', name: SITE.name },
-  publisher: { '@type': 'Organization', name: SITE.name, url: absUrl('/') },
+  publisher: { '@type': 'Organization', name: SITE.name, url: absUrl('/site') },
 });
 
 // Região só é indexada se tiver fornecedores de São Paulo (algumas regiões do banco são de outros estados).
@@ -113,7 +113,7 @@ export const isSpRegion = (suppliers) => suppliers.some((s) => s.state === 'SP')
 // ---------- Cabeçalho e documento ----------
 
 // faviconLink vem do index.html, para manter o mesmo ícone em todas as páginas.
-export function documentHtml({ title, description, path, noindex = false, jsonld = [], image = path === '/' ? HOME_OG_IMAGE : DEFAULT_OG_IMAGE, mainHtml = '', nav = '', footer = '', ogType = 'website' }) {
+export function documentHtml({ title, description, path, noindex = false, jsonld = [], image = path === '/site' ? HOME_OG_IMAGE : DEFAULT_OG_IMAGE, mainHtml = '', nav = '', footer = '', ogType = 'website' }) {
   const canonical = absUrl(path);
   const jsonScripts = jsonld
     .map((obj) => `<script type="application/ld+json">${JSON.stringify(obj).replace(/</g, '\\u003c')}</script>`)
@@ -142,7 +142,7 @@ export function documentHtml({ title, description, path, noindex = false, jsonld
   <meta name="twitter:image" content="${esc(image)}">` : ''}
   ${FAVICON}
   ${SHARED_HEAD_LINKS}
-  ${path === '/' ? bannerPreloadLinks() : ''}
+  ${path === '/site' ? bannerPreloadLinks() : ''}
   ${jsonScripts}
 </head>
 <body>
@@ -163,7 +163,7 @@ export function documentHtml({ title, description, path, noindex = false, jsonld
 export function staticHeader() {
   return `<header class="site-header" id="site-header">
     <div class="container header-inner">
-      <a class="brand" href="/" aria-label="${esc(SITE.name)} - início">
+      <a class="brand" href="/site" aria-label="${esc(SITE.name)} - início">
         <span class="brand-mark" aria-hidden="true">SP</span>
         <span class="brand-text"><strong>FORNECEDORES</strong><small>ATACADO SP</small></span>
       </a>
@@ -184,7 +184,7 @@ export function staticBanners() {
 
 export function staticNav() {
   return `<nav class="main-nav" aria-label="Principal">
-  <a href="/">Início</a> <a href="/categorias">Categorias</a> <a href="/fornecedores">Fornecedores</a> <a href="/mapa">Mapa</a> <a href="/sobre">Como funciona</a> <a href="/cadastro">Cadastrar fornecedor</a>
+  <a href="/site">Início</a> <a href="/categorias">Categorias</a> <a href="/fornecedores">Fornecedores</a> <a href="/mapa">Mapa</a> <a href="/sobre">Como funciona</a> <a href="/cadastro">Cadastrar fornecedor</a>
 </nav>`;
 }
 
@@ -344,7 +344,7 @@ export function homePage({ categories, regions, suppliers, featured }) {
     })}` : ''}
   </section>`;
   return documentHtml({
-    title, description, path: '/', mainHtml: main, nav: staticHeader(), footer: staticFooter(),
+    title, description, path: '/site', mainHtml: main, nav: staticHeader(), footer: staticFooter(),
     jsonld: [organizationJsonLd(), websiteJsonLd()],
   });
 }
@@ -355,14 +355,14 @@ export function categoriesIndexPage({ categories, counts }) {
   const items = categories.map((c) => `<li><a href="/categorias/${esc(c.slug)}"><strong>${esc(c.name)}</strong></a> <span class="muted small">${counts[c.id] || 0} fornecedores</span>${c.description ? `<br><span class="small">${esc(clean(c.description))}</span>` : ''}</li>`).join('');
   const main = `
   <section class="container section-tight">
-    ${breadcrumbHtml([{ label: 'Início', path: '/' }, { label: 'Categorias' }])}
+    ${breadcrumbHtml([{ label: 'Início', path: '/site' }, { label: 'Categorias' }])}
     <h1>Categorias de fornecedores</h1>
     <p>Escolha uma categoria para ver os fornecedores aprovados de São Paulo.</p>
     <ul class="plain-list">${items}</ul>
   </section>`;
   return documentHtml({
     title, description, path: '/categorias', mainHtml: main, nav: staticNav(), footer: staticFooter(),
-    jsonld: [breadcrumbJsonLd([{ label: 'Início', path: '/' }, { label: 'Categorias', path: '/categorias' }])],
+    jsonld: [breadcrumbJsonLd([{ label: 'Início', path: '/site' }, { label: 'Categorias', path: '/categorias' }])],
   });
 }
 
@@ -375,7 +375,7 @@ export function categoryPage({ category, suppliers, regionName }) {
   const paragraphs = categorySeoText(category, suppliers, regionName);
   const main = `
   <section class="container section-tight">
-    ${breadcrumbHtml([{ label: 'Início', path: '/' }, { label: 'Categorias', path: '/categorias' }, { label: category.name }])}
+    ${breadcrumbHtml([{ label: 'Início', path: '/site' }, { label: 'Categorias', path: '/categorias' }, { label: category.name }])}
     <h1>Fornecedores de ${esc(category.name)} em São Paulo</h1>
     ${category.description ? `<p>${esc(clean(category.description))}</p>` : ''}
     ${paragraphs.map((p) => `<p>${esc(p)}</p>`).join('')}
@@ -386,7 +386,7 @@ export function categoryPage({ category, suppliers, regionName }) {
     title, description, path: `/categorias/${category.slug}`, noindex, mainHtml: main,
     nav: staticNav(), footer: staticFooter(),
     jsonld: [
-      breadcrumbJsonLd([{ label: 'Início', path: '/' }, { label: 'Categorias', path: '/categorias' }, { label: category.name, path: `/categorias/${category.slug}` }]),
+      breadcrumbJsonLd([{ label: 'Início', path: '/site' }, { label: 'Categorias', path: '/categorias' }, { label: category.name, path: `/categorias/${category.slug}` }]),
     ],
   });
 }
@@ -401,7 +401,7 @@ export function regionPage({ region, suppliers, categoryName }) {
   const own = REGIAO_TEXTO[region.slug];
   const main = `
   <section class="container section-tight">
-    ${breadcrumbHtml([{ label: 'Início', path: '/' }, { label: 'Mapa', path: '/mapa' }, { label: region.name }])}
+    ${breadcrumbHtml([{ label: 'Início', path: '/site' }, { label: 'Mapa', path: '/mapa' }, { label: region.name }])}
     <h1>Fornecedores ${prep} ${esc(region.name)}, São Paulo</h1>
     ${own ? `<p>${esc(own)}</p>` : ''}
     ${paragraphs.map((p) => `<p>${esc(p)}</p>`).join('')}
@@ -412,7 +412,7 @@ export function regionPage({ region, suppliers, categoryName }) {
     title, description, path: `/regiao/${region.slug}`, noindex, mainHtml: main,
     nav: staticNav(), footer: staticFooter(),
     jsonld: [
-      breadcrumbJsonLd([{ label: 'Início', path: '/' }, { label: 'Mapa', path: '/mapa' }, { label: region.name, path: `/regiao/${region.slug}` }]),
+      breadcrumbJsonLd([{ label: 'Início', path: '/site' }, { label: 'Mapa', path: '/mapa' }, { label: region.name, path: `/regiao/${region.slug}` }]),
     ],
   });
 }
@@ -425,7 +425,7 @@ export function suppliersIndexPage({ suppliers, regionName, categoryName }) {
   // Mesmo layout da página de fornecedores do site (título, texto, filtros e cartões), para a troca ser imperceptível.
   const main = `
   <section class="container section-tight">
-    ${breadcrumbHtml([{ label: 'Início', path: '/' }, { label: 'Fornecedores' }])}
+    ${breadcrumbHtml([{ label: 'Início', path: '/site' }, { label: 'Fornecedores' }])}
     <h1>Fornecedores</h1>
     <p class="lead">Pesquise por nome, produto, categoria ou localização. Use os filtros para refinar.</p>
     <div class="listing">
@@ -442,7 +442,7 @@ export function suppliersIndexPage({ suppliers, regionName, categoryName }) {
   </section>`;
   return documentHtml({
     title, description, path: '/fornecedores', mainHtml: main, nav: staticNav(), footer: staticFooter(),
-    jsonld: [breadcrumbJsonLd([{ label: 'Início', path: '/' }, { label: 'Fornecedores', path: '/fornecedores' }])],
+    jsonld: [breadcrumbJsonLd([{ label: 'Início', path: '/site' }, { label: 'Fornecedores', path: '/fornecedores' }])],
   });
 }
 
@@ -469,7 +469,7 @@ export function supplierPage({ supplier: s, category, regionName, related }) {
   const main = `
   <article class="container supplier-profile">
     ${breadcrumbHtml([
-      { label: 'Início', path: '/' },
+      { label: 'Início', path: '/site' },
       ...(category ? [{ label: 'Categorias', path: '/categorias' }, { label: category.name, path: `/categorias/${category.slug}` }] : []),
       { label: s.name },
     ])}
@@ -492,7 +492,7 @@ export function supplierPage({ supplier: s, category, regionName, related }) {
     title, description, path: `/fornecedor/${s.slug}`, noindex: true, mainHtml: main, nav: staticNav(), footer: staticFooter(),
     image, ogType: 'website',
     jsonld: [breadcrumbJsonLd([
-      { label: 'Início', path: '/' },
+      { label: 'Início', path: '/site' },
       ...(category ? [{ label: 'Categorias', path: '/categorias' }, { label: category.name, path: `/categorias/${category.slug}` }] : []),
       { label: s.name, path: `/fornecedor/${s.slug}` },
     ])],
@@ -510,13 +510,13 @@ export function mapPage({ regions, suppliersByRegion }) {
   }).join('');
   const main = `
   <section class="container section-tight">
-    ${breadcrumbHtml([{ label: 'Início', path: '/' }, { label: 'Mapa' }])}
+    ${breadcrumbHtml([{ label: 'Início', path: '/site' }, { label: 'Mapa' }])}
     <h1>Mapa de fornecedores por bairro</h1>
     ${sections}
   </section>`;
   return documentHtml({
     title, description, path: '/mapa', mainHtml: main, nav: staticNav(), footer: staticFooter(),
-    jsonld: [breadcrumbJsonLd([{ label: 'Início', path: '/' }, { label: 'Mapa', path: '/mapa' }])],
+    jsonld: [breadcrumbJsonLd([{ label: 'Início', path: '/site' }, { label: 'Mapa', path: '/mapa' }])],
   });
 }
 
@@ -524,13 +524,13 @@ export function mapPage({ regions, suppliersByRegion }) {
 export function staticInfoPage({ path, title, description, h1, noindex = false }) {
   const main = `
   <section class="container section-tight">
-    ${breadcrumbHtml([{ label: 'Início', path: '/' }, { label: h1 }])}
+    ${breadcrumbHtml([{ label: 'Início', path: '/site' }, { label: h1 }])}
     <h1>${esc(h1)}</h1>
     <p>${esc(description)}</p>
   </section>`;
   return documentHtml({
     title: `${title} | Fornecedores Atacado SP`, description, path, noindex, mainHtml: main, nav: staticNav(), footer: staticFooter(),
-    jsonld: [breadcrumbJsonLd([{ label: 'Início', path: '/' }, { label: h1, path }])],
+    jsonld: [breadcrumbJsonLd([{ label: 'Início', path: '/site' }, { label: h1, path }])],
   });
 }
 
@@ -547,7 +547,7 @@ export function planosPage() {
   const description = 'Conheça os planos do Fornecedores Atacado SP e tenha acesso ao WhatsApp, Instagram e endereço dos fornecedores de São Paulo.';
   return documentHtml({
     title, description, path: '/planos', mainHtml: planosMainHtml(), nav: staticNav(), footer: staticFooter(),
-    jsonld: [breadcrumbJsonLd([{ label: 'Início', path: '/' }, { label: 'Planos', path: '/planos' }])],
+    jsonld: [breadcrumbJsonLd([{ label: 'Início', path: '/site' }, { label: 'Planos', path: '/planos' }])],
   });
 }
 
@@ -556,7 +556,7 @@ export function guiasIndexPage() {
   const description = 'Guias práticos para encontrar fornecedores de atacado em São Paulo, comprar roupas no atacado e escolher fornecedores para revenda.';
   return documentHtml({
     title, description, path: '/guias', mainHtml: guiasIndexMainHtml(), nav: staticNav(), footer: staticFooter(),
-    jsonld: [breadcrumbJsonLd([{ label: 'Início', path: '/' }, { label: 'Guias', path: '/guias' }])],
+    jsonld: [breadcrumbJsonLd([{ label: 'Início', path: '/site' }, { label: 'Guias', path: '/guias' }])],
   });
 }
 
@@ -567,7 +567,7 @@ export function guiaPage(g) {
     ogType: 'article',
     jsonld: [
       articleJsonLd({ title: g.h1, description: truncate(g.description), path }),
-      breadcrumbJsonLd([{ label: 'Início', path: '/' }, { label: 'Guias', path: '/guias' }, { label: g.h1, path }]),
+      breadcrumbJsonLd([{ label: 'Início', path: '/site' }, { label: 'Guias', path: '/guias' }, { label: g.h1, path }]),
     ],
   });
 }
@@ -578,7 +578,7 @@ export function notFoundPage() {
     description: 'Página não encontrada.',
     path: '/404.html',
     noindex: true,
-    mainHtml: `<section class="container section-tight"><h1>Página não encontrada</h1><p>O endereço pode estar errado ou a página foi removida.</p><p><a class="btn btn-primary" href="/">Voltar ao início</a></p></section>`,
+    mainHtml: `<section class="container section-tight"><h1>Página não encontrada</h1><p>O endereço pode estar errado ou a página foi removida.</p><p><a class="btn btn-primary" href="/site">Voltar ao início</a></p></section>`,
     nav: staticNav(), footer: staticFooter(),
   });
 }
