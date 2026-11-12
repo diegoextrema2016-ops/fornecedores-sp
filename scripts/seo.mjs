@@ -40,6 +40,12 @@ const DEFAULT_OG_IMAGE = absUrl('/img/og-banner-2.jpg');
 // Imagem de compartilhamento (WhatsApp, Facebook) só da home. Nome novo para não usar a versão em cache.
 const HOME_OG_IMAGE = absUrl('/img/og-home-1.jpg');
 
+// Trava de exibição: o HTML pré-gerado fica escondido até o app desenhar a tela oficial (js/app.js remove a classe).
+// Assim nenhum conteúdo antigo ou diferente aparece por trás. Se o app não carregar, libera após 8 s e o HTML aparece.
+// Quem não tem JavaScript vê o HTML normalmente (o script não roda).
+export const PENDING_GUARD = `<style>html.spf-pending #header,html.spf-pending #main,html.spf-pending #footer{visibility:hidden}</style>
+  <script>(function(){var d=document.documentElement;d.classList.add('spf-pending');setTimeout(function(){d.classList.remove('spf-pending')},8000)})();</script>`;
+
 // Remove marcas de tamanho e espaços desnecessários de um texto livre.
 const clean = (v = '') => String(v ?? '').replace(/\s+/g, ' ').trim();
 const truncate = (text, max = 155) => {
@@ -113,6 +119,7 @@ export function documentHtml({ title, description, path, noindex = false, jsonld
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  ${PENDING_GUARD}
   <title>${esc(title)}</title>
   <meta name="description" content="${esc(description)}">
   <meta name="robots" content="${noindex ? 'noindex, nofollow' : 'index, follow'}">

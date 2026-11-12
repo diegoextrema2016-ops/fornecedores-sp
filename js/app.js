@@ -94,6 +94,11 @@ function telaCarregando() {
   </section>`;
 }
 
+// Libera a exibição: tira a trava do HTML pré-gerado (ver PENDING_GUARD em scripts/seo.mjs).
+function revelarApp() {
+  document.documentElement.classList.remove('spf-pending');
+}
+
 // Redesenha a tela só com a cópia que já está na memória (sem baixar tudo do banco de novo).
 // Usado depois de cada ação do painel, que já atualiza a cópia local antes de gravar.
 function renderLocal() {
@@ -105,10 +110,15 @@ async function render({ fromMemory = false } = {}) {
   const { path, query } = parseLocation();
   // Só a primeira visita espera os dados. Nas seguintes a tela aparece na hora, com a cópia da memória.
   const primeiraVez = !fromMemory && !store.loaded();
-  // Clique numa página diferente sem dados ainda: mostra o esqueleto já, em vez de deixar a tela parada.
-  if (primeiraVez && telaAtual !== path) {
+  // Primeira carga: cabeçalho, rodapé e esqueleto do app aparecem já (sem esperar o banco) e o HTML pré-gerado
+  // continua escondido até aqui, então só a tela oficial aparece.
+  if (primeiraVez) {
+    const navKeyJa = '/' + (path.split('/')[1] || '');
+    headerHost.innerHTML = header({ session: store.session.get(), route: navKeyJa });
+    footerHost.innerHTML = footer();
     main.innerHTML = telaCarregando();
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    revelarApp();
   }
 
   try {
