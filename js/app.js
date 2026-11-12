@@ -110,8 +110,10 @@ async function render({ fromMemory = false } = {}) {
   const { path, query } = parseLocation();
   // Só a primeira visita espera os dados. Nas seguintes a tela aparece na hora, com a cópia da memória.
   const primeiraVez = !fromMemory && !store.loaded();
-  // Primeira carga: cabeçalho, rodapé e esqueleto do app aparecem já (sem esperar o banco) e o HTML pré-gerado
-  // continua escondido até aqui, então só a tela oficial aparece.
+  // Libera a tela em toda renderização: na atualização (F5) a cópia da sessão já é desenhada na hora,
+  // e sem isso o HTML pré-gerado continuaria escondido até o tempo limite do guarda.
+  revelarApp();
+  // Primeira carga sem cópia: cabeçalho, rodapé e esqueleto aparecem já (sem esperar o banco).
   if (primeiraVez) {
     const navKeyJa = '/' + (path.split('/')[1] || '');
     headerHost.innerHTML = header({ session: store.session.get(), route: navKeyJa });
