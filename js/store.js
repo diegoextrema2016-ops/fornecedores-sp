@@ -69,11 +69,22 @@ function bestSubscription() {
   return active || state.subscriptions[0] || null;
 }
 
+// Converte um data URL em Blob sem usar fetch: o CSP do site não libera data: em connect-src,
+// então fetch(dataUrl) falha com "Failed to fetch".
+function dataUrlToBlob(dataUrl) {
+  const i = dataUrl.indexOf(',');
+  const tipo = dataUrl.slice(5, i).split(';')[0] || 'application/octet-stream';
+  const texto = atob(dataUrl.slice(i + 1));
+  const bytes = new Uint8Array(texto.length);
+  for (let n = 0; n < texto.length; n++) bytes[n] = texto.charCodeAt(n);
+  return new Blob([bytes], { type: tipo });
+}
+
 // Envia uma imagem nova (data URL vinda do formulário) ao Storage. URLs já existentes são mantidas.
 async function persistImage(value, supplierId, name) {
   if (!value) return '';
   if (!String(value).startsWith('data:')) return value;
-  const blob = await (await fetch(value)).blob();
+  const blob = dataUrlToBlob(value);
   const ext = blob.type.includes('png') ? 'png' : blob.type.includes('jpeg') ? 'jpg' : 'webp';
   const path = `${state.session.id}/${supplierId}/${name}-${Date.now()}.${ext}`;
   return api.uploadImage(path, blob);
