@@ -243,7 +243,8 @@ export function categoryPage({ slug }, query) {
     title: `Fornecedores de ${cat.name} em São Paulo | Atacado`,
     description: `${cat.description || ''} Fornecedores de ${cat.name} no atacado de São Paulo.`.trim(),
     crumbs: [{ label: 'Início', href: '/' }, { label: 'Categorias', href: '/categorias' }, { label: cat.name }],
-    heading: `${cat.name}`,
+    // Mesmo H1 da página pré-gerada (scripts/seo.mjs), para o Google ver o mesmo título antes e depois do JavaScript.
+    heading: `Fornecedores de ${cat.name} em São Paulo`,
     intro: cat.description,
     fixed: { category: slug },
     base: `/categorias/${slug}`,
