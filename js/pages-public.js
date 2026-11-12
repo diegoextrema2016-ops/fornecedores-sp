@@ -597,7 +597,7 @@ export function mapPage() {
     html: `
     ${breadcrumbs([{ label: 'Início', href: '/' }, { label: 'Mapa' }])}
     <section class="container section-tight">
-      <h1>Encontre fornecedores pelo mapa.</h1>
+      <h1>Mapa de fornecedores por bairro</h1>
       <p class="lead">Veja os fornecedores por bairro e abra a rota no Google Maps.</p>
       ${embed}
       <div class="map-groups">
@@ -605,7 +605,8 @@ export function mapPage() {
           <section class="card">
             <h2><a href="/regiao/${e(region.slug)}">${e(region.name)}</a></h2>
             <p class="muted small">${e(region.description)}</p>
-            ${list.length ? `<ul class="plain-list">${list.map((s) => `
+            ${!canSeeContacts() ? `<p class="muted small">${list.length === 0 ? 'Nenhum fornecedor aprovado ainda.' : `${list.length} ${list.length === 1 ? 'fornecedor aprovado' : 'fornecedores aprovados'}.`} Os nomes e as rotas aparecem para assinantes.</p>`
+              : list.length ? `<ul class="plain-list">${list.map((s) => `
               <li>
                 <a href="/fornecedor/${e(s.slug)}"><strong>${e(s.name)}</strong></a>
                 <span class="muted small"> · ${canSeeContacts() ? e(s.address ? `${s.address}${s.number ? `, ${s.number}` : ''}` : 'Endereço a confirmar') : 'endereço para assinantes'}</span>
