@@ -105,10 +105,11 @@ test('índice de guias lista todos os guias', () => {
 
 test('redirecionamentos 301 das URLs de exemplo apontam para as regiões', () => {
   const cfg = JSON.parse(readFileSync(join(raiz, 'vercel.json'), 'utf8'));
-  const map = Object.fromEntries(cfg.redirects.map((r) => [r.source, r]));
-  assert.equal(map['/fornecedores/bras'].destination, '/regiao/bras');
-  assert.equal(map['/fornecedores/bom-retiro'].destination, '/regiao/bom-retiro');
-  assert.equal(map['/fornecedores/25-de-marco'].destination, '/regiao/25-de-marco');
-  assert.equal(map['/fornecedores/pari'].destination, '/regiao/pari');
-  for (const r of cfg.redirects) assert.equal(r.permanent, true);
+  const redirecionamentos = cfg.routes.filter((r) => r.status === 308 && r.headers?.Location && r.src.startsWith('/fornecedores/'));
+  const map = Object.fromEntries(redirecionamentos.map((r) => [r.src, r.headers.Location]));
+  assert.equal(map['/fornecedores/bras'], '/regiao/bras');
+  assert.equal(map['/fornecedores/bom-retiro'], '/regiao/bom-retiro');
+  assert.equal(map['/fornecedores/25-de-marco'], '/regiao/25-de-marco');
+  assert.equal(map['/fornecedores/pari'], '/regiao/pari');
+  assert.equal(redirecionamentos.length, 4);
 });

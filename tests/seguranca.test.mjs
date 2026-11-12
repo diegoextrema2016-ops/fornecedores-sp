@@ -31,9 +31,9 @@ test('window.SPF (acesso global ao app) não fica exposto', () => {
 
 test('vercel.json envia os cabeçalhos de segurança em todas as páginas', () => {
   const cfg = JSON.parse(ler('vercel.json'));
-  const bloco = cfg.headers.find((h) => h.source === '/(.*)');
+  const bloco = cfg.routes.find((r) => r.src === '/(.*)' && r.headers && r.headers['X-Frame-Options']);
   assert.ok(bloco, 'falta o bloco de cabeçalhos para todas as rotas');
-  const nomes = Object.fromEntries(bloco.headers.map((h) => [h.key, h.value]));
+  const nomes = bloco.headers;
   assert.equal(nomes['X-Frame-Options'], 'DENY');
   assert.equal(nomes['X-Content-Type-Options'], 'nosniff');
   assert.match(nomes['Content-Security-Policy'], /frame-ancestors 'none'/);
