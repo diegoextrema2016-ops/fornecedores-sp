@@ -31,9 +31,10 @@ async function attempt(action, okMessage) {
 
 // Ação com resposta imediata: a tela já mostra a mudança (a cópia local foi alterada antes da gravação)
 // e a gravação roda em segundo plano. Se falhar, o store desfaz a mudança e a tela volta ao valor anterior.
-function instant(gravacao, rerender, okMessage) {
+// Com { publica: true }, pede o rebuild das páginas públicas só depois que a gravação deu certo.
+function instant(gravacao, rerender, okMessage, { publica = false } = {}) {
   gravacao.then(
-    () => { if (okMessage) toast(okMessage); rerender(); },
+    () => { if (okMessage) toast(okMessage); rerender(); if (publica) publicarPaginas(); },
     (err) => { toast(err.message || 'Não foi possível concluir. Tente de novo.', 'error'); rerender(); },
   );
 }
@@ -233,7 +234,7 @@ export function mountAdminSuppliers(root, rerender) {
     if (t.matches('[data-row-cat]')) {
       const s = store.suppliers.get(t.dataset.rowCat);
       if (s) {
-        instant(store.suppliers.setCategory(s.id, t.value), rerender, `Categoria de "${s.name}" atualizada.`);
+        instant(store.suppliers.setCategory(s.id, t.value), rerender, `Categoria de "${s.name}" atualizada.`, { publica: true });
         rerender();
       }
     } else if (t.matches('[data-select-all]')) {
@@ -246,6 +247,7 @@ export function mountAdminSuppliers(root, rerender) {
         store.suppliers.setFlag(t.dataset.id, t.dataset.flag, t.checked),
         rerender,
         t.dataset.flag === 'verified' ? 'Selo de verificado atualizado.' : 'Destaque atualizado.',
+        { publica: true },
       );
     } else if (t.closest('[data-import-file]')) {
       const f = t.files?.[0];
@@ -274,12 +276,13 @@ export function mountAdminSuppliers(root, rerender) {
         confirmLabel: 'Mudar',
       });
       if (!ok) return;
-      await attempt(async () => {
+      const movidos = await attempt(async () => {
         for (const id of ids) {
           const s = store.suppliers.get(id);
           if (s) await store.suppliers.save({ ...s, category: slug }, { asAdmin: true });
         }
       }, `${ids.length} fornecedor(es) movidos.`);
+      if (movidos) publicarPaginas();
       return rerender();
     }
 
@@ -323,15 +326,16 @@ export function mountAdminSuppliers(root, rerender) {
       let res = null;
       await attempt(async () => { res = await applyImport(store, plan.records); },
         null);
+      if (res) publicarPaginas();
       if (res) toast(`${res.imported} fornecedores importados${res.categoriesCreated ? `, ${res.categoriesCreated} categorias criadas` : ''}.`);
       return rerender();
     }
 
     const st = ev.target.closest('[data-status]');
     if (st) {
+      // Qualquer troca de situação (aprovar, rejeitar, suspender) refaz as páginas públicas.
       instant(store.suppliers.setStatus(st.dataset.id, st.dataset.status), rerender,
-        st.dataset.status === 'approved' ? 'Fornecedor aprovado e publicado.' : 'Cadastro rejeitado.');
-      if (st.dataset.status === 'approved') publicarPaginas();
+        st.dataset.status === 'approved' ? 'Fornecedor aprovado e publicado.' : 'Cadastro rejeitado.', { publica: true });
       return rerender();
     }
 
@@ -461,7 +465,7 @@ async function saveCategoryOrder(slugs, rerender) {
   // Os valores novos entram na cópia local antes da gravação; a tela muda na hora.
   const gravacoes = changes.map(({ c, order }) => store.categories.setFields(c.slug, { sortOrder: order }));
   rerender();
-  instant(Promise.all(gravacoes), rerender, 'Ordem das categorias atualizada.');
+  instant(Promise.all(gravacoes), rerender, 'Ordem das categorias atualizada.', { publica: true });
 }
 
 // Sobe ou desce uma categoria (botões ▲ ▼).
@@ -567,7 +571,7 @@ function gravaSubcategorias(rerender, slug, novaLista, antiga, novoNome, msg) {
     }
   }
   rerender(); // a mudança aparece na hora; a gravação segue em segundo plano
-  instant(Promise.all(gravacoes), rerender, msg);
+  instant(Promise.all(gravacoes), rerender, msg, { publica: true });
 }
 
 function bindSubcategorias(root, rerender) {
@@ -682,7 +686,7 @@ export function mountAdminCategories(root, rerender) {
       description: f.description.value.trim(),
       subcategories: f.subcategories.value.split(',').map((s) => s.trim()).filter(Boolean),
       status: f.active.checked ? 'active' : 'inactive',
-    }), rerender, 'Categoria salva.');
+    }), rerender, 'Categoria salva.', { publica: true });
     rerender();
   });
   cancel.addEventListener('click', reset);
@@ -708,7 +712,7 @@ export function mountAdminCategories(root, rerender) {
     }
     if (toggle) {
       const c = store.categories.get(toggle.dataset.catToggle);
-      instant(store.categories.setFields(c.slug, { status: c.status === 'inactive' ? 'active' : 'inactive' }), rerender, 'Situação atualizada.');
+      instant(store.categories.setFields(c.slug, { status: c.status === 'inactive' ? 'active' : 'inactive' }), rerender, 'Situação atualizada.', { publica: true });
       rerender();
     }
     if (del) {
@@ -723,7 +727,7 @@ export function mountAdminCategories(root, rerender) {
         const result = await store.categories.remove(slug);
         if (!result.ok) throw new Error(result.reason);
       }, 'Categoria excluída.');
-      if (done) rerender();
+      if (done) { rerender(); publicarPaginas(); }
     }
   });
 }
@@ -783,7 +787,7 @@ export function mountAdminRegions(root, rerender) {
       form.querySelector('#err-reg-name').textContent = 'Já existe com esse nome.';
       return;
     }
-    instant(store.regions.save({ slug, name, description: f.description.value.trim() }), rerender, 'Salvo.');
+    instant(store.regions.save({ slug, name, description: f.description.value.trim() }), rerender, 'Salvo.', { publica: true });
     rerender();
   });
   cancel.addEventListener('click', reset);
@@ -814,7 +818,7 @@ export function mountAdminRegions(root, rerender) {
         const result = await store.regions.remove(slug);
         if (!result.ok) throw new Error(result.reason);
       }, 'Excluído.');
-      if (done) rerender();
+      if (done) { rerender(); publicarPaginas(); }
     }
   });
 }

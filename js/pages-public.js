@@ -734,6 +734,7 @@ export function notFound() {
     title: `Página não encontrada | ${SITE.shortName}`,
     description: 'Página não encontrada.',
     status: 404,
+    noindex: true,
     html: `<section class="container section-tight">${emptyState('Página não encontrada', 'O endereço pode estar errado ou a página foi removida.',
       '<a class="btn btn-primary" href="/site">Voltar ao início</a>')}</section>`,
   };

@@ -96,7 +96,11 @@ async function main() {
   const sortedByName = (arr) => arr.slice().sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
 
   // Início, listagens e páginas institucionais
-  await write('site/index.html', seo.homePage({ categories: listedCategories, regions: listedRegions, suppliers, featured }));
+  const homeHtml = seo.homePage({ categories: listedCategories, regions: listedRegions, suppliers, featured });
+  await write('site/index.html', homeHtml);
+  // /categorias/mais-acessados não é categoria do banco: é uma rota do app. Recebe a casca da home
+  // para continuar respondendo 200 sem reescrita genérica. Fica fora do sitemap.
+  await write('categorias/mais-acessados/index.html', homeHtml);
   sitemap.push({ path: '/site' });
   sitemap.push({ path: '/' });
 

@@ -29,9 +29,6 @@
     { "source": "/fornecedores/pari", "destination": "/regiao/pari", "permanent": true }
   ],
   "rewrites": [
-    { "source": "/admin/:path*", "destination": "/admin/index.html" },
-    { "source": "/fornecedor/:slug", "destination": "/site/index.html" },
-    { "source": "/categorias/:slug", "destination": "/site/index.html" },
-    { "source": "/regiao/:slug", "destination": "/site/index.html" }
+    { "source": "/admin/:path*", "destination": "/admin/index.html" }
   ]
 }
