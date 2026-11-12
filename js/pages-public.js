@@ -12,6 +12,30 @@ import {
   icon, categoryCard, supplierCard, pagination, emptyState, breadcrumbs, skeletonCards, demoBanner,
   saleLabels, supplierMapLinks, toast, photosCarousel,
 } from './ui.js';
+import { planosMainHtml, guiasIndexMainHtml, guiaMainHtml, guiaPorSlug, REGIAO_TEXTO, regiaoPrep } from './conteudo.js';
+
+// Planos, índice de guias e guias: o mesmo conteúdo que o build gera em HTML (js/conteudo.js).
+export function plansPage() {
+  return {
+    title: 'Planos de acesso aos contatos | Fornecedores Atacado SP',
+    description: 'Conheça os planos do Fornecedores Atacado SP e tenha acesso ao WhatsApp, Instagram e endereço dos fornecedores de São Paulo.',
+    html: planosMainHtml(),
+  };
+}
+
+export function guidesIndexPage() {
+  return {
+    title: 'Guias de fornecedores e atacado em São Paulo | Fornecedores Atacado SP',
+    description: 'Guias práticos para encontrar fornecedores de atacado em São Paulo, comprar roupas no atacado e escolher fornecedores para revenda.',
+    html: guiasIndexMainHtml(),
+  };
+}
+
+export function guidePage({ slug }) {
+  const g = guiaPorSlug(slug);
+  if (!g) return notFound();
+  return { title: g.title, description: g.description, html: guiaMainHtml(g) };
+}
 
 // Nomes lidos do store na hora (inclui categorias criadas pelo admin ou importadas).
 const CAT_FALLBACK = Object.fromEntries(CATEGORIES.map((c) => [c.slug, c.name]));
@@ -255,12 +279,13 @@ export function categoryPage({ slug }, query) {
 export function regionPage({ slug }, query) {
   const region = store.regions.get(slug);
   if (!region) return notFound();
+  const prep = regiaoPrep(region.name);
   return listingPage({
-    title: `Fornecedores no ${region.name} | São Paulo`,
-    description: `${region.description} Encontre fornecedores na ${region.name}, São Paulo.`,
-    crumbs: [{ label: 'Início', href: '/' }, { label: 'Regiões' }, { label: region.name }],
-    heading: `Fornecedores na ${region.name}`,
-    intro: region.description,
+    title: `Fornecedores ${prep} ${region.name} | São Paulo`,
+    description: `${region.description} Encontre fornecedores ${prep} ${region.name}, São Paulo.`,
+    crumbs: [{ label: 'Início', href: '/' }, { label: 'Mapa', href: '/mapa' }, { label: region.name }],
+    heading: `Fornecedores ${prep} ${region.name}, São Paulo`,
+    intro: REGIAO_TEXTO[slug] || region.description,
     fixed: { bairro: slug },
     base: `/regiao/${slug}`,
     query,
