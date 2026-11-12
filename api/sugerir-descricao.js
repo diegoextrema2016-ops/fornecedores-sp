@@ -1,12 +1,19 @@
 // Sugestão de descrição comercial com IA (função da Vercel).
 // Regras:
 //  - só responde a quem está logado no site (confere o token no Supabase);
+//  - limite de uso por conta (função consume_rate_limit no banco); se o banco não responder, bloqueia;
 //  - as chaves ficam nas variáveis de ambiente da Vercel, nunca no código:
 //      GROQ_API_KEY (gratuita, console.groq.com) tem prioridade;
 //      GEMINI_API_KEY (gratuita, Google AI Studio) é usada se a Groq não estiver configurada;
 //      ANTHROPIC_API_KEY (paga) é usada se nenhuma das outras estiver configurada;
-//  - sem nenhuma chave, responde { fallback: true } e o site usa sugestões prontas.
+//  - sem nenhuma chave, responde { fallback: true } e o site usa sugestões prontas;
+//  - erros para o usuário são genéricos; o detalhe técnico vai só para o log da Vercel.
 import { SUPABASE } from '../js/config.js';
+
+// Quantas sugestões cada conta pode pedir por hora.
+const LIMITE_POR_HORA = 20;
+
+const MSG_IA_INDISPONIVEL = 'A IA não respondeu agora. Tente de novo em alguns instantes.';
 
 // Só a categoria entra no pedido: texto curto e rápido.
 function promptPara({ categoria, instrucao }) {
@@ -36,11 +43,37 @@ function promptPalavras({ categoria, instrucao, descricao }) {
   ].filter(Boolean).join(' ');
 }
 
-async function usuarioLogado(token) {
+// Devolve os dados do usuário logado, ou null se o token não for válido.
+// Erro de rede com o Supabase é lançado e tratado no handler (vira 503).
+async function identificarUsuario(token) {
   const r = await fetch(`${SUPABASE.url}/auth/v1/user`, {
     headers: { apikey: SUPABASE.anonKey, Authorization: `Bearer ${token}` },
+    signal: AbortSignal.timeout(5000),
   });
-  return r.ok;
+  if (!r.ok) return null;
+  const usuario = await r.json().catch(() => null);
+  return usuario?.id ? usuario : null;
+}
+
+// Conta uma sugestão para este usuário.
+// true = dentro do limite; false = limite atingido; null = banco indisponível (o pedido é recusado).
+async function consumirLimite(token, uid) {
+  try {
+    const r = await fetch(`${SUPABASE.url}/rest/v1/rpc/consume_rate_limit`, {
+      method: 'POST',
+      headers: { apikey: SUPABASE.anonKey, Authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ p_chave: `sugerir:${uid}`, p_limite: LIMITE_POR_HORA, p_janela_segundos: 3600 }),
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!r.ok) {
+      console.error('consume_rate_limit respondeu', r.status);
+      return null;
+    }
+    return (await r.json()) === true;
+  } catch (err) {
+    console.error('consume_rate_limit falhou', err?.message);
+    return null;
+  }
 }
 
 // Gemini (gratuita). Modelo pode ser trocado pela variável GEMINI_MODEL.
@@ -85,12 +118,12 @@ async function comGroq(prompt) {
     r = await chamarGroq(prompt);
   }
   const json = await r.json().catch(() => ({}));
-  if (r.status === 503 || r.status === 429) {
-    return { erro: 'A IA (Groq) está muito ocupada agora. Tente de novo em alguns instantes.' };
+  if (!r.ok) {
+    console.error('Groq respondeu', r.status, String(json?.error?.message || '').slice(0, 300));
+    return { erro: MSG_IA_INDISPONIVEL };
   }
-  if (!r.ok) return { erro: `A IA (Groq) respondeu com erro ${r.status}${json?.error?.message ? `: ${String(json.error.message).slice(0, 160)}` : '.'}` };
   const texto = String(json?.choices?.[0]?.message?.content || '').trim();
-  return texto ? { texto } : { erro: 'A IA (Groq) não devolveu texto. Tente de novo.' };
+  return texto ? { texto } : { erro: 'A IA não devolveu texto. Tente de novo.' };
 }
 
 async function comGemini(prompt) {
@@ -110,15 +143,15 @@ async function comGemini(prompt) {
     r = await chamarGemini(prompt, pensamento);
   }
   const json = await r.json().catch(() => ({}));
-  if (r.status === 503 || r.status === 429) {
-    return { erro: 'A IA (Gemini) está muito ocupada agora. Tente de novo em alguns instantes.' };
+  if (!r.ok) {
+    console.error('Gemini respondeu', r.status, String(json?.error?.message || '').slice(0, 300));
+    return { erro: MSG_IA_INDISPONIVEL };
   }
-  if (!r.ok) return { erro: `A IA (Gemini) respondeu com erro ${r.status}${json?.error?.message ? `: ${String(json.error.message).slice(0, 160)}` : '.'}` };
   const texto = (json.candidates?.[0]?.content?.parts || []).map((p) => p.text || '').join('').trim();
-  return texto ? { texto } : { erro: 'A IA (Gemini) não devolveu texto. Tente de novo.' };
+  return texto ? { texto } : { erro: 'A IA não devolveu texto. Tente de novo.' };
 }
 
-// Anthropic (paga). Usada só se a Gemini não estiver configurada.
+// Anthropic (paga). Usada só se a Groq e a Gemini não estiverem configuradas.
 async function comAnthropic(prompt) {
   const r = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -131,32 +164,43 @@ async function comAnthropic(prompt) {
     }),
   });
   const json = await r.json().catch(() => ({}));
-  if (!r.ok) return { erro: `A IA (Anthropic) respondeu com erro ${r.status}${json?.error?.message ? `: ${String(json.error.message).slice(0, 160)}` : '.'}` };
+  if (!r.ok) {
+    console.error('Anthropic respondeu', r.status, String(json?.error?.message || '').slice(0, 300));
+    return { erro: MSG_IA_INDISPONIVEL };
+  }
   const texto = (json.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('').trim();
-  return texto ? { texto } : { erro: 'A IA (Anthropic) não devolveu texto. Tente de novo.' };
+  return texto ? { texto } : { erro: 'A IA não devolveu texto. Tente de novo.' };
 }
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Método não permitido.' });
 
-  if (!process.env.GROQ_API_KEY && !process.env.GEMINI_API_KEY && !process.env.ANTHROPIC_API_KEY) {
-    return res.status(200).json({ fallback: true });
-  }
-
-  const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
-  if (!token || !(await usuarioLogado(token))) {
-    return res.status(401).json({ error: 'Entre na sua conta para usar a sugestão.' });
-  }
-
-  const corpo = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
-  const dados = {
-    categoria: String(corpo.categoria || 'produtos para revenda').slice(0, 80),
-    instrucao: String(corpo.instrucao || '').replace(/["\n\r]/g, ' ').trim().slice(0, 300),
-    descricao: String(corpo.descricao || '').replace(/["\n\r]/g, ' ').trim().slice(0, 600),
-  };
-  const prompt = corpo.tipo === 'palavras' ? promptPalavras(dados) : promptPara(dados);
-
   try {
+    if (!process.env.GROQ_API_KEY && !process.env.GEMINI_API_KEY && !process.env.ANTHROPIC_API_KEY) {
+      return res.status(200).json({ fallback: true });
+    }
+
+    const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+    const usuario = token ? await identificarUsuario(token) : null;
+    if (!usuario) return res.status(401).json({ error: 'Entre na sua conta para usar a sugestão.' });
+
+    const dentroDoLimite = await consumirLimite(token, usuario.id);
+    if (dentroDoLimite === null) return res.status(503).json({ error: 'Serviço indisponível agora. Tente de novo em instantes.' });
+    if (!dentroDoLimite) return res.status(429).json({ error: 'Muitas sugestões em pouco tempo. Aguarde alguns minutos e tente de novo.' });
+
+    let corpo;
+    try {
+      corpo = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
+    } catch {
+      return res.status(400).json({ error: 'Pedido inválido.' });
+    }
+    const dados = {
+      categoria: String(corpo.categoria || 'produtos para revenda').slice(0, 80),
+      instrucao: String(corpo.instrucao || '').replace(/["\n\r]/g, ' ').trim().slice(0, 300),
+      descricao: String(corpo.descricao || '').replace(/["\n\r]/g, ' ').trim().slice(0, 600),
+    };
+    const prompt = corpo.tipo === 'palavras' ? promptPalavras(dados) : promptPara(dados);
+
     const resultado = process.env.GROQ_API_KEY
       ? await comGroq(prompt)
       : process.env.GEMINI_API_KEY
@@ -165,7 +209,9 @@ export default async function handler(req, res) {
     if (resultado.erro) return res.status(502).json({ error: resultado.erro });
     return res.status(200).json({ texto: resultado.texto.slice(0, 600) });
   } catch (err) {
+    // Detalhe técnico só no log; para o usuário, mensagem genérica.
+    console.error('sugerir-descricao falhou', err?.name, err?.message);
     const demorou = err?.name === 'TimeoutError' || err?.name === 'AbortError';
-    return res.status(502).json({ error: demorou ? 'A IA demorou demais para responder. Tente de novo.' : `Não foi possível falar com a IA agora (${String(err?.message || err).slice(0, 120)}).` });
+    return res.status(502).json({ error: demorou ? 'A IA demorou demais para responder. Tente de novo.' : MSG_IA_INDISPONIVEL });
   }
 }

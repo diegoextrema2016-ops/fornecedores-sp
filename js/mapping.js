@@ -204,7 +204,8 @@ export function authErrorMessage(error) {
   const msg = String(error?.message || '').toLowerCase();
   if (msg.includes('invalid login credentials')) return 'E-mail ou senha incorretos.';
   if (msg.includes('email not confirmed')) return 'Confirme seu e-mail antes de entrar. Verifique sua caixa de entrada.';
-  if (msg.includes('already registered') || msg.includes('already been registered')) return 'Já existe uma conta com este e-mail.';
+  // Mensagem genérica: não confirma se o e-mail já tem conta (evita descobrir quem é cliente).
+  if (msg.includes('already registered') || msg.includes('already been registered')) return 'Não foi possível criar a conta com estes dados. Se você já tem cadastro, entre na sua conta ou recupere a senha.';
   if (msg.includes('password should be at least')) return 'A senha precisa ter pelo menos 8 caracteres.';
   if (msg.includes('rate limit') || msg.includes('too many')) return 'Muitas tentativas. Aguarde alguns minutos e tente de novo.';
   if (msg.includes('failed to fetch') || msg.includes('network')) return 'Sem conexão com o servidor. Verifique sua internet.';

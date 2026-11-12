@@ -43,8 +43,9 @@ const HOME_OG_IMAGE = absUrl('/img/og-home-1.jpg');
 // Trava de exibição: o HTML pré-gerado fica escondido até o app desenhar a tela oficial (js/app.js remove a classe).
 // Assim nenhum conteúdo antigo ou diferente aparece por trás. Se o app não carregar, libera após 8 s e o HTML aparece.
 // Quem não tem JavaScript vê o HTML normalmente (o script não roda).
+// O script fica em arquivo próprio (js/guard.js) para a Política de Segurança (CSP) não precisar liberar script inline.
 export const PENDING_GUARD = `<style>html.spf-pending #header,html.spf-pending #main,html.spf-pending #footer{visibility:hidden}</style>
-  <script>(function(){var d=document.documentElement;d.classList.add('spf-pending');setTimeout(function(){d.classList.remove('spf-pending')},8000)})();</script>`;
+  <script src="/js/guard.js"></script>`;
 
 // Remove marcas de tamanho e espaços desnecessários de um texto livre.
 const clean = (v = '') => String(v ?? '').replace(/\s+/g, ' ').trim();
