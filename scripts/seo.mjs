@@ -211,37 +211,25 @@ const ICON = {
   wa: '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2zm4.5-6.1c-.2-.1-1.4-.7-1.6-.8s-.4-.1-.5.1-.6.8-.8.9-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.2-.4.2-.4.6-1.2.1-.2 0-.3 0-.4l-.7-1.8c-.2-.4-.4-.4-.5-.4h-.5a.9.9 0 0 0-.6.3 2.6 2.6 0 0 0-.8 2 4.5 4.5 0 0 0 .9 2.4 10.4 10.4 0 0 0 4 3.5c1.5.6 2.1.7 2.8.6a2.4 2.4 0 0 0 1.6-1.1 2 2 0 0 0 .1-1.1c0-.1-.2-.2-.4-.3z"/></svg>',
 };
 
-// Cartão igual ao que o visitante vê no site: sem nome real, logo, WhatsApp nem Instagram.
-// Assim a página pré-renderizada e o site ficam iguais, e nenhum nome ou @ aparece antes do carregamento.
-// ctx.categoryName(id) e ctx.regionName(bairroSlug) devolvem os nomes para o cartão.
+// Cartão da listagem pré-gerada: só o que não identifica o fornecedor (bairro, categoria e selo).
+// Nome, descrição, tipo de venda, horário e contatos ficam na ficha (noindex) e com assinantes.
+// Não há link para a ficha aqui, para que os rastreadores não sigam o catálogo pelas listagens.
 function visitorCardHtml(s, { categoryName = () => '', regionName = () => '' } = {}) {
   const region = s.bairro ? regionName(s.bairro) : '';
   const label = `Fornecedor${region ? ` em ${region}` : ' de atacado'}`;
-  const location = [region, s.city || 'São Paulo'].filter(Boolean).join(' · ');
-  const sales = [
-    s.sale_wholesale && 'Atacado',
-    s.sale_retail && 'Varejo',
-    s.sale_resellers && 'Lojistas',
-    s.ships_other_cities && 'Envio para outras cidades',
-  ].filter(Boolean);
   return `<article class="supplier-card">
     <div class="supplier-card-top">
       <div class="logo-box" aria-hidden="true"><span class="logo-mask">SP</span></div>
       <div class="supplier-title">
-        <h3><a href="/fornecedor/${esc(s.slug)}">${esc(label)}</a></h3>
+        <h3>${esc(label)}</h3>
         <div class="badges">
           ${s.verified ? `<span class="badge badge-verified">${ICON.check} Verificado</span>` : ''}
           <span class="badge">${esc(categoryName(s.category_id))}</span>
         </div>
       </div>
-      <button class="fav-btn" type="button" aria-label="Salvar nos favoritos">${ICON.heart}</button>
     </div>
-    <p class="supplier-location muted small">${ICON.pin} ${esc(location)}</p>
-    <p class="supplier-desc">${esc(s.description || 'Descrição não informada.')}</p>
-    <p class="supplier-sale small">${sales.map((l) => `<span class="tag">${esc(l)}</span>`).join('')}</p>
     <p class="contact-line small">${ICON.wa} <span>WhatsApp para assinantes</span></p>
     <div class="supplier-actions">
-      <a class="btn btn-secondary" href="/fornecedor/${esc(s.slug)}">Ver fornecedor</a>
       <button class="btn btn-primary" type="button" data-action="unlock">Ver contato completo</button>
     </div>
   </article>`;
@@ -344,7 +332,7 @@ export function homePage({ categories, regions, suppliers, featured }) {
     })}` : ''}
   </section>`;
   return documentHtml({
-    title, description, path: '/site', mainHtml: main, nav: staticHeader(), footer: staticFooter(),
+    title, description, path: '/site', noindex: true, mainHtml: main, nav: staticHeader(), footer: staticFooter(),
     jsonld: [organizationJsonLd(), websiteJsonLd()],
   });
 }
@@ -441,7 +429,7 @@ export function suppliersIndexPage({ suppliers, regionName, categoryName }) {
     </div>
   </section>`;
   return documentHtml({
-    title, description, path: '/fornecedores', mainHtml: main, nav: staticNav(), footer: staticFooter(),
+    title, description, path: '/fornecedores', noindex: true, mainHtml: main, nav: staticNav(), footer: staticFooter(),
     jsonld: [breadcrumbJsonLd([{ label: 'Início', path: '/site' }, { label: 'Fornecedores', path: '/fornecedores' }])],
   });
 }

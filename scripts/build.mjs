@@ -7,42 +7,12 @@ import { readFile, writeFile, mkdir, cp, rm } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { SUPABASE } from '../js/config.js';
 import * as seo from './seo.mjs';
 import { GUIAS } from '../js/conteudo.js';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = join(ROOT, 'dist');
-const PAGE_SIZE = 1000;
-
-async function fetchAll(resource, query) {
-  const rows = [];
-  for (let offset = 0; ; offset += PAGE_SIZE) {
-    const url = `${SUPABASE.url}/rest/v1/${resource}?${query}&limit=${PAGE_SIZE}&offset=${offset}`;
-    const res = await fetch(url, { headers: { apikey: SUPABASE.anonKey, Authorization: `Bearer ${SUPABASE.anonKey}` } });
-    if (!res.ok) throw new Error(`Falha ao ler ${resource} (HTTP ${res.status}): ${(await res.text()).slice(0, 200)}`);
-    const page = await res.json();
-    rows.push(...page);
-    if (page.length < PAGE_SIZE) break;
-  }
-  return rows;
-}
-
-async function loadData() {
-  if (process.env.SEO_FIXTURE) {
-    return JSON.parse(await readFile(process.env.SEO_FIXTURE, 'utf8'));
-  }
-  const [categories, regions, suppliers] = await Promise.all([
-    fetchAll('categories', 'select=id,slug,name,description,status,sort_order&order=sort_order.asc,name.asc'),
-    fetchAll('regions', 'select=slug,name,description,sort_order&order=sort_order.asc,name.asc'),
-    fetchAll(
-      'suppliers',
-      'select=id,slug,name,description,category_id,subcategory,supplier_type,bairro,city,state,sale_wholesale,sale_retail,sale_resellers,ships_other_cities,min_order,hours,tags,logo_url,verified,featured,is_demo,approval_status,supplier_photos(url,position)' +
-        '&approval_status=eq.approved&is_demo=eq.false&order=id.asc',
-    ),
-  ]);
-  return { categories, regions, suppliers };
-}
+import { loadData } from './dados.mjs';
 
 async function write(relPath, content) {
   const file = join(OUT, relPath);
@@ -101,7 +71,6 @@ async function main() {
   // /categorias/mais-acessados não é categoria do banco: é uma rota do app. Recebe a casca da home
   // para continuar respondendo 200 sem reescrita genérica. Fica fora do sitemap.
   await write('categorias/mais-acessados/index.html', homeHtml);
-  sitemap.push({ path: '/site' });
   sitemap.push({ path: '/' });
 
   await write('categorias/index.html', seo.categoriesIndexPage({
@@ -111,7 +80,6 @@ async function main() {
   sitemap.push({ path: '/categorias' });
 
   await write('fornecedores/index.html', seo.suppliersIndexPage({ suppliers: sortedByName(suppliers), regionName, categoryName }));
-  sitemap.push({ path: '/fornecedores' });
 
   await write('mapa/index.html', seo.mapPage({
     regions,

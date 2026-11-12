@@ -2,6 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import { readFileSync } from 'node:fs';
 
 const admin = await readFile(new URL('../js/pages-admin.js', import.meta.url), 'utf8');
 const vercel = JSON.parse(await readFile(new URL('../vercel.json', import.meta.url), 'utf8'));
@@ -53,4 +54,36 @@ test('toda ação administrativa que grava dados públicos pede o rebuild', () =
 
 test('instant só publica depois da gravação com sucesso', () => {
   assert.match(admin, /gravacao\.then\(\s*\(\) => \{[^}]*if \(publica\) publicarPaginas\(\)/);
+});
+
+// Estratégia de catálogo: o Google encontra a proposta, não o catálogo exclusivo.
+import * as seo from '../scripts/seo.mjs';
+import { execFileSync } from 'node:child_process';
+
+test('home completa e listagem de fornecedores ficam fora do Google', () => {
+  const home = seo.homePage({ categories: [], regions: [], suppliers: [], featured: [] });
+  assert.match(home, /<meta name="robots" content="noindex, nofollow">/);
+  const lista = seo.suppliersIndexPage({ suppliers: [], regionName: () => '', categoryName: () => '' });
+  assert.match(lista, /<meta name="robots" content="noindex, nofollow">/);
+});
+
+test('cartão da listagem não mostra nome, descrição nem link para a ficha', () => {
+  const html = seo.categoryPage({
+    category: { id: 'c1', slug: 'moda', name: 'Moda', description: '' },
+    suppliers: [{ id: 's1', slug: 'loja-x', name: 'Loja Secreta', description: 'Descrição privada', category_id: 'c1', bairro: 'bras', sale_wholesale: true, verified: true, supplier_photos: [] }],
+    regionName: () => 'Brás',
+  });
+  assert.ok(!html.includes('Descrição privada'), 'descrição vazou para a listagem');
+  assert.ok(!html.includes('Loja Secreta'), 'nome vazou para a listagem');
+  assert.ok(!/href="\/fornecedor\//.test(html), 'link para ficha na listagem');
+  assert.match(html, /Fornecedor em Brás/);
+});
+
+test('sitemap do build não inclui home completa, listagem de fornecedores nem fichas', () => {
+  execFileSync('node', ['scripts/build.mjs'], { env: { ...process.env, SEO_FIXTURE: 'tests/fixtures-seo.json' }, stdio: 'ignore' });
+  const xml = readFileSync(new URL('../dist/sitemap.xml', import.meta.url), 'utf8');
+  assert.ok(!/<loc>[^<]*\/site<\/loc>/.test(xml));
+  assert.ok(!/<loc>[^<]*\/fornecedores<\/loc>/.test(xml));
+  assert.ok(!/\/fornecedor\//.test(xml));
+  assert.ok(/<loc>https:\/\/[^<]*\/<\/loc>/.test(xml), 'landing ausente do sitemap');
 });

@@ -1,0 +1,55 @@
+# Publica o site quando os dados públicos do banco mudam, inclusive por edição direta no Supabase.
+# Só roda no branch padrão (agendamento). O segredo VERCEL_DEPLOY_HOOK fica em Settings > Secrets > Actions.
+name: Publicar site quando os dados mudarem
+
+on:
+  schedule:
+    - cron: '17,47 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publicacao-site
+  cancel-in-progress: false
+
+jobs:
+  verificar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Restaurar estado da última verificação
+        uses: actions/cache/restore@v4
+        with:
+          path: estado
+          key: estado-publicacao-${{ github.run_id }}
+          restore-keys: estado-publicacao-
+
+      - name: Comparar dados com o último estado
+        id: verificar
+        run: node scripts/verifica-alteracoes.mjs
+
+      - name: Disparar publicação na Vercel
+        if: steps.verificar.outputs.publicar == 'true'
+        env:
+          DEPLOY_HOOK: ${{ secrets.VERCEL_DEPLOY_HOOK }}
+        run: |
+          if [ -z "$DEPLOY_HOOK" ]; then echo "Segredo VERCEL_DEPLOY_HOOK ausente."; exit 1; fi
+          curl -fsS -X POST -o /dev/null "$DEPLOY_HOOK"
+          echo "Publicação disparada."
+
+      - name: Salvar estado para a próxima verificação
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: estado
+          key: estado-publicacao-${{ github.run_id }}
