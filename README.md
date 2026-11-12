@@ -98,7 +98,7 @@ O build lê apenas dados públicos com a chave publicável (`js/config.js`). Nã
 | `SUPABASE.url`, `SUPABASE.anonKey` | Projeto e chave **publicável** (anon). **Nunca** coloque a `service_role` aqui. |
 | `SUPABASE.imageBucket` | Bucket de imagens (`supplier-images`). |
 | `PLANS` | Planos de acesso. Hoje há um à venda: R$ 29,90 por 30 dias (mensal). O plano anual antigo fica com `offered: false`, só para assinaturas já existentes. |
-| `PIX` | Chave Pix (CPF) e dados mostrados no pagamento. |
+| `PIX` | Chave Pix (aleatória) e dados mostrados no pagamento. |
 
 Se o preço mudar, também regere o QR code (`img/pix-29-90.png`) e ajuste `PLANS`.
 

@@ -50,8 +50,8 @@ export const PLANS = [
 // Pagamento por Pix estático (QR code e código "copia e cola").
 // Sem integração automática: o administrador confere o Pix e libera o acesso no banco.
 export const PIX = {
-  keyType: 'CPF',
-  key: '11568638485',
+  keyType: 'Chave aleatória',
+  key: '00b688a6-06bc-43d1-babe-89c49f8878ba',
   name: 'FORNECEDORES ATACADO SP',
   city: 'SAO PAULO',
   qrImage: '/img/pix-29-90.png', // QR do valor de R$ 29,90; regere se o preço mudar
