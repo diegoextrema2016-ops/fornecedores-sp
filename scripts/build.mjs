@@ -9,6 +9,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { SUPABASE } from '../js/config.js';
 import * as seo from './seo.mjs';
+import { GUIAS } from '../js/conteudo.js';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = join(ROOT, 'dist');
@@ -126,14 +127,24 @@ async function main() {
     if (listed(cat)) sitemap.push({ path: `/categorias/${cat.slug}` });
   }
 
-  // Regiões (bairros)
+  // Regiões (bairros). Só entram no sitemap as que têm fornecedores de São Paulo.
   for (const region of regions) {
     const list = sortedByName(byRegion.get(region.slug) || []);
     await write(`regiao/${region.slug}/index.html`, seo.regionPage({ region, suppliers: list, categoryName }));
-    if (list.length) sitemap.push({ path: `/regiao/${region.slug}` });
+    if (list.length && seo.isSpRegion(list)) sitemap.push({ path: `/regiao/${region.slug}` });
   }
 
-  // Fichas dos fornecedores aprovados
+  // Planos e guias (conteúdo público próprio)
+  await write('planos/index.html', seo.planosPage());
+  sitemap.push({ path: '/planos' });
+  await write('guias/index.html', seo.guiasIndexPage());
+  sitemap.push({ path: '/guias' });
+  for (const g of GUIAS) {
+    await write(`guias/${g.slug}/index.html`, seo.guiaPage(g));
+    sitemap.push({ path: `/guias/${g.slug}` });
+  }
+
+  // Fichas dos fornecedores aprovados: geradas para o site, mas NÃO entram no sitemap nem são indexadas.
   for (const s of suppliers) {
     const category = catById.get(s.category_id);
     const related = sortedByName((byCat.get(s.category_id) || []).filter((o) => o.id !== s.id)).slice(0, 6);
@@ -143,7 +154,6 @@ async function main() {
       regionName,
       related,
     }));
-    sitemap.push({ path: `/fornecedor/${s.slug}` });
   }
 
   // Áreas que não devem aparecer no Google (o app carrega o conteúdo)

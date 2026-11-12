@@ -4,6 +4,7 @@
 import { SITE, BANNERS, SUPABASE } from '../js/config.js';
 import { SUPPLIER_TYPES } from '../js/data.js';
 import { bannersMarkup, bannerPreloadLinks as preloadBanners } from '../js/banners.js';
+import { planosMainHtml, guiasIndexMainHtml, guiaMainHtml, REGIAO_TEXTO, regiaoPrep } from '../js/conteudo.js';
 
 // Categorias com restrição legal (venda proibida pela Anvisa, por exemplo) ficam fora do Google.
 export const RESTRICTED_CATEGORY_SLUGS = ['vapers-e-acessorios'];
@@ -94,18 +95,20 @@ export const breadcrumbJsonLd = (items) => ({
   })),
 });
 
-export const itemListJsonLd = (name, suppliers) => ({
+// Não usamos lista de fornecedores em dados estruturados: ela publicaria nomes e links para fichas que não são indexadas.
+export const articleJsonLd = ({ title, description, path }) => ({
   '@context': 'https://schema.org',
-  '@type': 'ItemList',
-  name,
-  numberOfItems: suppliers.length,
-  itemListElement: suppliers.map((s, i) => ({
-    '@type': 'ListItem',
-    position: i + 1,
-    name: s.name,
-    url: absUrl(`/fornecedor/${s.slug}`),
-  })),
+  '@type': 'Article',
+  headline: title,
+  description,
+  inLanguage: 'pt-BR',
+  mainEntityOfPage: absUrl(path),
+  author: { '@type': 'Organization', name: SITE.name },
+  publisher: { '@type': 'Organization', name: SITE.name, url: absUrl('/') },
 });
+
+// Região só é indexada se tiver fornecedores de São Paulo (algumas regiões do banco são de outros estados).
+export const isSpRegion = (suppliers) => suppliers.some((s) => s.state === 'SP');
 
 // ---------- Cabeçalho e documento ----------
 
@@ -384,20 +387,23 @@ export function categoryPage({ category, suppliers, regionName }) {
     nav: staticNav(), footer: staticFooter(),
     jsonld: [
       breadcrumbJsonLd([{ label: 'Início', path: '/' }, { label: 'Categorias', path: '/categorias' }, { label: category.name, path: `/categorias/${category.slug}` }]),
-      ...(suppliers.length ? [itemListJsonLd(`Fornecedores de ${category.name}`, suppliers)] : []),
     ],
   });
 }
 
 export function regionPage({ region, suppliers, categoryName }) {
-  const noindex = suppliers.length === 0;
-  const title = `Fornecedores no ${region.name} | São Paulo`;
+  // Sem fornecedores de SP a página não é indexada (o texto fala de São Paulo).
+  const noindex = suppliers.length === 0 || !isSpRegion(suppliers);
+  const prep = regiaoPrep(region.name);
+  const title = `Fornecedores ${prep} ${region.name} | São Paulo`;
   const description = truncate(`${region.name}, São Paulo: fornecedores de atacado aprovados no bairro. ${region.description ? clean(region.description) : ''}`);
   const paragraphs = regionSeoText(region, suppliers, categoryName);
+  const own = REGIAO_TEXTO[region.slug];
   const main = `
   <section class="container section-tight">
     ${breadcrumbHtml([{ label: 'Início', path: '/' }, { label: 'Mapa', path: '/mapa' }, { label: region.name }])}
-    <h1>Fornecedores no ${esc(region.name)}, São Paulo</h1>
+    <h1>Fornecedores ${prep} ${esc(region.name)}, São Paulo</h1>
+    ${own ? `<p>${esc(own)}</p>` : ''}
     ${paragraphs.map((p) => `<p>${esc(p)}</p>`).join('')}
     <h2>Fornecedores</h2>
     ${listingGateHtml(suppliers, { categoryName, regionName: () => region.name })}
@@ -407,7 +413,6 @@ export function regionPage({ region, suppliers, categoryName }) {
     nav: staticNav(), footer: staticFooter(),
     jsonld: [
       breadcrumbJsonLd([{ label: 'Início', path: '/' }, { label: 'Mapa', path: '/mapa' }, { label: region.name, path: `/regiao/${region.slug}` }]),
-      ...(suppliers.length ? [itemListJsonLd(`Fornecedores no ${region.name}`, suppliers)] : []),
     ],
   });
 }
@@ -437,7 +442,7 @@ export function suppliersIndexPage({ suppliers, regionName, categoryName }) {
   </section>`;
   return documentHtml({
     title, description, path: '/fornecedores', mainHtml: main, nav: staticNav(), footer: staticFooter(),
-    jsonld: [breadcrumbJsonLd([{ label: 'Início', path: '/' }, { label: 'Fornecedores', path: '/fornecedores' }]), itemListJsonLd('Fornecedores de São Paulo', suppliers)],
+    jsonld: [breadcrumbJsonLd([{ label: 'Início', path: '/' }, { label: 'Fornecedores', path: '/fornecedores' }])],
   });
 }
 
@@ -482,8 +487,9 @@ export function supplierPage({ supplier: s, category, regionName, related }) {
     <p class="muted small">WhatsApp, Instagram e endereço completo ficam disponíveis para quem tem acesso aos contatos.</p>
     ${related.length ? `<h2>Outros fornecedores de ${esc(category?.name || '')}</h2>${visitorGridHtml(related, { categoryName: (id) => (id === category?.id ? category.name : ''), regionName })}` : ''}
   </article>`;
+  // Fichas não são indexadas: a página continua acessível a quem tem o link, mas não aparece no Google.
   return documentHtml({
-    title, description, path: `/fornecedor/${s.slug}`, mainHtml: main, nav: staticNav(), footer: staticFooter(),
+    title, description, path: `/fornecedor/${s.slug}`, noindex: true, mainHtml: main, nav: staticNav(), footer: staticFooter(),
     image, ogType: 'website',
     jsonld: [breadcrumbJsonLd([
       { label: 'Início', path: '/' },
@@ -493,12 +499,14 @@ export function supplierPage({ supplier: s, category, regionName, related }) {
   });
 }
 
+// Mapa público: só bairros e quantidades. Os nomes dos fornecedores ficam fora (são protegidos).
 export function mapPage({ regions, suppliersByRegion }) {
   const title = 'Mapa de fornecedores por bairro | Fornecedores Atacado SP';
   const description = 'Encontre fornecedores por bairro em São Paulo: 25 de Março, Brás, Pari, Bom Retiro e Santa Ifigênia.';
   const sections = regions.map((r) => {
-    const list = suppliersByRegion[r.slug] || [];
-    return `<h2><a href="/regiao/${esc(r.slug)}">${esc(r.name)}</a></h2>${list.length ? `<ul class="plain-list">${list.map((s) => `<li><a href="/fornecedor/${esc(s.slug)}">${esc(s.name)}</a></li>`).join('')}</ul>` : '<p class="muted small">Nenhum fornecedor aprovado ainda.</p>'}`;
+    const n = (suppliersByRegion[r.slug] || []).length;
+    const linha = n === 0 ? 'Nenhum fornecedor aprovado ainda.' : `${n} ${n === 1 ? 'fornecedor aprovado' : 'fornecedores aprovados'}.`;
+    return `<h2><a href="/regiao/${esc(r.slug)}">${esc(r.name)}</a></h2><p class="muted small">${esc(linha)}</p>`;
   }).join('');
   const main = `
   <section class="container section-tight">
@@ -531,6 +539,36 @@ export function noindexShell({ path, title, description = 'Área restrita do For
   return documentHtml({
     title: `${title} | Fornecedores Atacado SP`, description, path, noindex: true,
     mainHtml: '<section class="container section-tight"><h1>Carregando…</h1></section>', nav: '', footer: '',
+  });
+}
+
+export function planosPage() {
+  const title = 'Planos de acesso aos contatos | Fornecedores Atacado SP';
+  const description = 'Conheça os planos do Fornecedores Atacado SP e tenha acesso ao WhatsApp, Instagram e endereço dos fornecedores de São Paulo.';
+  return documentHtml({
+    title, description, path: '/planos', mainHtml: planosMainHtml(), nav: staticNav(), footer: staticFooter(),
+    jsonld: [breadcrumbJsonLd([{ label: 'Início', path: '/' }, { label: 'Planos', path: '/planos' }])],
+  });
+}
+
+export function guiasIndexPage() {
+  const title = 'Guias de fornecedores e atacado em São Paulo | Fornecedores Atacado SP';
+  const description = 'Guias práticos para encontrar fornecedores de atacado em São Paulo, comprar roupas no atacado e escolher fornecedores para revenda.';
+  return documentHtml({
+    title, description, path: '/guias', mainHtml: guiasIndexMainHtml(), nav: staticNav(), footer: staticFooter(),
+    jsonld: [breadcrumbJsonLd([{ label: 'Início', path: '/' }, { label: 'Guias', path: '/guias' }])],
+  });
+}
+
+export function guiaPage(g) {
+  const path = `/guias/${g.slug}`;
+  return documentHtml({
+    title: g.title, description: truncate(g.description), path, mainHtml: guiaMainHtml(g), nav: staticNav(), footer: staticFooter(),
+    ogType: 'article',
+    jsonld: [
+      articleJsonLd({ title: g.h1, description: truncate(g.description), path }),
+      breadcrumbJsonLd([{ label: 'Início', path: '/' }, { label: 'Guias', path: '/guias' }, { label: g.h1, path }]),
+    ],
   });
 }
 
