@@ -100,6 +100,7 @@ body {
 
 /* Vídeo: o protagonista da página */
 .video {
+  position: relative;
   width: 100%;
   margin: 0;
   aspect-ratio: 16 / 9;
