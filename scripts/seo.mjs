@@ -296,216 +296,68 @@ export function listJoin(items) {
 
 // ---------- Páginas ----------
 
-export function homePage({ categories, regions, suppliers, featured }) {
-  const title = 'Fornecedores Atacado SP | Brás, Moda, Tênis e Eletrônicos';
-  const description = 'Encontre fornecedores de atacado em São Paulo, Brás e 25 de Março. Explore lojas de roupas, moda feminina, tênis, eletrônicos e muito mais.';
-  const catLinks = categories.map((c) => `<li><a href="/categorias/${esc(c.slug)}">${esc(c.name)}</a></li>`).join('');
-  const regLinks = regions.map((r) => `<li><a href="/regiao/${esc(r.slug)}">${esc(r.name)}</a></li>`).join('');
-  // Mesma ordem e mesmo texto da home do app (js/pages-public.js): hero, banners, categorias.
-  // Assim a troca da versão pré-gerada para o app não mexe no topo da página (banner não pula nem muda).
+// Catálogo protegido: quem não é assinante não vê nenhum dado do catálogo nestas páginas
+// (nomes, descrições, fotos, contagens, bairros ou categorias). O app mostra o catálogo só a assinantes.
+const PROTEGIDO_DESCRICAO = 'Catálogo exclusivo para assinantes do Fornecedores Atacado SP.';
+
+export function catalogoProtegidoHtml() {
+  return `<section class="container section-tight">
+    ${breadcrumbHtml([{ label: 'Início', path: '/' }, { label: 'Catálogo' }])}
+    <h1>Catálogo exclusivo para assinantes</h1>
+    <p class="lead">O catálogo de fornecedores do ${esc(SITE.shortName)} é liberado para quem tem assinatura ativa.</p>
+    <p><a class="btn btn-primary" href="/planos">Ver planos de acesso</a></p>
+  </section>`;
+}
+
+function catalogoProtegidoPagina(path, title = 'Catálogo exclusivo | Fornecedores Atacado SP') {
+  return documentHtml({
+    title, description: PROTEGIDO_DESCRICAO, path, noindex: true,
+    mainHtml: catalogoProtegidoHtml(), nav: staticNav(), footer: staticFooter(),
+  });
+}
+
+// Home completa (/site): não lista categorias, bairros nem fornecedores. Fica fora do Google.
+export function homePage() {
   const main = `
   <section class="hero">
     <div class="container hero-inner">
-      <p class="eyebrow">25 de Março · Brás · Pari · Bom Retiro</p>
-      <h1>Encontre fornecedores de atacado em São Paulo</h1>
-      <p class="lead">Compare lojas e distribuidores por categoria, subcategoria e bairro, e encontre o fornecedor certo para o seu negócio.</p>
-      <form class="search-hero" role="search" action="/fornecedores" method="get">
-        <label class="sr-only" for="hero-q">Buscar</label>
-        <input id="hero-q" name="q" type="search" placeholder="Busque produtos, fornecedores ou categorias..." autocomplete="off">
-        <button class="btn btn-primary" type="submit">Buscar</button>
-      </form>
-      <div class="chips" aria-label="Pesquisas populares">
-        <span class="muted small">Populares:</span>
-        ${['Eletrônicos', 'Moda feminina', 'Tênis', 'Acessórios', 'Perfumes'].map((t) => `<a class="chip" href="/fornecedores?q=${encodeURIComponent(t)}&origem=popular">${esc(t)}</a>`).join('')}
-      </div>
-    </div>
-  </section>
-  ${staticBanners()}
-  <section class="container section-tight">
-    <h2>Categorias</h2>
-    <ul class="plain-list two-col">${catLinks}</ul>
-    <h2>Bairros e regiões</h2>
-    <ul class="plain-list two-col">${regLinks}</ul>
-    ${featured.length ? `<h2>Fornecedores em destaque</h2>${visitorGridHtml(featured, {
-      categoryName: (id) => categories.find((c) => c.id === id)?.name || '',
-      regionName: (slug) => regions.find((r) => r.slug === slug)?.name || '',
-    })}` : ''}
-  </section>`;
-  return documentHtml({
-    title, description, path: '/site', noindex: true, mainHtml: main, nav: staticHeader(), footer: staticFooter(),
-    jsonld: [organizationJsonLd(), websiteJsonLd()],
-  });
-}
-
-export function categoriesIndexPage({ categories, counts }) {
-  const title = 'Categorias de fornecedores | Fornecedores Atacado SP';
-  const description = 'Fornecedores por categoria em São Paulo: moda feminina, moda masculina, roupas infantis, tênis, eletrônicos, bolsas, perfumes e mais.';
-  const items = categories.map((c) => `<li><a href="/categorias/${esc(c.slug)}"><strong>${esc(c.name)}</strong></a> <span class="muted small">${counts[c.id] || 0} fornecedores</span>${c.description ? `<br><span class="small">${esc(clean(c.description))}</span>` : ''}</li>`).join('');
-  const main = `
-  <section class="container section-tight">
-    ${breadcrumbHtml([{ label: 'Início', path: '/site' }, { label: 'Categorias' }])}
-    <h1>Categorias de fornecedores</h1>
-    <p>Escolha uma categoria para ver os fornecedores aprovados de São Paulo.</p>
-    <ul class="plain-list">${items}</ul>
-  </section>`;
-  return documentHtml({
-    title, description, path: '/categorias', mainHtml: main, nav: staticNav(), footer: staticFooter(),
-    jsonld: [breadcrumbJsonLd([{ label: 'Início', path: '/site' }, { label: 'Categorias', path: '/categorias' }])],
-  });
-}
-
-export function categoryPage({ category, suppliers, regionName }) {
-  const restricted = RESTRICTED_CATEGORY_SLUGS.includes(category.slug);
-  const noindex = restricted || suppliers.length === 0;
-  const title = `Fornecedores de ${category.name} em São Paulo | Atacado`;
-  const base = category.description ? clean(category.description) : `Fornecedores de ${category.name} em São Paulo.`;
-  const description = truncate(`${base} Fornecedores de ${category.name} no atacado de São Paulo.`);
-  const paragraphs = categorySeoText(category, suppliers, regionName);
-  const main = `
-  <section class="container section-tight">
-    ${breadcrumbHtml([{ label: 'Início', path: '/site' }, { label: 'Categorias', path: '/categorias' }, { label: category.name }])}
-    <h1>Fornecedores de ${esc(category.name)} em São Paulo</h1>
-    ${category.description ? `<p>${esc(clean(category.description))}</p>` : ''}
-    ${paragraphs.map((p) => `<p>${esc(p)}</p>`).join('')}
-    <h2>Fornecedores</h2>
-    ${listingGateHtml(suppliers, { categoryName: () => category.name, regionName })}
-  </section>`;
-  return documentHtml({
-    title, description, path: `/categorias/${category.slug}`, noindex, mainHtml: main,
-    nav: staticNav(), footer: staticFooter(),
-    jsonld: [
-      breadcrumbJsonLd([{ label: 'Início', path: '/site' }, { label: 'Categorias', path: '/categorias' }, { label: category.name, path: `/categorias/${category.slug}` }]),
-    ],
-  });
-}
-
-export function regionPage({ region, suppliers, categoryName }) {
-  // Sem fornecedores de SP a página não é indexada (o texto fala de São Paulo).
-  const noindex = suppliers.length === 0 || !isSpRegion(suppliers);
-  const prep = regiaoPrep(region.name);
-  const title = `Fornecedores ${prep} ${region.name} | São Paulo`;
-  const description = truncate(`${region.name}, São Paulo: fornecedores de atacado aprovados no bairro. ${region.description ? clean(region.description) : ''}`);
-  const paragraphs = regionSeoText(region, suppliers, categoryName);
-  const own = REGIAO_TEXTO[region.slug];
-  const main = `
-  <section class="container section-tight">
-    ${breadcrumbHtml([{ label: 'Início', path: '/site' }, { label: 'Mapa', path: '/mapa' }, { label: region.name }])}
-    <h1>Fornecedores ${prep} ${esc(region.name)}, São Paulo</h1>
-    ${own ? `<p>${esc(own)}</p>` : ''}
-    ${paragraphs.map((p) => `<p>${esc(p)}</p>`).join('')}
-    <h2>Fornecedores</h2>
-    ${listingGateHtml(suppliers, { categoryName, regionName: () => region.name })}
-  </section>`;
-  return documentHtml({
-    title, description, path: `/regiao/${region.slug}`, noindex, mainHtml: main,
-    nav: staticNav(), footer: staticFooter(),
-    jsonld: [
-      breadcrumbJsonLd([{ label: 'Início', path: '/site' }, { label: 'Mapa', path: '/mapa' }, { label: region.name, path: `/regiao/${region.slug}` }]),
-    ],
-  });
-}
-
-export function suppliersIndexPage({ suppliers, regionName, categoryName }) {
-  const title = 'Todos os fornecedores de São Paulo | Fornecedores Atacado SP';
-  const description = 'Lista de fornecedores de atacado de São Paulo, com filtros por categoria, bairro, tipo de venda e WhatsApp.';
-  const ctx = { categoryName: categoryName || (() => ''), regionName: regionName || (() => '') };
-  const shown = [...suppliers].sort(byRelevance).slice(0, SITE.pageSize);
-  // Mesmo layout da página de fornecedores do site (título, texto, filtros e cartões), para a troca ser imperceptível.
-  const main = `
-  <section class="container section-tight">
-    ${breadcrumbHtml([{ label: 'Início', path: '/site' }, { label: 'Fornecedores' }])}
-    <h1>Fornecedores</h1>
-    <p class="lead">Pesquise por nome, produto, categoria ou localização. Use os filtros para refinar.</p>
-    <div class="listing">
-      <aside class="filters" aria-label="Filtros">
-        <details class="filters-details"><summary class="filters-summary">Filtros</summary></details>
-      </aside>
-      <div class="listing-main">
-        <div class="listing-toolbar">
-          <p class="muted">${new Intl.NumberFormat('pt-BR').format(suppliers.length)} ${suppliers.length === 1 ? 'fornecedor encontrado' : 'fornecedores encontrados'}</p>
-        </div>
-        ${listingGateHtml(shown, ctx)}
-      </div>
+      <h1>Fornecedores de atacado em São Paulo</h1>
+      <p class="lead">Catálogo de fornecedores para revendedores, exclusivo para assinantes.</p>
+      <p><a class="btn btn-primary" href="/planos">Ver planos de acesso</a></p>
     </div>
   </section>`;
   return documentHtml({
-    title, description, path: '/fornecedores', noindex: true, mainHtml: main, nav: staticNav(), footer: staticFooter(),
-    jsonld: [breadcrumbJsonLd([{ label: 'Início', path: '/site' }, { label: 'Fornecedores', path: '/fornecedores' }])],
+    title: 'Fornecedores Atacado SP | Fornecedores de atacado em São Paulo', description: PROTEGIDO_DESCRICAO,
+    path: '/site', noindex: true, mainHtml: main, nav: staticHeader(), footer: staticFooter(),
   });
 }
 
-export function supplierPage({ supplier: s, category, regionName, related }) {
-  const place = regionName(s.bairro) || s.city || 'São Paulo';
-  const title = `${s.name} | Fornecedor em ${place}`;
-  const description = truncate(s.description || `${s.name}, fornecedor de ${category?.name || 'atacado'} em ${place}, São Paulo.`);
-  const yesNo = (v) => (v ? 'Sim' : 'Não');
-  const facts = [
-    ['Tipo de fornecedor', typeLabel(s.supplier_type)],
-    ['Bairro', regionName(s.bairro)],
-    ['Cidade', [s.city, s.state].filter(Boolean).join(' - ')],
-    ['Venda no atacado', yesNo(s.sale_wholesale)],
-    ['Venda no varejo', yesNo(s.sale_retail)],
-    ['Venda para lojistas', yesNo(s.sale_resellers)],
-    ['Envio para outras cidades', yesNo(s.ships_other_cities)],
-    ['Pedido mínimo', s.min_order],
-    ['Horário de funcionamento', s.hours],
-  ].filter(([, v]) => v);
-  const photos = (s.supplier_photos || []).slice().sort((a, b) => (a.position ?? 0) - (b.position ?? 0)).map((p) => p.url).filter(Boolean);
-  const logo = s.logo_url || '';
-  const image = logo || photos[0] || '';
-  const tags = Array.isArray(s.tags) ? s.tags.filter(Boolean) : [];
-  const main = `
-  <article class="container supplier-profile">
-    ${breadcrumbHtml([
-      { label: 'Início', path: '/site' },
-      ...(category ? [{ label: 'Categorias', path: '/categorias' }, { label: category.name, path: `/categorias/${category.slug}` }] : []),
-      { label: s.name },
-    ])}
-    <header>
-      <p class="eyebrow">${esc(category?.name || '')}${s.subcategory ? ` · ${esc(s.subcategory)}` : ''}</p>
-      <h1>${esc(s.name)}</h1>
-      ${s.verified ? '<p class="badge">Fornecedor verificado</p>' : ''}
-    </header>
-    ${logo ? `<img src="${esc(logo)}" alt="Logo de ${esc(s.name)}" width="160" loading="lazy">` : ''}
-    ${s.description ? `<p>${esc(clean(s.description))}</p>` : ''}
-    <h2>Informações</h2>
-    <dl class="facts">${facts.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}</dl>
-    ${tags.length ? `<p class="small">Palavras-chave: ${esc(tags.join(', '))}</p>` : ''}
-    ${photos.length ? `<h2>Fotos</h2><div class="photo-grid">${photos.map((u) => `<img src="${esc(u)}" alt="Foto de ${esc(s.name)}" loading="lazy">`).join('')}</div>` : ''}
-    <p class="muted small">WhatsApp, Instagram e endereço completo ficam disponíveis para quem tem acesso aos contatos.</p>
-    ${related.length ? `<h2>Outros fornecedores de ${esc(category?.name || '')}</h2>${visitorGridHtml(related, { categoryName: (id) => (id === category?.id ? category.name : ''), regionName })}` : ''}
-  </article>`;
-  // Fichas não são indexadas: a página continua acessível a quem tem o link, mas não aparece no Google.
-  return documentHtml({
-    title, description, path: `/fornecedor/${s.slug}`, noindex: true, mainHtml: main, nav: staticNav(), footer: staticFooter(),
-    image, ogType: 'website',
-    jsonld: [breadcrumbJsonLd([
-      { label: 'Início', path: '/site' },
-      ...(category ? [{ label: 'Categorias', path: '/categorias' }, { label: category.name, path: `/categorias/${category.slug}` }] : []),
-      { label: s.name, path: `/fornecedor/${s.slug}` },
-    ])],
-  });
+// Índice de categorias, categorias e regiões: sem nomes, contagens ou textos sobre fornecedores. Fora do Google.
+export function categoriesIndexPage() {
+  return catalogoProtegidoPagina('/categorias', 'Catálogo | Fornecedores Atacado SP');
 }
 
-// Mapa público: só bairros e quantidades. Os nomes dos fornecedores ficam fora (são protegidos).
-export function mapPage({ regions, suppliersByRegion }) {
-  const title = 'Mapa de fornecedores por bairro | Fornecedores Atacado SP';
-  const description = 'Encontre fornecedores por bairro em São Paulo: 25 de Março, Brás, Pari, Bom Retiro e Santa Ifigênia.';
-  const sections = regions.map((r) => {
-    const n = (suppliersByRegion[r.slug] || []).length;
-    const linha = n === 0 ? 'Nenhum fornecedor aprovado ainda.' : `${n} ${n === 1 ? 'fornecedor aprovado' : 'fornecedores aprovados'}.`;
-    return `<h2><a href="/regiao/${esc(r.slug)}">${esc(r.name)}</a></h2><p class="muted small">${esc(linha)}</p>`;
-  }).join('');
-  const main = `
-  <section class="container section-tight">
-    ${breadcrumbHtml([{ label: 'Início', path: '/site' }, { label: 'Mapa' }])}
-    <h1>Mapa de fornecedores por bairro</h1>
-    ${sections}
-  </section>`;
-  return documentHtml({
-    title, description, path: '/mapa', mainHtml: main, nav: staticNav(), footer: staticFooter(),
-    jsonld: [breadcrumbJsonLd([{ label: 'Início', path: '/site' }, { label: 'Mapa', path: '/mapa' }])],
-  });
+export function categoryPage({ category }) {
+  return catalogoProtegidoPagina(`/categorias/${category.slug}`);
+}
+
+export function regionPage({ region }) {
+  return catalogoProtegidoPagina(`/regiao/${region.slug}`);
+}
+
+// Listagem de fornecedores (/fornecedores): fora do Google e sem dados de fornecedores.
+export function suppliersIndexPage() {
+  return catalogoProtegidoPagina('/fornecedores', 'Catálogo | Fornecedores Atacado SP');
+}
+
+// Ficha individual: fora do Google, sem nome, descrição, fotos, contatos nem dados de horário ou pedido mínimo.
+export function supplierPage({ supplier: s }) {
+  return catalogoProtegidoPagina(`/fornecedor/${s.slug}`);
+}
+
+// Mapa por bairro: fora do Google e sem bairros nem contagens.
+export function mapPage() {
+  return catalogoProtegidoPagina('/mapa', 'Catálogo | Fornecedores Atacado SP');
 }
 
 // Páginas institucionais: título, descrição e título na página. O conteúdo completo é carregado pelo app.

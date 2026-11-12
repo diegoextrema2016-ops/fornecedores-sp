@@ -66,3 +66,9 @@ test('segredo do deploy hook entra só por variável de ambiente e não é impre
   assert.doesNotMatch(wf, /echo[^\n]*\$DEPLOY_HOOK/);
   assert.doesNotMatch(wf, /SUPABASE[^\n]*service/i);
 });
+
+test('todas as ações do workflow estão fixadas por SHA de commit, não por tag', () => {
+  const usos = [...wf.matchAll(/uses: (\S+)/g)].map((m) => m[1]);
+  assert.ok(usos.length >= 4, 'workflow sem ações');
+  for (const u of usos) assert.match(u, /@[0-9a-f]{40}$/, `ação sem SHA: ${u}`);
+});

@@ -67,17 +67,6 @@ test('home completa e listagem de fornecedores ficam fora do Google', () => {
   assert.match(lista, /<meta name="robots" content="noindex, nofollow">/);
 });
 
-test('cartão da listagem não mostra nome, descrição nem link para a ficha', () => {
-  const html = seo.categoryPage({
-    category: { id: 'c1', slug: 'moda', name: 'Moda', description: '' },
-    suppliers: [{ id: 's1', slug: 'loja-x', name: 'Loja Secreta', description: 'Descrição privada', category_id: 'c1', bairro: 'bras', sale_wholesale: true, verified: true, supplier_photos: [] }],
-    regionName: () => 'Brás',
-  });
-  assert.ok(!html.includes('Descrição privada'), 'descrição vazou para a listagem');
-  assert.ok(!html.includes('Loja Secreta'), 'nome vazou para a listagem');
-  assert.ok(!/href="\/fornecedor\//.test(html), 'link para ficha na listagem');
-  assert.match(html, /Fornecedor em Brás/);
-});
 
 test('sitemap do build não inclui home completa, listagem de fornecedores nem fichas', () => {
   execFileSync('node', ['scripts/build.mjs'], { env: { ...process.env, SEO_FIXTURE: 'tests/fixtures-seo.json' }, stdio: 'ignore' });

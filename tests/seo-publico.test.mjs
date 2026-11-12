@@ -30,12 +30,6 @@ test('sitemap nunca inclui fichas de fornecedores', () => {
   assert.ok(!xml.includes('/fornecedor/'));
 });
 
-test('mapa público lista bairros e quantidades, sem nomes de fornecedores', () => {
-  const html = seo.mapPage({ regions: [bras], suppliersByRegion: { bras: [supplier] } });
-  assert.ok(!html.includes('Vazevedo'), 'nome do fornecedor não pode aparecer no mapa');
-  assert.ok(!html.includes('/fornecedor/'), 'mapa não pode linkar fichas');
-  assert.ok(html.includes('1 fornecedor aprovado.'));
-});
 
 test('dados estruturados da categoria e da região não têm nomes de fornecedores', () => {
   const c = jsonLd(seo.categoryPage({ category: cat, suppliers: [supplier], regionName }));
@@ -52,19 +46,7 @@ test('região fora de SP fica noindex (o texto fala de São Paulo)', () => {
   assert.equal(seo.isSpRegion([supplier]), true);
 });
 
-test('preposição certa no nome da região', () => {
-  assert.equal(regiaoPrep('Brás'), 'no');
-  assert.equal(regiaoPrep('Bom Retiro'), 'no');
-  assert.equal(regiaoPrep('25 de Março'), 'na');
-  assert.equal(regiaoPrep('Santa Ifigênia'), 'na');
-  const html = seo.regionPage({ region: { slug: '25-de-marco', name: '25 de Março', description: '' }, suppliers: [supplier], categoryName: () => 'Moda' });
-  assert.ok(html.includes('<h1>Fornecedores na 25 de Março, São Paulo</h1>'));
-});
 
-test('região com texto próprio mostra o texto na página', () => {
-  const html = seo.regionPage({ region: bras, suppliers: [supplier], categoryName: () => 'Moda' });
-  assert.ok(html.includes(REGIAO_TEXTO.bras.slice(0, 40)));
-});
 
 test('página de planos mostra os preços de PLANS e o botão de planos', () => {
   const html = seo.planosPage();

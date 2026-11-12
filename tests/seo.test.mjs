@@ -67,12 +67,6 @@ test('categoria sem fornecedores fica noindex', () => {
   assert.ok(html.includes('noindex'));
 });
 
-test('categoria com fornecedores é indexável, com canonical próprio e H1', () => {
-  const html = seo.categoryPage({ category: cat, suppliers: [supplier], regionName });
-  assert.ok(html.includes('<meta name="robots" content="index, follow">'));
-  assert.ok(html.includes(`<link rel="canonical" href="${SITE.url}/categorias/moda-feminina">`));
-  assert.ok(html.includes('<h1>Fornecedores de Moda feminina em São Paulo</h1>'));
-});
 
 test('texto da categoria usa só números reais', () => {
   const two = [supplier, { ...supplier, id: 's2', slug: 'b', sale_wholesale: false, ships_other_cities: false }];
@@ -84,27 +78,8 @@ test('texto da categoria usa só números reais', () => {
   assert.ok(!paragraphs.includes('3 fornecedores'));
 });
 
-test('ficha não mostra campos vazios (nada inventado)', () => {
-  const html = seo.supplierPage({ supplier, category: cat, regionName, related: [] });
-  assert.ok(!html.includes('Pedido mínimo'));
-  assert.ok(!html.includes('Horário de funcionamento'));
-  assert.ok(!html.includes('Fornecedor verificado'));
-  assert.ok(html.includes('Tipo de fornecedor'));
-  assert.ok(html.includes('<dd>Atacadista</dd>'));
-});
 
-test('ficha mostra selo de verificado quando o admin marcou', () => {
-  const html = seo.supplierPage({ supplier: { ...supplier, verified: true }, category: cat, regionName, related: [] });
-  assert.ok(html.includes('Fornecedor verificado'));
-});
 
-test('logo não vira foto e foto não vira logo', () => {
-  const withPhoto = seo.supplierPage({ supplier: { ...supplier, supplier_photos: [{ url: 'https://x.test/f.webp', position: 0 }] }, category: cat, regionName, related: [] });
-  assert.ok(!withPhoto.includes('Logo de Vazevedo'));
-  assert.ok(withPhoto.includes('alt="Foto de Vazevedo Modas"'));
-  const withLogo = seo.supplierPage({ supplier: { ...supplier, logo_url: 'https://x.test/logo.webp' }, category: cat, regionName, related: [] });
-  assert.ok(withLogo.includes('alt="Logo de Vazevedo Modas"'));
-});
 
 test('ficha não expõe contatos (WhatsApp e Instagram não estão nos dados públicos)', () => {
   const html = seo.supplierPage({ supplier: { ...supplier, whatsapp: '11912345678', instagram: 'loja' }, category: cat, regionName, related: [] });
@@ -112,11 +87,6 @@ test('ficha não expõe contatos (WhatsApp e Instagram não estão nos dados pú
   assert.ok(!html.includes('instagram.com/loja'));
 });
 
-test('breadcrumb e JSON-LD estão presentes na ficha', () => {
-  const html = seo.supplierPage({ supplier, category: cat, regionName, related: [] });
-  assert.ok(html.includes('"@type":"BreadcrumbList"'));
-  assert.ok(html.includes(`"item":"${SITE.url}/fornecedor/vazevedo-modas"`));
-});
 
 test('JSON-LD não quebra o HTML com </script> no texto', () => {
   const html = seo.supplierPage({ supplier: { ...supplier, name: 'Loja </script><b>' }, category: cat, regionName, related: [] });
@@ -134,17 +104,6 @@ test('páginas geradas não têm links com #', () => {
   for (const html of outputs) assert.ok(!/href="#/.test(html), 'achou link com #');
 });
 
-test('home tem título e H1 do plano de SEO', () => {
-  const html = seo.homePage({ categories: [cat], regions: [region], suppliers: [supplier], featured: [] });
-  assert.ok(html.includes('<title>Fornecedores Atacado SP | Brás, Moda, Tênis e Eletrônicos</title>'));
-  // H1 igual ao da home do site (a troca da versão pré-gerada para o site não pode mudar o título).
-  assert.ok(html.includes('<h1>Encontre fornecedores de atacado em São Paulo</h1>'));
-  assert.ok(html.includes('fornecedores de atacado'), 'palavra-chave continua no título da página');
-  // Banner depois do hero (mesma ordem do app): não aparece no topo antes da troca.
-  assert.ok(html.indexOf('class="hero"') < html.indexOf('banner-section'), 'banner deve vir depois do hero');
-  assert.ok(html.includes('"@type":"Organization"'));
-  assert.ok(html.includes('"@type":"WebSite"'));
-});
 
 test('páginas de área restrita são noindex', () => {
   const html = seo.noindexShell({ path: '/login', title: 'Entrar' });
