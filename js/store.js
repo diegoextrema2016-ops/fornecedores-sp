@@ -197,7 +197,8 @@ async function saveSupplier(data, { asAdmin = false, checkDuplicates = false } =
     const dup = await api.findDuplicate({ instagram: igKey, whatsapp: waKey, excludeId: existing ? id : null });
     if (dup) {
       const motivo = dup.field === 'instagram' ? 'este Instagram' : 'este WhatsApp';
-      throw new Error(`Fornecedor duplicado: ${motivo} já está cadastrado em "${dup.name}".`);
+      // Não revela o nome de outro fornecedor (evita descobrir cadastros alheios por tentativa e erro).
+      throw new Error(`Fornecedor duplicado: ${motivo} já está cadastrado. Confira os dados ou entre em contato com a administração.`);
     }
   }
   const categoryId = categoryIdBySlug(merged.category);

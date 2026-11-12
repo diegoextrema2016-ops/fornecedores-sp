@@ -131,10 +131,11 @@ async function render({ fromMemory = false } = {}) {
       <div class="card">
         <h1>Não foi possível carregar o site</h1>
         <p>Verifique sua conexão com a internet e tente de novo.</p>
-        <p class="muted small">${String(err?.message || err)}</p>
-        <button class="btn btn-primary" type="button" onclick="location.reload()">Tentar novamente</button>
+        <button class="btn btn-primary" type="button" data-acao="recarregar">Tentar novamente</button>
       </div>
     </section>`;
+    console.error('Falha ao carregar os dados:', err);
+    main.querySelector('[data-acao="recarregar"]')?.addEventListener('click', () => location.reload());
     return;
   }
   if (id !== renderId) return;
@@ -268,5 +269,3 @@ window.addEventListener('popstate', render);
 migrateLegacyHash();
 render();
 
-// Acesso no console para depuração (não expõe segredos).
-window.SPF = { store, render, go };

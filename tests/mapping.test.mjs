@@ -133,7 +133,9 @@ test('categoria e bairro fazem ida e volta sem perder campos', () => {
 test('mensagens de erro do login ficam em português', () => {
   assert.equal(authErrorMessage({ message: 'Invalid login credentials' }), 'E-mail ou senha incorretos.');
   assert.match(authErrorMessage({ message: 'Email not confirmed' }), /Confirme seu e-mail/);
-  assert.match(authErrorMessage({ message: 'User already registered' }), /Já existe uma conta/);
+  // Não confirma se o e-mail já tem conta (evita descobrir quem é cliente).
+  assert.match(authErrorMessage({ message: 'User already registered' }), /recupere a senha/);
+  assert.doesNotMatch(authErrorMessage({ message: 'User already registered' }), /Já existe uma conta/);
   assert.match(authErrorMessage({ message: 'coisa estranha' }), /Não foi possível/);
 });
 

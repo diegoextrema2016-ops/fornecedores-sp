@@ -4,5 +4,10 @@ node_modules/
 Thumbs.db
 *.log
 
+# segredos locais (nunca commitar; a chave de exemplo fica em arquivo .example)
+.env
+.env.*
+!.env.example
+
 # build gerado (Vercel e local)
 dist/
