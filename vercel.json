@@ -1,34 +1,34 @@
 {
   "buildCommand": "node scripts/build.mjs",
   "outputDirectory": "dist",
-  "cleanUrls": false,
-  "headers": [
-    {
-      "source": "/(.*)",
-      "headers": [
-        { "key": "Strict-Transport-Security", "value": "max-age=63072000; includeSubDomains" },
-        { "key": "X-Content-Type-Options", "value": "nosniff" },
-        { "key": "X-Frame-Options", "value": "DENY" },
-        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
-        { "key": "Permissions-Policy", "value": "camera=(), microphone=(), geolocation=(), payment=(), usb=()" },
-        { "key": "Content-Security-Policy", "value": "default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co; frame-src https://www.google.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'" }
-      ]
-    },
-    { "source": "/js/(.*)","headers": [{ "key": "Cache-Control", "value": "public, max-age=300, stale-while-revalidate=86400" }] },
-    { "source": "/css/(.*)", "headers": [{ "key": "Cache-Control", "value": "public, max-age=300, stale-while-revalidate=86400" }] },
-    { "source": "/img/(.*)", "headers": [{ "key": "Cache-Control", "value": "public, max-age=2592000" }] }
-  ],
   "functions": {
     "api/sugerir-descricao.js": { "maxDuration": 30 }
   },
-  "trailingSlash": false,
-  "redirects": [
-    { "source": "/fornecedores/bras", "destination": "/regiao/bras", "permanent": true },
-    { "source": "/fornecedores/bom-retiro", "destination": "/regiao/bom-retiro", "permanent": true },
-    { "source": "/fornecedores/25-de-marco", "destination": "/regiao/25-de-marco", "permanent": true },
-    { "source": "/fornecedores/pari", "destination": "/regiao/pari", "permanent": true }
-  ],
-  "rewrites": [
-    { "source": "/admin/:path*", "destination": "/admin/index.html" }
+  "routes": [
+    { "src": "/fornecedores/bras", "status": 308, "headers": { "Location": "/regiao/bras" } },
+    { "src": "/fornecedores/bom-retiro", "status": 308, "headers": { "Location": "/regiao/bom-retiro" } },
+    { "src": "/fornecedores/25-de-marco", "status": 308, "headers": { "Location": "/regiao/25-de-marco" } },
+    { "src": "/fornecedores/pari", "status": 308, "headers": { "Location": "/regiao/pari" } },
+    { "src": "^/(.+)/$", "status": 308, "headers": { "Location": "/$1" } },
+    {
+      "src": "/(.*)",
+      "headers": {
+        "Strict-Transport-Security": "max-age=63072000; includeSubDomains",
+        "X-Content-Type-Options": "nosniff",
+        "X-Frame-Options": "DENY",
+        "Referrer-Policy": "strict-origin-when-cross-origin",
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
+        "Content-Security-Policy": "default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co; frame-src https://www.google.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+      },
+      "continue": true
+    },
+    { "src": "/js/(.*)", "headers": { "Cache-Control": "public, max-age=300, stale-while-revalidate=86400" }, "continue": true },
+    { "src": "/css/(.*)", "headers": { "Cache-Control": "public, max-age=300, stale-while-revalidate=86400" }, "continue": true },
+    { "src": "/img/(.*)", "headers": { "Cache-Control": "public, max-age=2592000" }, "continue": true },
+    { "handle": "filesystem" },
+    { "src": "/admin/(.*)", "dest": "/admin/index.html" },
+    { "src": "/(.*)", "status": 404, "headers": { "Cache-Control": "no-store" }, "continue": true },
+    { "handle": "error" },
+    { "status": 404, "src": "/(.*)", "dest": "/404.html" }
   ]
 }

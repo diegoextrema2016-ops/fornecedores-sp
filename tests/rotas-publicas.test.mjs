@@ -8,8 +8,20 @@ const vercel = JSON.parse(await readFile(new URL('../vercel.json', import.meta.u
 const build = await readFile(new URL('../scripts/build.mjs', import.meta.url), 'utf8');
 const pub = await readFile(new URL('../js/pages-public.js', import.meta.url), 'utf8');
 
-test('vercel.json só mantém a reescrita do painel admin', () => {
-  assert.deepEqual(vercel.rewrites, [{ source: '/admin/:path*', destination: '/admin/index.html' }]);
+test('vercel.json não tem reescritas genéricas de fornecedor, categoria ou região', () => {
+  assert.equal(vercel.rewrites, undefined);
+  const texto = JSON.stringify(vercel.routes);
+  assert.ok(!/fornecedor\/\(|categorias\/\(|regiao\/\(|\/:slug/.test(texto));
+  assert.ok(texto.includes('"/admin/(.*)"'));
+});
+
+test('404 de rota inexistente sai com status 404 e no-store', () => {
+  const r = vercel.routes;
+  const i404 = r.findIndex((x) => x.status === 404 && x.src === '/(.*)');
+  assert.ok(i404 > -1, 'falta a rota de 404');
+  assert.equal(r[i404].headers['Cache-Control'], 'no-store');
+  assert.ok(r.some((x) => x.handle === 'error'));
+  assert.ok(r.some((x) => x.status === 404 && x.dest === '/404.html'));
 });
 
 test('o build gera a casca de /categorias/mais-acessados', () => {
