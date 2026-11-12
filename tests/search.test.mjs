@@ -1,7 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { filterSuppliers, sortSuppliers, paginate, tokenize, normalize } from '../js/search.js';
-import { CATEGORIES, REGIONS } from '../js/data.js';
+const CATEGORIES = [{ slug: 'eletronicos', name: 'Eletrônicos' }, { slug: 'moda-feminina', name: 'Moda feminina' }];
+const REGIONS = [{ slug: 'bras', name: 'Brás' }, { slug: '25-de-marco', name: '25 de Março' }];
 import { DEMO_FIXTURES } from './fixtures-demo.mjs';
 import { slugify, mapsLink, whatsappLink, validateSupplier, isBrazilPhone, maskPhone, maskHandle, formatPhone } from '../js/utils.js';
 

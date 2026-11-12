@@ -34,21 +34,34 @@ test('mudança confirmada em duas leituras seguidas publica uma vez', () => {
   assert.equal(decidir(r.estado, 'h2').publicar, false);
 });
 
-test('impressão digital muda quando um dado público muda e é estável para a mesma base', () => {
+test('impressão digital muda quando um slug entra ou sai, e é estável para a mesma base', () => {
   const a = fingerprint(base);
   assert.equal(a, fingerprint(JSON.parse(JSON.stringify(base))));
+  const novoFornecedor = { ...base, suppliers: [...base.suppliers, { slug: 'novo-forn' }] };
+  assert.notEqual(a, fingerprint(novoFornecedor));
+});
+
+test('nome, descrição e foto não mudam a impressão digital (não aparecem nas páginas públicas)', () => {
+  const a = fingerprint(base);
   const alterada = JSON.parse(JSON.stringify(base));
+  alterada.suppliers[0].name = 'Outro nome';
   alterada.suppliers[0].description = 'Outra descrição';
-  assert.notEqual(a, fingerprint(alterada));
-  const foto = JSON.parse(JSON.stringify(base));
-  foto.suppliers[0].supplier_photos[0].url = 'b.jpg';
-  assert.notEqual(a, fingerprint(foto));
+  alterada.suppliers[0].supplier_photos = [{ url: 'b.jpg', position: 0 }];
+  assert.equal(a, fingerprint(alterada));
 });
 
 test('impressão digital não depende da ordem das linhas', () => {
   const dois = { ...base, suppliers: [...base.suppliers, { id: 's0', slug: 'antes', name: 'Antes', supplier_photos: [] }] };
   const invertida = { ...dois, suppliers: [...dois.suppliers].reverse() };
   assert.equal(fingerprint(dois), fingerprint(invertida));
+});
+
+test('credencial de leitura do banco só vai para o passo de verificação, nunca service_role', () => {
+  assert.match(wf, /SUPABASE_BUILD_DB_URL: \$\{\{ secrets\.SUPABASE_BUILD_DB_URL \}\}/);
+  assert.match(wf, /SUPABASE_DB_CA: \$\{\{ secrets\.SUPABASE_DB_CA \}\}/);
+  assert.doesNotMatch(wf, /secrets\.[A-Z_]*SERVICE/i);
+  const deploy = wf.slice(wf.indexOf('Disparar publicação'), wf.indexOf('Salvar estado'));
+  assert.doesNotMatch(deploy, /SUPABASE/);
 });
 
 test('workflow roda só por agendamento ou manualmente, sem permissão de escrita', () => {

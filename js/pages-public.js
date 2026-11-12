@@ -2,7 +2,7 @@
 import { SITE, BANNERS } from './config.js';
 import { api } from './api.js';
 import { bannersMarkup } from './banners.js';
-import { CATEGORIES, REGIONS, SUPPLIER_TYPES } from './data.js';
+import { SUPPLIER_TYPES } from './data.js';
 import { store } from './store.js';
 import { go } from './nav.js';
 import { canSeeContacts } from './access.js';
@@ -38,11 +38,9 @@ export function guidePage({ slug }) {
 }
 
 // Nomes lidos do store na hora (inclui categorias criadas pelo admin ou importadas).
-const CAT_FALLBACK = Object.fromEntries(CATEGORIES.map((c) => [c.slug, c.name]));
-const catName = new Proxy({}, { get: (_t, slug) => store.categories.get(String(slug))?.name || CAT_FALLBACK[slug] });
+const catName = new Proxy({}, { get: (_t, slug) => store.categories.get(String(slug))?.name || '' });
 // Nomes lidos do store na hora (inclui bairros e cidades criados pelo admin).
-const REG_FALLBACK = Object.fromEntries(REGIONS.map((r) => [r.slug, r.name]));
-const regName = new Proxy({}, { get: (_t, slug) => store.regions.get(String(slug))?.name || REG_FALLBACK[slug] });
+const regName = new Proxy({}, { get: (_t, slug) => store.regions.get(String(slug))?.name || '' });
 const ctx = { categoryNames: catName, regionNames: regName };
 
 function allCategories() {
@@ -89,10 +87,9 @@ export function home() {
   const counts = countByCategory();
   const featured = store.suppliers.approved().filter((s) => s.featured);
   const blurred = !canSeeContacts();
-  const popular = ['Eletrônicos', 'Moda feminina', 'Tênis', 'Acessórios', 'Perfumes'];
   return {
-    title: 'Fornecedores Atacado SP | Brás, Moda, Tênis e Eletrônicos',
-    description: 'Encontre fornecedores de atacado em São Paulo, Brás e 25 de Março. Explore lojas de roupas, moda feminina, tênis, eletrônicos e muito mais.',
+    title: 'Fornecedores Atacado SP | Fornecedores de atacado em São Paulo',
+    description: 'Encontre fornecedores de atacado em São Paulo, no Brás, na 25 de Março e em outros polos comerciais.',
     html: `
     <section class="hero">
       <div class="container hero-inner">
@@ -105,10 +102,7 @@ export function home() {
           <input id="hero-q" name="q" type="search" placeholder="Busque produtos, fornecedores ou categorias..." autocomplete="off">
           <button class="btn btn-primary" type="submit">Buscar</button>
         </form>
-        <div class="chips" aria-label="Pesquisas populares" data-populares>
-          <span class="muted small">Populares:</span>
-          ${popular.map(chipPopular).join('')}
-        </div>
+        <div class="chips" aria-label="Pesquisas populares" data-populares hidden></div>
       </div>
     </section>
 
@@ -168,11 +162,13 @@ export function home() {
     mount: (root) => {
       root.querySelectorAll('[data-search-form]').forEach((f) => wireSearchForm(f));
       wireFavorites(root);
-      // Troca a lista inicial pelas buscas mais feitas no site, quando houver buscas suficientes.
+      // Mostra as buscas mais feitas no site, quando houver buscas suficientes. Sem lista fixa de categorias no código:
+      // sem dados, a faixa fica oculta.
       api.buscasPopulares(5).then((termos) => {
         const box = root.querySelector('[data-populares]');
         if (!box || termos.length < 3) return;
         box.innerHTML = `<span class="muted small">Populares:</span>${termos.map((t) => chipPopular(t.charAt(0).toUpperCase() + t.slice(1))).join('')}`;
+        box.hidden = false;
       }).catch(() => {});
     },
   };
@@ -208,7 +204,7 @@ export function categoriesIndex() {
   const counts = countByCategory();
   return {
     title: `Categorias de fornecedores | ${SITE.shortName}`,
-    description: 'Fornecedores por categoria: eletrônicos, moda feminina, tênis, perfumes, cosméticos e mais.',
+    description: 'Fornecedores de atacado de São Paulo, organizados por categoria. Conteúdo exclusivo para assinantes.',
     html: `
     ${breadcrumbs([{ label: 'Início', href: '/site' }, { label: 'Categorias' }])}
     <section class="container section-tight">

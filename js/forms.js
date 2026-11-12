@@ -1,5 +1,5 @@
 // Formulário de fornecedor (usado no cadastro público e na edição pelo administrador).
-import { CATEGORIES, REGIONS, SUPPLIER_TYPES } from './data.js';
+import { SUPPLIER_TYPES } from './data.js';
 import { validateSupplier, escapeHtml as e, onlyDigits } from './utils.js';
 import { store } from './store.js';
 import { sugerirDescricao, sugerirPalavras } from './descricao.js';
@@ -9,12 +9,12 @@ import { toast } from './ui.js';
 // Opções de categoria: as ativas do store, mais a categoria atual do fornecedor (mesmo que esteja inativa).
 // Opções de bairro/cidade vindas do store (ordem alfabética).
 function regionOptions() {
-  const list = store ? store.regions.list() : REGIONS;
+  const list = store ? store.regions.list() : [];
   return list.slice().sort((a, b) => String(a.name).localeCompare(String(b.name), 'pt-BR')).map((r) => [r.slug, r.name]);
 }
 
 function categoryOptions(current = '') {
-  const list = store ? store.categories.list() : CATEGORIES;
+  const list = store ? store.categories.list() : [];
   const active = list.filter((c) => c.status !== 'inactive');
   const keep = current && !active.some((c) => c.slug === current) ? list.filter((c) => c.slug === current) : [];
   return [...active, ...keep]

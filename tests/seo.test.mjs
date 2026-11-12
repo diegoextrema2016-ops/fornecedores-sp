@@ -68,19 +68,6 @@ test('categoria sem fornecedores fica noindex', () => {
 });
 
 
-test('texto da categoria usa só números reais', () => {
-  const two = [supplier, { ...supplier, id: 's2', slug: 'b', sale_wholesale: false, ships_other_cities: false }];
-  const [first] = seo.categorySeoText(cat, two, regionName);
-  assert.ok(first.includes('os 2 fornecedores aprovados'));
-  const paragraphs = seo.categorySeoText(cat, two, regionName).join(' ');
-  assert.ok(paragraphs.includes('1 vende no atacado'));
-  assert.ok(paragraphs.includes('1 envia para outras cidades'));
-  assert.ok(!paragraphs.includes('3 fornecedores'));
-});
-
-
-
-
 test('ficha não expõe contatos (WhatsApp e Instagram não estão nos dados públicos)', () => {
   const html = seo.supplierPage({ supplier: { ...supplier, whatsapp: '11912345678', instagram: 'loja' }, category: cat, regionName, related: [] });
   assert.ok(!html.includes('11912345678'));

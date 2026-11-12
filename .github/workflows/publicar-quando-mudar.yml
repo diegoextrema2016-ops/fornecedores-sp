@@ -36,6 +36,10 @@ jobs:
 
       - name: Comparar dados com o último estado
         id: verificar
+        env:
+          # Papel build_publico (só executa catalogo_slugs()) e CA fixada do Postgres. Nunca a service_role.
+          SUPABASE_BUILD_DB_URL: ${{ secrets.SUPABASE_BUILD_DB_URL }}
+          SUPABASE_DB_CA: ${{ secrets.SUPABASE_DB_CA }}
         run: node scripts/verifica-alteracoes.mjs
 
       - name: Disparar publicação na Vercel

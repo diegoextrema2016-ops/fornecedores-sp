@@ -77,16 +77,26 @@ Mantidas sem alteração: `suppliers_owner_read`, `suppliers_owner_update`, `sup
 - **A.** Liberar para usuário autenticado uma *view* só com `id`, `slug` e `name` de categorias e bairros ativos, sem dados de fornecedor. Quem tem conta, mas não assinatura, passa a ver os nomes das categorias e bairros.
 - **B.** O cadastro usa campo de texto livre, e o admin classifica depois. Não expõe taxonomia a ninguém, mas muda o fluxo de cadastro.
 
-## 5. Gerar as páginas estáticas sem credencial privilegiada
+## 5. Geração das páginas e credencial de leitura (Opção B, implementada no branch)
 
-Mudança já feita no branch: as páginas estáticas **não contêm mais nenhum dado do catálogo** (nomes, descrições, fotos, contagens, bairros, categorias). Elas só mostram uma página protegida com CTA para os planos.
+Decisões: cadastro com a **opção A** (categorias e bairros para autenticados, sem dados de fornecedor) e build com a **opção B** (credencial restrita aos slugs).
 
-O build ainda precisa da lista de slugs (para gerar os arquivos das rotas). Com as políticas novas, a chave anônima devolve listas vazias e o build aborta. A Vercel mantém a versão anterior, então não quebra o site, mas o workflow falharia a cada execução. Duas opções:
+**Páginas.** Uma casca protegida por slug: `/categorias/{slug}`, `/regiao/{slug}`, `/fornecedor/{slug}`, mais `/categorias`, `/fornecedores`, `/mapa` e `/site`. Todas têm `noindex` e ficam fora do sitemap. Nenhuma contém nome, descrição, foto, contagem, bairro ou contato. O sitemap continua com 11 URLs comerciais (início, institucionais, planos, guias e os quatro guias de bairro).
 
-- **Opção A (recomendada): sem leitura do catálogo no build.** Remover a geração de arquivos por fornecedor, categoria e região. As rotas `/fornecedor/*`, `/categorias/*` e `/regiao/*` passam a receber a página protegida (status 200, `noindex`). Não há credencial no CI, e o workflow de detecção deixa de ser necessário. **Trade-off:** um endereço inexistente do catálogo responde 200 com `noindex`, e não 404 real. Isso contraria a garantia 4 (404 real para o inexistente), então precisa da sua decisão.
-- **Opção B: função de slugs com papel dedicado.** Função `SECURITY DEFINER` que devolve só `slug`, revogada de `anon` e `authenticated`, com permissão para um papel de login próprio (`build_publico`). A senha ficaria no segredo do GitHub. **Trade-off:** os slugs são nomes de fornecedores, e a credencial fica no CI.
+**Como o build lê.** `scripts/pg-slugs.mjs` executa `select tipo, slug from public.catalogo_slugs()` com o papel `build_publico`. A chave anônima não lê mais o catálogo, e a `service_role` não é usada. O cliente não tem dependências, porque o npm não está acessível neste ambiente e o projeto não tem lockfile.
 
-Em nenhuma das duas opções usar `service_role` no CI. Ela contorna o RLS inteiro.
+**Como a credencial é protegida.**
+1. Papel de login `build_publico`, sem `BYPASSRLS`, sem `CREATEDB`, sem `CREATEROLE` e sem privilégio em tabela. Tem só `EXECUTE` em `catalogo_slugs()`.
+2. `catalogo_slugs()` é `security definer` com `search_path` fixo e devolve apenas tipo e slug. Está revogada de `public`, `anon` e `authenticated`.
+3. A sessão é somente leitura (`default_transaction_read_only=on`), com `statement_timeout` de 5 segundos, definido no startup.
+4. Conexão TLS com verificação completa, com a CA fixada em `SUPABASE_DB_CA`. Sem a CA, o build não conecta. A única exceção sem TLS é teste local em loopback, com flag explícita.
+5. Autenticação SCRAM-SHA-256, com verificação da assinatura do servidor. Qualquer outro método é recusado.
+6. O cliente recusa qualquer usuário diferente de `build_publico`.
+7. A senha é gerada com entropia alta e guardada só em variáveis de ambiente: `SUPABASE_BUILD_DB_URL` na Vercel (Preview e Production) e como secret no GitHub Actions. Não vai para o repositório nem para log. Testes garantem que mensagens de erro não exibem a senha.
+8. Cada slug é validado com `^[a-z0-9][a-z0-9-]{0,99}$` antes de virar arquivo. Um valor fora do formato interrompe o build, e nada é publicado.
+9. Rotação: `ALTER ROLE build_publico PASSWORD ...` e atualização das duas variáveis. Nenhuma outra parte do sistema depende da senha.
+
+**Verificado no banco de teste** (`catalogo_alvo`, PostgreSQL 16, TLS com certificado de teste): a leitura por SCRAM devolve 20 categorias, 5 bairros e 2 fornecedores aprovados, o que bate com o `catalogo_slugs()`. Com a CA correta a conexão funciona. Com CA diferente ela é recusada (`DEPTH_ZERO_SELF_SIGNED_CERT`), e a senha não aparece no erro.
 
 ## 6. Impedir consulta direta pela API
 
@@ -94,7 +104,7 @@ Em nenhuma das duas opções usar `service_role` no CI. Ela contorna o RLS intei
 - Defesa em profundidade (opcional): `revoke select on public.suppliers, public.supplier_photos, public.categories, public.subcategories, public.regions from anon;`. Isso faz a API responder erro de permissão em vez de lista vazia, o que o app precisa tratar.
 - `increment_supplier_views` (anon) só incrementa o contador de um fornecedor aprovado. Não devolve dados. Pode ser mantida.
 - **Fase 2 (fora deste escopo):** fotos em bucket privado com URL assinada só para assinante; e IDs opacos nas URLs, porque os slugs atuais (`/fornecedor/eruthy-jeans`) revelam nomes.
-- **Fase 1:** remover `CATEGORIES` e `REGIONS` de `js/data.js` e dos fallbacks de `js/pages-public.js` (mudança de código, feita depois da sua aprovação, junto com a decisão de cadastro).
+- **Fase 1 (concluída no branch):** `CATEGORIES` e `REGIONS` foram removidos de `js/data.js`. `js/forms.js` lê categorias e bairros só do banco, que os libera a autenticados. `js/pages-public.js` não tem mais fallback com nomes: os chips de busca populares só aparecem com dados reais, e título e descrição da home não citam categorias.
 
 ## 7. Testes de permissão
 
@@ -139,6 +149,54 @@ Execução: script em `tests/rls/` que roda contra **Supabase local** (CLI com D
 
 ## 9. Riscos
 
-- O workflow de detecção (`.github/workflows/publicar-quando-mudar.yml`) **não pode ficar ativo** depois da mudança de RLS sem a opção B, porque o build vai receber listas vazias. Por isso ele fica fora do merge até a decisão.
-- O app atual, para visitante, vai mostrar listas vazias. Precisa de estado vazio com CTA para planos antes da aplicação.
-- Sem a fase 2, quem já tiver a URL de uma foto consegue abri-la, e um slug revela o nome de um fornecedor.
+- **Slugs nas URLs (principal risco residual).** Cada categoria e fornecedor tem uma casca em URL previsível. Quem testa nomes consegue saber se existem, pelo status 200 ou 404, e a `canonical` e o `og:url` das cascas trazem o slug. Isso vai contra o objetivo de não deixar extrair a base. A correção definitiva são IDs opacos nas URLs (fase 2). Até lá, o risco é de confirmação de nomes, não de dados.
+- **Fotos** continuam em bucket público, acessíveis por URL. Fase 2: bucket privado com URL assinada.
+- **Enquanto a RLS não estiver em produção**, a API anônima ainda expõe o catálogo, e o site publicado também. Nada desta mudança entra em produção sem sua aprovação.
+- **Guias** citam Brás, 25 de Março, Pari, Bom Retiro e Santa Ifigênia, por decisão sua (termos de SEO, não identificam o catálogo).
+- **Ordem de implantação.** Se o build novo subir antes da variável `SUPABASE_BUILD_DB_URL` existir na Vercel, o build falha e a Vercel mantém a versão anterior. Se a migração 007 for aplicada antes do papel e da senha, o build também falha. A ordem está na seção 10.
+- **Workflow de detecção.** Sem o secret, o passo de verificação falha a cada execução. Ele é fail closed: não publica, mas também não é silencioso. Não foi executado nem configurado.
+
+## 10. Estado da implantação e próximos passos
+
+Nada foi aplicado em produção. Não há merge, deploy de produção, mudança de RLS em produção, secret configurado nem workflow executado.
+
+### Resultados no branch e no banco de teste
+
+- `npm test`: 158 testes passam. Um teste de integração fica pulado sem banco e roda com `SPF_TESTE_BANCO_URL`.
+- Matriz de permissões (89 verificações): no estado atual, 15 divergências, todas vazamentos que a migração 007 fecha. Na migração 007 aplicada: 0 divergências.
+- Build contra o banco de teste: sitemap com 11 URLs; categorias, bairros e fichas com `noindex`; nenhum nome ou descrição de fornecedor no `dist/`. Os únicos termos de catálogo que restam são os slugs nas URLs e nos canonicals, já descritos na seção 9.
+
+Por perfil, na matriz com a 007 aplicada:
+
+| Perfil | Fornecedores | Fotos | Contatos | Observação |
+|---|---|---|---|---|
+| Visitante (sem login) | 0 ou negado | 0 ou negado | 0 ou negado | Categorias e bairros também negados |
+| Cadastrado sem assinatura | 0 | 0 | 0 | |
+| Assinante expirado | 0 | 0 | 0 | |
+| Assinante ativo | só aprovados | só de aprovados | só de aprovados | |
+| Dono do cadastro | só os próprios, em qualquer status | idem | idem | Não edita nem apaga os de outros |
+| Admin | tudo | tudo | tudo | Políticas `*_admin_all` mantidas |
+| Papel `build_publico` | negado | negado | negado | Só `catalogo_slugs()`: 27 linhas no banco de teste |
+
+Também bloqueados: autopromoção a admin, ativação de assinatura pelo próprio usuário (o cadastro de assinatura entra sempre como `pending`) e leitura direta das tabelas pelo build.
+
+### Painel administrativo depois da proteção
+
+- As políticas de admin não mudam. O admin continua vendo e editando tudo pela API.
+- Toda gravação do painel que altera o que aparece publicamente chama `publicarPaginas()` depois de salvar com sucesso (commit `cbc09e8`). Isso dispara o build pela Vercel.
+- O build usa o papel `build_publico`, e não a sessão do admin. Por isso, a publicação não depende de quem clicou.
+- O build só reage a entrada, saída ou mudança de slug. Nome, descrição e foto não mudam o site público, então não disparam publicação.
+
+### Sequência de implantação (aguardando sua aprovação)
+
+A função `catalogo_slugs()` só existe depois da migração 007. Sem ela, o build novo falha e a Vercel mantém a versão anterior. Por isso a ordem importa:
+
+1. Aplicar a migração 007 no Supabase de produção, com aprovação expressa.
+2. Criar o papel `build_publico` com senha gerada e `grant execute on function public.catalogo_slugs() to build_publico`. O script de criação não está no repositório: deve ser escrito e revisado antes.
+3. Configurar `SUPABASE_BUILD_DB_URL` e `SUPABASE_DB_CA` na Vercel (Preview e Production) e como secrets do GitHub Actions.
+4. Fazer o merge e o deploy de produção, com aprovação expressa.
+5. Conferir: visitante e assinante, pelo app e pela API; sitemap; cascas com `noindex`; cadastro de fornecedor com categorias e bairros.
+
+Janela de atenção: entre os passos 1 e 4, o app para visitantes mostra o catálogo vazio, que é o comportamento desejado. As páginas estáticas antigas continuam no ar, com os dados antigos, até o deploy. Por isso, os passos 1 e 4 devem ficar próximos.
+
+Reversão: seção 8.
