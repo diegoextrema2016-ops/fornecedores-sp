@@ -138,8 +138,10 @@ test('home tem título e H1 do plano de SEO', () => {
   const html = seo.homePage({ categories: [cat], regions: [region], suppliers: [supplier], featured: [] });
   assert.ok(html.includes('<title>Fornecedores Atacado SP | Brás, Moda, Tênis e Eletrônicos</title>'));
   // H1 igual ao da home do site (a troca da versão pré-gerada para o site não pode mudar o título).
-  assert.ok(html.includes('<h1>Os melhores fornecedores de São Paulo em um só lugar.</h1>'));
-  assert.ok(html.includes('Fornecedores de atacado'), 'palavra-chave continua no texto de apoio');
+  assert.ok(html.includes('<h1>Encontre fornecedores de atacado em São Paulo</h1>'));
+  assert.ok(html.includes('fornecedores de atacado'), 'palavra-chave continua no título da página');
+  // Banner depois do hero (mesma ordem do app): não aparece no topo antes da troca.
+  assert.ok(html.indexOf('class="hero"') < html.indexOf('banner-section'), 'banner deve vir depois do hero');
   assert.ok(html.includes('"@type":"Organization"'));
   assert.ok(html.includes('"@type":"WebSite"'));
 });
