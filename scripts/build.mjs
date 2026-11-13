@@ -104,16 +104,13 @@ async function main() {
     categories: listedCategories,
     counts: Object.fromEntries(listedCategories.map((c) => [c.id, byCat.get(c.id)?.length || 0])),
   }));
-  sitemap.push({ path: '/categorias' });
 
   await write('fornecedores/index.html', seo.suppliersIndexPage({ suppliers: sortedByName(suppliers), regionName, categoryName }));
-  sitemap.push({ path: '/fornecedores' });
 
   await write('mapa/index.html', seo.mapPage({
     regions,
     suppliersByRegion: Object.fromEntries(regions.map((r) => [r.slug, sortedByName(byRegion.get(r.slug) || [])])),
   }));
-  sitemap.push({ path: '/mapa' });
 
   const info = [
     { path: '/sobre', title: 'Como funciona', h1: 'Como funciona', description: 'Conheça o Fornecedores Atacado SP e como funciona o portal.' },
@@ -130,14 +127,12 @@ async function main() {
   for (const cat of categories) {
     const list = sortedByName(byCat.get(cat.id) || []);
     await write(`categorias/${cat.slug}/index.html`, seo.categoryPage({ category: cat, suppliers: list, regionName }));
-    if (listed(cat)) sitemap.push({ path: `/categorias/${cat.slug}` });
   }
 
   // Regiões (bairros). Só entram no sitemap as que têm fornecedores de São Paulo.
   for (const region of regions) {
     const list = sortedByName(byRegion.get(region.slug) || []);
     await write(`regiao/${region.slug}/index.html`, seo.regionPage({ region, suppliers: list, categoryName }));
-    if (list.length && seo.isSpRegion(list)) sitemap.push({ path: `/regiao/${region.slug}` });
   }
 
   // Planos e guias (conteúdo público próprio)

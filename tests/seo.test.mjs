@@ -67,9 +67,10 @@ test('categoria sem fornecedores fica noindex', () => {
   assert.ok(html.includes('noindex'));
 });
 
-test('categoria com fornecedores é indexável, com canonical próprio e H1', () => {
+test('categoria com fornecedores fica fora do Google (catálogo), com canonical próprio e H1', () => {
   const html = seo.categoryPage({ category: cat, suppliers: [supplier], regionName });
-  assert.ok(html.includes('<meta name="robots" content="index, follow">'));
+  // Regra atual: todo o catálogo é noindex; só páginas comerciais e institucionais são indexáveis.
+  assert.ok(html.includes('<meta name="robots" content="noindex, nofollow">'));
   assert.ok(html.includes(`<link rel="canonical" href="${SITE.url}/categorias/moda-feminina">`));
   assert.ok(html.includes('<h1>Fornecedores de Moda feminina em São Paulo</h1>'));
 });

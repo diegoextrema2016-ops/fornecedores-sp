@@ -150,13 +150,14 @@ export const SITE_NAME = SITE.name;
 // Categorias com restrição legal (venda proibida pela Anvisa, por exemplo) ficam fora do Google.
 export const RESTRICTED_CATEGORY_SLUGS = ['vapers-e-acessorios'];
 
-// Caminhos que nunca são indexados: painel, contas e as fichas dos fornecedores.
-const CAMINHO_SEM_INDEXACAO = /^\/(admin|login|registro|cadastro|favoritos|sair|fornecedor)(\/|$)/;
+// Só páginas comerciais e institucionais podem ser indexadas. Todo o catálogo (categorias, regiões,
+// fichas, mapa, listagens), painel, contas e áreas restritas ficam fora do Google.
+const CAMINHO_INDEXAVEL = /^(\/|\/(site|sobre|contato|privacidade|termos|planos|guias)(\/[a-z0-9-]+)*)$/;
 
 // Decide a meta robots de uma página. O JavaScript usa esta mesma regra, então a ficha nunca vira "index".
 export function deveSerIndexado(caminho, pagina = {}) {
   if (pagina.noindex) return false;
-  return !CAMINHO_SEM_INDEXACAO.test(caminho);
+  return CAMINHO_INDEXAVEL.test(caminho);
 }
 
 // Categoria aparece no público e no Google só com fornecedores aprovados e sem restrição.

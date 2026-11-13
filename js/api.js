@@ -17,7 +17,9 @@ function check({ data, error }) {
 }
 
 // Colunas da lista de fornecedores (com fotos e contatos embutidos; o banco filtra quem pode ver o quê).
-const SUPPLIER_SELECT = '*, supplier_photos(url, position), supplier_contacts(*)';
+// Colunas de suppliers que o app lê. owner_id fica de fora: é interno e não é usado no site (ver supabase/migration-008).
+const SUPPLIER_COLUMNS = 'id,name,slug,description,category_id,subcategory_id,subcategory,supplier_type,bairro,city,state,sale_wholesale,sale_retail,sale_resellers,ships_other_cities,min_order,hours,tags,logo_url,approval_status,verified,featured,is_demo,views,created_at,updated_at';
+const SUPPLIER_SELECT = `${SUPPLIER_COLUMNS}, supplier_photos(url, position), supplier_contacts(*)`;
 
 export const api = {
   // ----- Sessão e perfil -----
@@ -82,10 +84,10 @@ export const api = {
 
   // ----- Escrita: fornecedores -----
   async insertSupplier(row) {
-    return check(await sb.from('suppliers').insert(row).select().single());
+    return check(await sb.from('suppliers').insert(row).select(SUPPLIER_COLUMNS).single());
   },
   async updateSupplier(id, row) {
-    return check(await sb.from('suppliers').update(row).eq('id', id).select().single());
+    return check(await sb.from('suppliers').update(row).eq('id', id).select(SUPPLIER_COLUMNS).single());
   },
   // Duplicado por Instagram ou WhatsApp (função no banco; ver supabase/migration-004-duplicados.sql).
   async findDuplicate({ instagram = null, whatsapp = null, excludeId = null }) {

@@ -6,7 +6,7 @@ import { SUPPLIER_TYPES } from '../js/data.js';
 import { bannersMarkup, bannerPreloadLinks as preloadBanners } from '../js/banners.js';
 import {
   planosMainHtml, guiasIndexMainHtml, guiaMainHtml, REGIAO_TEXTO, regiaoPrep,
-  RESTRICTED_CATEGORY_SLUGS, ordenarCategorias, tituloHome,
+  RESTRICTED_CATEGORY_SLUGS, ordenarCategorias, tituloHome, deveSerIndexado,
 } from '../js/conteudo.js';
 
 // Categorias restritas (RESTRICTED_CATEGORY_SLUGS, em js/conteudo.js) ficam fora do Google. Reexportado para os testes.
@@ -129,7 +129,7 @@ export function documentHtml({ title, description, path, noindex = false, jsonld
   ${PENDING_GUARD}
   <title>${esc(title)}</title>
   <meta name="description" content="${esc(description)}">
-  <meta name="robots" content="${noindex ? 'noindex, nofollow' : 'index, follow'}">
+  <meta name="robots" content="${!noindex && deveSerIndexado(path) ? 'index, follow' : 'noindex, nofollow'}">
   <meta name="theme-color" content="#2457f5">
   <link rel="canonical" href="${esc(canonical)}">
   <meta property="og:type" content="${esc(ogType)}">

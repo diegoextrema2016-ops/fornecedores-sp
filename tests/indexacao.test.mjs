@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { deveSerIndexado, categoriaVisivel, ordenarCategorias, tituloHome, RESTRICTED_CATEGORY_SLUGS } from '../js/conteudo.js';
 import * as seo from '../scripts/seo.mjs';
 import { readFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 
 test('ficha de fornecedor nunca é indexada, nem pelo app nem pelo HTML pré-gerado', () => {
   assert.equal(deveSerIndexado('/fornecedor/lacelore-bolsas', {}), false);
@@ -20,10 +21,40 @@ test('páginas de conta e painel ficam fora do Google', () => {
   }
 });
 
-test('páginas públicas continuam indexáveis', () => {
-  for (const p of ['/site', '/', '/categorias', '/categorias/moda-feminina', '/regiao/bras', '/mapa', '/planos', '/guias']) {
+test('só páginas comerciais e institucionais são indexáveis', () => {
+  for (const p of ['/', '/site', '/sobre', '/contato', '/privacidade', '/termos', '/planos', '/guias', '/guias/atacado-ou-varejo-diferencas']) {
     assert.equal(deveSerIndexado(p, {}), true, p);
   }
+});
+
+test('catálogo inteiro fica fora do Google: categorias, regiões, mapa, listagens e fichas', () => {
+  for (const p of ['/categorias', '/categorias/moda-feminina', '/categorias/tenis', '/categorias/mais-acessados', '/regiao/bras', '/mapa', '/fornecedores', '/fornecedores?q=bolsa', '/fornecedor/lacelore-bolsas']) {
+    assert.equal(deveSerIndexado(p, {}), false, p);
+  }
+});
+
+test('HTML pré-gerado: catálogo com noindex e páginas comerciais indexáveis', () => {
+  const cat = { id: 'c1', slug: 'moda', name: 'Moda', sortOrder: 1 };
+  const sup = { id: 's1', slug: 'loja', name: 'Loja', status: 'approved', category: 'moda', category_id: 'c1', bairro: 'bras', state: 'SP', city: 'São Paulo', approval_status: 'approved' };
+  const robots = (html) => (html.match(/<meta name="robots" content="([^"]+)"/) || [])[1];
+  assert.equal(robots(seo.categoriesIndexPage({ categories: [cat], counts: { c1: 1 } })), 'noindex, nofollow');
+  assert.equal(robots(seo.categoryPage({ category: cat, suppliers: [sup], regionName: () => 'Brás' })), 'noindex, nofollow');
+  assert.equal(robots(seo.regionPage({ region: { slug: 'bras', name: 'Brás' }, suppliers: [sup], categoryName: () => 'Moda' })), 'noindex, nofollow');
+  assert.equal(robots(seo.mapPage({ regions: [], suppliersByRegion: {} })), 'noindex, nofollow');
+  assert.equal(robots(seo.suppliersIndexPage({ suppliers: [sup], regionName: () => 'Brás', categoryName: () => 'Moda' })), 'noindex, nofollow');
+  assert.equal(robots(seo.supplierPage({ supplier: sup, category: cat, regionName: () => 'Brás', related: [] })), 'noindex, nofollow');
+  assert.equal(robots(seo.planosPage()), 'index, follow');
+  assert.equal(robots(seo.guiasIndexPage()), 'index, follow');
+  assert.equal(robots(seo.staticInfoPage({ path: '/sobre', title: 'Como funciona', description: 'd', h1: 'Como funciona' })), 'index, follow');
+});
+
+test('sitemap do build só lista páginas comerciais e institucionais', () => {
+  execFileSync(process.execPath, ['scripts/build.mjs'], { cwd: new URL('..', import.meta.url).pathname, env: { ...process.env, SEO_FIXTURE: 'tests/fixtures-seo.json' }, stdio: 'pipe' });
+  const xml = readFileSync(new URL('../dist/sitemap.xml', import.meta.url), 'utf8');
+  const paths = [...xml.matchAll(/<loc>https?:\/\/[^/<]+(\/[^<]*)<\/loc>/g)].map((m) => m[1].replace(/\/$/, '') || '/');
+  assert.ok(paths.length > 0);
+  for (const p of paths) assert.equal(deveSerIndexado(p, {}), true, 'sitemap tem página não indexável: ' + p);
+  assert.ok(!paths.some((p) => /^\/(categorias|regiao|fornecedor|fornecedores|mapa)/.test(p)), 'catálogo no sitemap');
 });
 
 test('página com noindex declarado continua sem índice', () => {
