@@ -11,7 +11,7 @@
 import { SUPABASE } from '../js/config.js';
 
 // Quantas sugestões cada conta pode pedir por hora.
-const LIMITE_POR_HORA = 20;
+const LIMITE_POR_HORA = 100;
 
 const MSG_IA_INDISPONIVEL = 'A IA não respondeu agora. Tente de novo em alguns instantes.';
 
