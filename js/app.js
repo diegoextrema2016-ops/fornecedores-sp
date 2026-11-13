@@ -7,9 +7,7 @@ import * as acc from './pages-account.js';
 import * as adm from './pages-admin.js';
 import { openPaywall } from './paywall.js';
 import { go, currentLocation, normalizeTarget } from './nav.js';
-
-// Páginas que não devem aparecer no Google (também marcadas no HTML gerado pelo build).
-const NOINDEX_PATH = /^\/(admin|login|registro|cadastro|favoritos|sair)(\/|$)/;
+import { deveSerIndexado } from './conteudo.js';
 
 const main = document.getElementById('main');
 const headerHost = document.getElementById('header');
@@ -80,8 +78,7 @@ function setMeta(page, path) {
   const canonical = document.querySelector('link[rel="canonical"]');
   if (canonical) canonical.setAttribute('href', SITE.url + path);
   const robots = document.querySelector('meta[name="robots"]');
-  const noindex = Boolean(page.noindex) || NOINDEX_PATH.test(path);
-  if (robots) robots.setAttribute('content', noindex ? 'noindex, nofollow' : 'index, follow');
+  if (robots) robots.setAttribute('content', deveSerIndexado(path, page) ? 'index, follow' : 'noindex, nofollow');
 }
 
 // Evita que uma renderização antiga sobrescreva a mais recente (cliques rápidos ou atualizações em sequência).

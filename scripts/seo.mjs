@@ -4,10 +4,13 @@
 import { SITE, BANNERS, SUPABASE } from '../js/config.js';
 import { SUPPLIER_TYPES } from '../js/data.js';
 import { bannersMarkup, bannerPreloadLinks as preloadBanners } from '../js/banners.js';
-import { planosMainHtml, guiasIndexMainHtml, guiaMainHtml, REGIAO_TEXTO, regiaoPrep } from '../js/conteudo.js';
+import {
+  planosMainHtml, guiasIndexMainHtml, guiaMainHtml, REGIAO_TEXTO, regiaoPrep,
+  RESTRICTED_CATEGORY_SLUGS, ordenarCategorias, tituloHome,
+} from '../js/conteudo.js';
 
-// Categorias com restrição legal (venda proibida pela Anvisa, por exemplo) ficam fora do Google.
-export const RESTRICTED_CATEGORY_SLUGS = ['vapers-e-acessorios'];
+// Categorias restritas (RESTRICTED_CATEGORY_SLUGS, em js/conteudo.js) ficam fora do Google. Reexportado para os testes.
+export { RESTRICTED_CATEGORY_SLUGS };
 
 // Conexões antecipadas (banco e biblioteca do Supabase) e módulos do site baixados em paralelo, para abrir mais rápido.
 const APP_MODULES = ['access', 'api', 'app', 'backup', 'config', 'data', 'extract', 'forms', 'import', 'mapping', 'nav',
@@ -191,7 +194,7 @@ export function staticNav() {
 export function staticFooter() {
   return `<footer class="site-footer">
   <nav aria-label="Rodapé">
-    <a href="/categorias">Categorias</a> <a href="/fornecedores">Fornecedores</a> <a href="/mapa">Mapa</a> <a href="/cadastro">Cadastre sua loja</a> <a href="/sobre">Sobre</a> <a href="/contato">Contato</a> <a href="/privacidade">Privacidade</a> <a href="/termos">Termos de uso</a>
+    <a href="/categorias">Categorias</a> <a href="/fornecedores">Fornecedores</a> <a href="/cadastro">Cadastre sua loja</a> <a href="/sobre">Sobre</a> <a href="/contato">Contato</a> <a href="/privacidade">Privacidade</a> <a href="/termos">Termos de uso</a>
   </nav>
   <p>${esc(SITE.name)} · São Paulo</p>
 </footer>`;
@@ -309,8 +312,10 @@ export function listJoin(items) {
 // ---------- Páginas ----------
 
 export function homePage({ categories, regions, suppliers, featured }) {
-  const title = 'Fornecedores Atacado SP | Brás, Moda, Tênis e Eletrônicos';
-  const description = 'Encontre fornecedores de atacado em São Paulo, Brás e 25 de Março. Explore lojas de roupas, moda feminina, tênis, eletrônicos e muito mais.';
+  // Só categorias com fornecedores entram no título e nos atalhos (igual ao app).
+  const nomesVisiveis = ordenarCategorias(categories).map((c) => c.name);
+  const title = tituloHome(nomesVisiveis);
+  const description = 'Encontre fornecedores de atacado em São Paulo, Brás e 25 de Março. Explore lojas de roupas, moda feminina, eletrônicos e muito mais.';
   const catLinks = categories.map((c) => `<li><a href="/categorias/${esc(c.slug)}">${esc(c.name)}</a></li>`).join('');
   const regLinks = regions.map((r) => `<li><a href="/regiao/${esc(r.slug)}">${esc(r.name)}</a></li>`).join('');
   // Mesma ordem e mesmo texto da home do app (js/pages-public.js): hero, banners, categorias.
@@ -328,7 +333,7 @@ export function homePage({ categories, regions, suppliers, featured }) {
       </form>
       <div class="chips" aria-label="Pesquisas populares">
         <span class="muted small">Populares:</span>
-        ${['Eletrônicos', 'Moda feminina', 'Tênis', 'Acessórios', 'Perfumes'].map((t) => `<a class="chip" href="/fornecedores?q=${encodeURIComponent(t)}&origem=popular">${esc(t)}</a>`).join('')}
+        ${['Eletrônicos', 'Moda feminina', 'Tênis', 'Acessórios', 'Perfumes'].filter((t) => nomesVisiveis.includes(t)).map((t) => `<a class="chip" href="/fornecedores?q=${encodeURIComponent(t)}&origem=popular">${esc(t)}</a>`).join('')}
       </div>
     </div>
   </section>
@@ -351,7 +356,7 @@ export function homePage({ categories, regions, suppliers, featured }) {
 
 export function categoriesIndexPage({ categories, counts }) {
   const title = 'Categorias de fornecedores | Fornecedores Atacado SP';
-  const description = 'Fornecedores por categoria em São Paulo: moda feminina, moda masculina, roupas infantis, tênis, eletrônicos, bolsas, perfumes e mais.';
+  const description = 'Fornecedores por categoria em São Paulo: moda feminina, moda masculina, roupas infantis, eletrônicos, bolsas, perfumes e mais.';
   const items = categories.map((c) => `<li><a href="/categorias/${esc(c.slug)}"><strong>${esc(c.name)}</strong></a> <span class="muted small">${counts[c.id] || 0} fornecedores</span>${c.description ? `<br><span class="small">${esc(clean(c.description))}</span>` : ''}</li>`).join('');
   const main = `
   <section class="container section-tight">
@@ -543,7 +548,7 @@ export function noindexShell({ path, title, description = 'Área restrita do For
 }
 
 export function planosPage() {
-  const title = 'Planos de acesso aos contatos | Fornecedores Atacado SP';
+  const title = 'Planos de acesso aos fornecedores | Fornecedores Atacado SP';
   const description = 'Conheça os planos do Fornecedores Atacado SP e tenha acesso ao WhatsApp, Instagram e endereço dos fornecedores de São Paulo.';
   return documentHtml({
     title, description, path: '/planos', mainHtml: planosMainHtml(), nav: staticNav(), footer: staticFooter(),

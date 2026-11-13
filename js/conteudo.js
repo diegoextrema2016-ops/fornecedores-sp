@@ -144,3 +144,32 @@ export function guiaMainHtml(g) {
 export const regiaoTexto = (slug) => REGIAO_TEXTO[slug] || '';
 
 export const SITE_NAME = SITE.name;
+
+// ---------- Indexação e categorias (regras compartilhadas entre build e app) ----------
+
+// Categorias com restrição legal (venda proibida pela Anvisa, por exemplo) ficam fora do Google.
+export const RESTRICTED_CATEGORY_SLUGS = ['vapers-e-acessorios'];
+
+// Caminhos que nunca são indexados: painel, contas e as fichas dos fornecedores.
+const CAMINHO_SEM_INDEXACAO = /^\/(admin|login|registro|cadastro|favoritos|sair|fornecedor)(\/|$)/;
+
+// Decide a meta robots de uma página. O JavaScript usa esta mesma regra, então a ficha nunca vira "index".
+export function deveSerIndexado(caminho, pagina = {}) {
+  if (pagina.noindex) return false;
+  return !CAMINHO_SEM_INDEXACAO.test(caminho);
+}
+
+// Categoria aparece no público e no Google só com fornecedores aprovados e sem restrição.
+export const categoriaVisivel = (categoria, quantidade) =>
+  !RESTRICTED_CATEGORY_SLUGS.includes(categoria.slug) && quantidade > 0;
+
+// Ordem de exibição: a do cadastro e, em caso de empate, pelo nome.
+export const ordenarCategorias = (lista) =>
+  lista.slice().sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0) || a.name.localeCompare(b.name, 'pt-BR'));
+
+// Título da home com as três primeiras categorias visíveis (muda sozinho quando uma categoria recebe fornecedores).
+export function tituloHome(nomesCategorias) {
+  const nomes = nomesCategorias.slice(0, 3);
+  const lista = nomes.length > 1 ? `${nomes.slice(0, -1).join(', ')} e ${nomes[nomes.length - 1]}` : nomes[0] || '';
+  return `Fornecedores Atacado SP | Brás${lista ? `, ${lista}` : ''}`;
+}

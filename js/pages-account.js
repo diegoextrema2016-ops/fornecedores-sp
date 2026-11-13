@@ -120,7 +120,7 @@ export async function logout() {
 export function cadastroPage() {
   const session = store.session.get();
   const title = `Cadastre sua loja | ${SITE.shortName}`;
-  const description = 'Cadastre seu negócio no Fornecedores Atacado SP e seja encontrado por compradores de todo o Brasil.';
+  const description = 'Cadastre seu negócio no Fornecedores Atacado SP e seja encontrado por quem compra no atacado em São Paulo.';
   if (!session) {
     return {
       title,
@@ -145,7 +145,7 @@ export function cadastroPage() {
     html: `
     ${breadcrumbs([{ label: 'Início', href: '/site' }, { label: 'Cadastrar fornecedor' }])}
     <section class="container section-tight">
-      <h1>Cadastre sua loja e seja encontrado por compradores de todo o Brasil.</h1>
+      <h1>Cadastre sua loja e seja encontrado por quem compra no atacado em São Paulo.</h1>
       <p class="lead">Preencha os dados abaixo. Após o envio, seu cadastro fica pendente até a aprovação.</p>
       <div class="notice notice-warn" role="note">
         Anuncie apenas produtos lícitos. Itens com venda proibida por lei ou por norma de órgãos reguladores (como a Anvisa) não podem ser cadastrados.

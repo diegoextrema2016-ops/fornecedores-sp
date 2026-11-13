@@ -63,7 +63,6 @@ export function footer() {
       <nav aria-label="Rodapé">
         <a href="/categorias">Categorias</a>
         <a href="/fornecedores">Fornecedores</a>
-        <a href="/mapa">Mapa</a>
         <a href="/cadastro">Cadastre sua loja</a>
       </nav>
       <nav aria-label="Institucional">

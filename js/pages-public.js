@@ -12,12 +12,15 @@ import {
   icon, categoryCard, supplierCard, pagination, emptyState, breadcrumbs, skeletonCards, demoBanner,
   saleLabels, supplierMapLinks, toast, photosCarousel,
 } from './ui.js';
-import { planosMainHtml, guiasIndexMainHtml, guiaMainHtml, guiaPorSlug, REGIAO_TEXTO, regiaoPrep } from './conteudo.js';
+import {
+  planosMainHtml, guiasIndexMainHtml, guiaMainHtml, guiaPorSlug, REGIAO_TEXTO, regiaoPrep,
+  categoriaVisivel, ordenarCategorias, tituloHome,
+} from './conteudo.js';
 
 // Planos, índice de guias e guias: o mesmo conteúdo que o build gera em HTML (js/conteudo.js).
 export function plansPage() {
   return {
-    title: 'Planos de acesso aos contatos | Fornecedores Atacado SP',
+    title: 'Planos de acesso aos fornecedores | Fornecedores Atacado SP',
     description: 'Conheça os planos do Fornecedores Atacado SP e tenha acesso ao WhatsApp, Instagram e endereço dos fornecedores de São Paulo.',
     html: planosMainHtml(),
   };
@@ -57,6 +60,13 @@ function countByCategory() {
   return counts;
 }
 
+// Categorias que o público vê: só as que têm fornecedores aprovados e não são restritas.
+// Se uma categoria vazia receber fornecedor, ela volta sozinha aqui e no Google (no próximo build).
+function publicCategories() {
+  const counts = countByCategory();
+  return ordenarCategorias(allCategories()).filter((c) => categoriaVisivel(c, counts[c.slug] || 0));
+}
+
 // Mantém o botão de favorito sincronizado em toda a página.
 function wireFavorites(root) {
   root.addEventListener('click', (ev) => {
@@ -89,10 +99,12 @@ export function home() {
   const counts = countByCategory();
   const featured = store.suppliers.approved().filter((s) => s.featured);
   const blurred = !canSeeContacts();
-  const popular = ['Eletrônicos', 'Moda feminina', 'Tênis', 'Acessórios', 'Perfumes'];
+  const visiveis = publicCategories().map((c) => c.name);
+  // Atalhos só aparecem se a categoria tiver fornecedores (evita atalho para página vazia).
+  const popular = ['Eletrônicos', 'Moda feminina', 'Tênis', 'Acessórios', 'Perfumes'].filter((t) => visiveis.includes(t));
   return {
-    title: 'Fornecedores Atacado SP | Brás, Moda, Tênis e Eletrônicos',
-    description: 'Encontre fornecedores de atacado em São Paulo, Brás e 25 de Março. Explore lojas de roupas, moda feminina, tênis, eletrônicos e muito mais.',
+    title: tituloHome(visiveis),
+    description: 'Encontre fornecedores de atacado em São Paulo, Brás e 25 de Março. Explore lojas de roupas, moda feminina, eletrônicos e muito mais.',
     html: `
     <section class="hero">
       <div class="container hero-inner">
@@ -161,7 +173,7 @@ export function home() {
     <section class="cta-band container">
       <div>
         <h2>Tem uma loja ou distribuidora?</h2>
-        <p class="muted">Cadastre seu negócio e seja encontrado por compradores de todo o Brasil. Os cadastros passam por aprovação.</p>
+        <p class="muted">Cadastre seu negócio e seja encontrado por quem compra no atacado em São Paulo. Os cadastros passam por aprovação.</p>
       </div>
       <a class="btn btn-primary btn-lg" href="/cadastro">Cadastrar fornecedor</a>
     </section>`,
@@ -208,7 +220,7 @@ export function categoriesIndex() {
   const counts = countByCategory();
   return {
     title: `Categorias de fornecedores | ${SITE.shortName}`,
-    description: 'Fornecedores por categoria: eletrônicos, moda feminina, tênis, perfumes, cosméticos e mais.',
+    description: 'Fornecedores por categoria: eletrônicos, moda feminina, perfumes, acessórios e mais.',
     html: `
     ${breadcrumbs([{ label: 'Início', href: '/site' }, { label: 'Categorias' }])}
     <section class="container section-tight">
@@ -216,7 +228,7 @@ export function categoriesIndex() {
       <p class="lead">Encontre fornecedores pelo segmento do seu negócio.</p>
       <div class="grid grid-categories">
         ${topCategoryCard()}
-        ${allCategories().map((c) => categoryCard(c, counts[c.slug] || 0)).join('')}
+        ${publicCategories().map((c) => categoryCard(c, counts[c.slug] || 0)).join('')}
       </div>
     </section>`,
   };
@@ -224,7 +236,7 @@ export function categoriesIndex() {
 
 // Cartão "Mais acessados", sempre o primeiro da lista de categorias.
 function topCategoryCard() {
-  const n = rankCategoriesByAccess(allCategories(), store.suppliers.approved()).length;
+  const n = rankCategoriesByAccess(publicCategories(), store.suppliers.approved()).length;
   return `
   <a class="category-card category-card-top" href="/categorias/mais-acessados">
     <span class="category-icon" aria-hidden="true">🔥</span>
@@ -238,7 +250,7 @@ function topCategoryCard() {
 
 // Categorias ordenadas pelos acessos dos seus fornecedores.
 export function mostAccessedPage() {
-  const ranked = rankCategoriesByAccess(allCategories(), store.suppliers.approved());
+  const ranked = rankCategoriesByAccess(publicCategories(), store.suppliers.approved());
   const items = ranked.map((r, i) => `
       <li class="ranked-item">
         <span class="rank-badge" aria-hidden="true">${i + 1}</span>
@@ -272,6 +284,8 @@ export function categoryPage({ slug }, query) {
     intro: cat.description,
     fixed: { category: slug },
     base: `/categorias/${slug}`,
+    // Categoria sem fornecedores (ou restrita) fica fora do Google, igual à versão pré-gerada.
+    noindex: !categoriaVisivel(cat, countByCategory()[slug] || 0),
     query,
   });
 }
@@ -288,6 +302,8 @@ export function regionPage({ slug }, query) {
     intro: REGIAO_TEXTO[slug] || region.description,
     fixed: { bairro: slug },
     base: `/regiao/${slug}`,
+    // Bairro sem fornecedores de São Paulo fica fora do Google, igual à versão pré-gerada.
+    noindex: !store.suppliers.approved().some((s) => s.bairro === slug && s.state === 'SP'),
     query,
   });
 }
@@ -306,7 +322,7 @@ export function suppliersPage(_params, query) {
 }
 
 // Lista com busca, filtros e ordenação. Estado fica na URL (compartilhável e reversível pelo botão Voltar).
-function listingPage({ title, description, crumbs, heading, intro, fixed, base, query }) {
+function listingPage({ title, description, crumbs, heading, intro, fixed, base, query, noindex = false }) {
   const f = {
     q: query.get('q') || '',
     category: query.get('categoria') || '',
@@ -329,6 +345,7 @@ function listingPage({ title, description, crumbs, heading, intro, fixed, base, 
   return {
     title,
     description,
+    noindex,
     html: `
     ${breadcrumbs(crumbs)}
     <section class="container section-tight">
@@ -397,7 +414,7 @@ function listingPage({ title, description, crumbs, heading, intro, fixed, base, 
 // Com categoria escolhida: só as dela, com o nome como valor.
 // Sem categoria: todas, agrupadas por categoria, com valor "slug||nome" (o envio separa os dois).
 function subcategoriaOpcoes(catAtual, atual = '') {
-  const cats = allCategories();
+  const cats = publicCategories();
   if (catAtual) {
     const lista = cats.find((c) => c.slug === catAtual)?.subcategories || [];
     return {
@@ -440,7 +457,7 @@ function filterForm({ f, fixed, base, sort }) {
       <label for="f-cat">Categoria</label>
       <select id="f-cat" name="categoria">
         <option value="">Todas</option>
-        ${allCategories().map((c) => `<option value="${e(c.slug)}" ${f.category === c.slug ? 'selected' : ''}>${e(c.name)}</option>`).join('')}
+        ${publicCategories().map((c) => `<option value="${e(c.slug)}" ${f.category === c.slug ? 'selected' : ''}>${e(c.name)}</option>`).join('')}
       </select>
     </div>`}
     ${subcategoriaCampo}
@@ -499,6 +516,8 @@ export function supplierPage({ slug }) {
 
   return {
     title: pageTitle,
+    // Ficha de fornecedor nunca é indexada (noindex, nofollow), em qualquer navegação.
+    noindex: true,
     description: (s.description || `${s.name}, fornecedor de ${catName[s.category]} em ${regName[s.bairro] || 'São Paulo'}.`).slice(0, 155),
     html: `
     ${breadcrumbs([

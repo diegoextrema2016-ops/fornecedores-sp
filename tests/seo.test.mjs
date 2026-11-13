@@ -136,7 +136,9 @@ test('páginas geradas não têm links com #', () => {
 
 test('home tem título e H1 do plano de SEO', () => {
   const html = seo.homePage({ categories: [cat], regions: [region], suppliers: [supplier], featured: [] });
-  assert.ok(html.includes('<title>Fornecedores Atacado SP | Brás, Moda, Tênis e Eletrônicos</title>'));
+  // Título só cita categorias com fornecedores: a categoria passada aqui é a única visível.
+  assert.ok(html.includes(`<title>Fornecedores Atacado SP | Brás, ${cat.name}</title>`));
+  assert.ok(!html.includes('Tênis</title>'), 'título não pode citar categoria vazia');
   // H1 igual ao da home do site (a troca da versão pré-gerada para o site não pode mudar o título).
   assert.ok(html.includes('<h1>Encontre fornecedores de atacado em São Paulo</h1>'));
   assert.ok(html.includes('fornecedores de atacado'), 'palavra-chave continua no título da página');
