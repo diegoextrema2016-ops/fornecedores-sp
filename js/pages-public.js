@@ -261,6 +261,8 @@ export function mostAccessedPage() {
       </li>`).join('');
   return {
     title: `Categorias mais acessadas | ${SITE.shortName}`,
+    // Sem nenhuma categoria com acessos, a página fica vazia: não deve ser indexada.
+    noindex: ranked.length === 0,
     description: 'Veja as categorias de fornecedores de São Paulo com mais acessos no site.',
     html: `
     ${breadcrumbs([{ label: 'Início', href: '/site' }, { label: 'Categorias', href: '/categorias' }, { label: 'Mais acessados' }])}
