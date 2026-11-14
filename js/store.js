@@ -6,8 +6,8 @@
 //  - As escritas (salvar, aprovar, categorias...) vão ao banco primeiro. Só depois a cópia local é atualizada.
 //  - Única exceção: os favoritos de quem ainda não tem conta ficam neste navegador (preferência, não dado de negócio).
 //    Ao entrar na conta, são copiados para o banco.
-import { api, imagePathFromUrl } from './api.js';
-import { SITE, PLANS } from './config.js';
+import { api, imagePathFromUrl, AUTH_REDIRECT } from './api.js';
+import { PLANS } from './config.js';
 import { slugify } from './utils.js';
 import * as M from './mapping.js';
 import { instagramKey, phoneKey } from './extract.js';
@@ -159,7 +159,7 @@ const auth = {
   async signUp({ name, email, password }) {
     lastRefreshAt = 0;
     try {
-      return await api.signUp({ name: name.trim(), email: email.trim().toLowerCase(), password, redirectTo: SITE.url + '/site' });
+      return await api.signUp({ name: name.trim(), email: email.trim().toLowerCase(), password, redirectTo: AUTH_REDIRECT.signup() });
     } catch (err) {
       throw new Error(M.authErrorMessage(err));
     }
@@ -168,6 +168,36 @@ const auth = {
     lastRefreshAt = 0;
     try {
       await api.signIn(email.trim().toLowerCase(), password);
+    } catch (err) {
+      throw new Error(M.authErrorMessage(err));
+    }
+  },
+  // Recuperação de senha: o pedido é o mesmo para qualquer e-mail (não revela se há conta).
+  async requestPasswordReset(email) {
+    try {
+      await api.requestPasswordReset(email.trim().toLowerCase());
+    } catch (err) {
+      throw new Error(M.authErrorMessage(err));
+    }
+  },
+  async resendConfirmation(email) {
+    try {
+      await api.resendConfirmation(email.trim().toLowerCase());
+    } catch (err) {
+      throw new Error(M.authErrorMessage(err));
+    }
+  },
+  async updatePassword(password) {
+    try {
+      await api.updatePassword(password);
+    } catch (err) {
+      throw new Error(M.authErrorMessage(err));
+    }
+  },
+  async requestEmailChange(newEmail) {
+    lastRefreshAt = 0;
+    try {
+      await api.requestEmailChange(newEmail.trim().toLowerCase());
     } catch (err) {
       throw new Error(M.authErrorMessage(err));
     }

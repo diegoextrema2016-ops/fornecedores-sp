@@ -28,6 +28,7 @@ export function loginPage() {
         <div class="field"><label for="l-email">E-mail</label><input id="l-email" name="email" type="email" required autocomplete="email"><span class="field-error" id="err-email" role="alert"></span></div>
         <div class="field"><label for="l-pass">Senha</label><input id="l-pass" name="password" type="password" required autocomplete="current-password"><span class="field-error" id="err-password" role="alert"></span></div>
         <button class="btn btn-primary btn-lg" type="submit">Entrar</button>
+        <p class="muted small"><a href="/esqueci-senha">Esqueci minha senha</a></p>
         <p class="muted small">Ainda não tem conta? <a href="/registro">Criar conta</a></p>
       </form>
     </section>`,

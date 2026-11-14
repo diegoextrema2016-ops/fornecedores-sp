@@ -1,12 +1,27 @@
 // Acesso ao Supabase (banco, autenticação e imagens). Todas as chamadas de rede passam por aqui.
 // O cliente vem do CDN com versão fixa. Para atualizar, troque a versão e teste antes de publicar.
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/+esm';
-import { SUPABASE } from './config.js';
+import { SUPABASE, SITE } from './config.js';
+import { parseAuthReturn, RECOVERY_MARK_KEY } from './auth-return.js';
+
+// Retorno do link de e-mail, lido ANTES de o cliente apagar os tokens do endereço.
+export const authReturn = parseAuthReturn(typeof location !== 'undefined' ? location.hash : '');
+// Marca a troca de senha para sobreviver ao recarregamento da página /redefinir-senha.
+if (authReturn?.kind === 'success' && authReturn.type === 'recovery' && typeof sessionStorage !== 'undefined') {
+  sessionStorage.setItem(RECOVERY_MARK_KEY, '1');
+}
 
 export const sb = createClient(SUPABASE.url, SUPABASE.anonKey, {
-  // detectSessionInUrl: lê o retorno do link de confirmação (tokens no endereço depois do #) e abre a sessão.
+  // detectSessionInUrl: lê o retorno do link (tokens depois do #) e abre a sessão. authReturn guarda o tipo da ação.
   auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
 });
+
+// Endereços de retorno dos links de e-mail. Precisam estar na lista de redirecionamentos do Supabase.
+export const AUTH_REDIRECT = {
+  signup: () => SITE.url + '/conta/retorno',
+  recovery: () => SITE.url + '/redefinir-senha',
+  emailChange: () => SITE.url + '/conta/retorno',
+};
 
 const BUCKET = SUPABASE.imageBucket;
 
@@ -53,6 +68,26 @@ export const api = {
   async signOut() {
     // scope 'local' limpa a sessão deste navegador sem depender do servidor (que pode falhar com o token vencido).
     const { error } = await sb.auth.signOut({ scope: 'local' });
+    if (error) throw error;
+  },
+  // Pede o e-mail de recuperação. A resposta é igual exista ou não a conta (não revela quem é cliente).
+  async requestPasswordReset(email) {
+    const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: AUTH_REDIRECT.recovery() });
+    if (error) throw error;
+  },
+  // Define a nova senha da sessão de recuperação aberta pelo link.
+  async updatePassword(password) {
+    const { error } = await sb.auth.updateUser({ password });
+    if (error) throw error;
+  },
+  // Reenvia o e-mail de confirmação de um cadastro ainda não confirmado.
+  async resendConfirmation(email) {
+    const { error } = await sb.auth.resend({ type: 'signup', email, options: { emailRedirectTo: AUTH_REDIRECT.signup() } });
+    if (error) throw error;
+  },
+  // Pede a troca de e-mail: o Supabase envia o link de confirmação para o NOVO endereço.
+  async requestEmailChange(newEmail) {
+    const { error } = await sb.auth.updateUser({ email: newEmail }, { emailRedirectTo: AUTH_REDIRECT.emailChange() });
     if (error) throw error;
   },
 

@@ -1,0 +1,5 @@
+{
+  "supabaseUrl": "https://<ref-do-projeto-dev>.supabase.co",
+  "anonKey": "sb_publishable_COLE_A_CHAVE_PUBLICAVEL_DO_PROJETO_DEV",
+  "siteUrl": "http://localhost:8080"
+}

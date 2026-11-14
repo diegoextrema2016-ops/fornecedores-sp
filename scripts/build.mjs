@@ -169,6 +169,12 @@ async function main() {
     { path: '/cadastro', title: 'Cadastrar fornecedor' },
     { path: '/favoritos', title: 'Favoritos' },
     { path: '/sair', title: 'Sair' },
+    // Telas dos links de e-mail e da conta (o app carrega o conteúdo; o endereço precisa existir no servidor).
+    { path: '/esqueci-senha', title: 'Recuperar senha' },
+    { path: '/redefinir-senha', title: 'Nova senha' },
+    { path: '/reenviar-confirmacao', title: 'Reenviar confirmação' },
+    { path: '/conta', title: 'Minha conta' },
+    { path: '/conta/retorno', title: 'Confirmação' },
     { path: '/admin', title: 'Painel administrativo' },
   ];
   for (const shell of shells) {

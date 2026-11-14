@@ -11,3 +11,7 @@ Thumbs.db
 
 # build gerado (Vercel e local)
 dist/
+
+# build de desenvolvimento (aponta para o Supabase DEV; nunca commitar)
+dev.local.json
+.dev-build/

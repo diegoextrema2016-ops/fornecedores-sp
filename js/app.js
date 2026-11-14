@@ -4,12 +4,14 @@ import { store } from './store.js';
 import { header, footer, toast, openPhotoViewer, skeletonCards } from './ui.js';
 import * as pub from './pages-public.js';
 import * as acc from './pages-account.js';
+import * as authPages from './pages-auth.js';
 import * as adm from './pages-admin.js';
+import { authReturn } from './api.js';
 import { openPaywall } from './paywall.js';
 import { go, currentLocation, normalizeTarget } from './nav.js';
 
 // Páginas que não devem aparecer no Google (também marcadas no HTML gerado pelo build).
-const NOINDEX_PATH = /^\/(admin|login|registro|cadastro|favoritos|sair)(\/|$)/;
+const NOINDEX_PATH = /^\/(admin|login|registro|cadastro|favoritos|sair|conta|esqueci-senha|redefinir-senha|reenviar-confirmacao)(\/|$)/;
 
 const main = document.getElementById('main');
 const headerHost = document.getElementById('header');
@@ -30,6 +32,11 @@ const routes = [
   [/^\/cadastro$/, () => acc.cadastroPage()],
   [/^\/login$/, () => acc.loginPage()],
   [/^\/registro$/, () => acc.registerPage()],
+  [/^\/esqueci-senha$/, () => authPages.forgotPasswordPage()],
+  [/^\/redefinir-senha$/, () => authPages.resetPasswordPage()],
+  [/^\/conta\/retorno$/, () => authPages.authReturnPage()],
+  [/^\/reenviar-confirmacao$/, () => authPages.resendConfirmationPage()],
+  [/^\/conta$/, () => authPages.accountPage()],
   [/^\/sair$/, () => { acc.logout(); return null; }],
   [/^\/favoritos$/, () => pub.favoritesPage()],
   [/^\/sobre$/, () => pub.aboutPage()],
@@ -69,6 +76,13 @@ function migrateLegacyHash() {
   const hash = location.hash;
   if (hash.startsWith('#/')) {
     history.replaceState(null, '', normalizeTarget(hash));
+  } else if (authReturn) {
+    // Retorno de link de e-mail (confirmação, recuperação, troca de e-mail): leva à página que trata o tipo.
+    // Links antigos que chegaram em outra página (ex.: /site) são encaminhados para /conta/retorno.
+    if (!/^\/(conta\/retorno|redefinir-senha)$/.test(location.pathname)) {
+      history.replaceState(null, '', '/conta/retorno');
+    }
+    return;
   } else if (hash.startsWith('#access_token=') || hash.startsWith('#error=')) {
     history.replaceState(null, '', '/site' + location.search);
   }

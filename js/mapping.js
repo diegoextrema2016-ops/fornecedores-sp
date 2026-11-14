@@ -208,6 +208,9 @@ export function authErrorMessage(error) {
   if (msg.includes('already registered') || msg.includes('already been registered')) return 'Não foi possível criar a conta com estes dados. Se você já tem cadastro, entre na sua conta ou recupere a senha.';
   if (msg.includes('password should be at least')) return 'A senha precisa ter pelo menos 8 caracteres.';
   if (msg.includes('rate limit') || msg.includes('too many')) return 'Muitas tentativas. Aguarde alguns minutos e tente de novo.';
+  // Limite entre dois envios de e-mail (ex.: "you can only request this after 53 seconds").
+  if (msg.includes('only request this after') || msg.includes('security purposes')) return 'Aguarde alguns segundos antes de pedir outro e-mail.';
+  if (msg.includes('same password') || msg.includes('should be different')) return 'Escolha uma senha diferente da anterior.';
   if (msg.includes('failed to fetch') || msg.includes('network')) return 'Sem conexão com o servidor. Verifique sua internet.';
   return 'Não foi possível concluir agora. Tente novamente.';
 }
