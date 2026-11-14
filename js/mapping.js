@@ -49,7 +49,6 @@ export function supplierFromRow(row, categorySlugById = new Map()) {
     .map((p) => p.url);
   const s = {
     id: row.id,
-    ownerId: row.owner_id || null,
     slug: row.slug,
     name: row.name,
     description: row.description || '',

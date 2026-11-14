@@ -3,6 +3,10 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/+esm';
 import { SUPABASE, SITE } from './config.js';
 import { parseAuthReturn, RECOVERY_MARK_KEY } from './auth-return.js';
+import { imagePathFromUrl } from './imagens.js';
+
+// Caminho do bucket a partir da referência (função pura em imagens.js; reexportada para quem já importava daqui).
+export { imagePathFromUrl };
 
 // Retorno do link de e-mail, lido ANTES de o cliente apagar os tokens do endereço.
 export const authReturn = parseAuthReturn(typeof location !== 'undefined' ? location.hash : '');
@@ -31,8 +35,16 @@ function check({ data, error }) {
   return data;
 }
 
-// Colunas da lista de fornecedores (com fotos e contatos embutidos; o banco filtra quem pode ver o quê).
-const SUPPLIER_SELECT = '*, supplier_photos(url, position), supplier_contacts(*)';
+// Colunas de "suppliers" que o site usa. owner_id NÃO está aqui: o banco não entrega esse campo à API
+// (supabase/migration-008). Mantenha esta lista igual à da migração 008; tests/supabase-colunas.test.mjs confere.
+export const SUPPLIER_COLUMNS = [
+  'id', 'name', 'slug', 'description', 'category_id', 'subcategory_id', 'subcategory', 'supplier_type',
+  'bairro', 'city', 'state', 'sale_wholesale', 'sale_retail', 'sale_resellers', 'ships_other_cities',
+  'min_order', 'hours', 'tags', 'logo_url', 'approval_status', 'verified', 'featured', 'is_demo', 'views',
+  'created_at', 'updated_at',
+].join(', ');
+// Lista com fotos e contatos embutidos. O banco filtra quem pode ver cada linha e cada coluna.
+const SUPPLIER_SELECT = `${SUPPLIER_COLUMNS}, supplier_photos(url, position), supplier_contacts(*)`;
 
 export const api = {
   // ----- Sessão e perfil -----
@@ -116,11 +128,12 @@ export const api = {
   },
 
   // ----- Escrita: fornecedores -----
+  // RETURNING com colunas explícitas: owner_id não é devolvido (select * falharia depois da migração 008).
   async insertSupplier(row) {
-    return check(await sb.from('suppliers').insert(row).select().single());
+    return check(await sb.from('suppliers').insert(row).select(SUPPLIER_COLUMNS).single());
   },
   async updateSupplier(id, row) {
-    return check(await sb.from('suppliers').update(row).eq('id', id).select().single());
+    return check(await sb.from('suppliers').update(row).eq('id', id).select(SUPPLIER_COLUMNS).single());
   },
   // Duplicado por Instagram ou WhatsApp (função no banco; ver supabase/migration-004-duplicados.sql).
   async findDuplicate({ instagram = null, whatsapp = null, excludeId = null }) {
@@ -208,23 +221,72 @@ export const api = {
     check(await sb.from('subscriptions').update(patch).eq('id', id));
   },
 
-  // ----- Imagens -----
+  // ----- Imagens (bucket privado) -----
+  // O upload grava a referência no formato /object/public/... que o banco aceita (migração 006).
+  // Esse endereço NÃO é público: o bucket é privado. Para exibir, use signImageUrls.
   async uploadImage(path, blob) {
     check(await sb.storage.from(BUCKET).upload(path, blob, { contentType: blob.type || 'image/webp', upsert: false }));
     return sb.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
   },
+  // Converte referências em URLs assinadas (validade de 1 hora). O banco decide quem pode assinar:
+  // assinante ativo, dono e administrador. Quem não pode recebe mapa vazio (sem imagem, sem vazamento).
+  async signImageUrls(urls, ttl = 3600) {
+    const mapa = new Map();
+    const pares = [...new Set((urls || []).filter(Boolean))]
+      .map((url) => ({ url, path: imagePathFromUrl(url) }))
+      .filter((p) => p.path);
+    if (!pares.length) return mapa;
+    const { data, error } = await sb.storage.from(BUCKET).createSignedUrls(pares.map((p) => p.path), ttl);
+    if (error) {
+      console.warn('Não foi possível assinar imagens:', error.message);
+      return mapa;
+    }
+    (data || []).forEach((item, i) => {
+      if (item && item.signedUrl) mapa.set(pares[i].url, item.signedUrl);
+    });
+    return mapa;
+  },
+  // Remove arquivos do bucket. Não é fatal: se falhar, devolve a lista que ficou (quem chama decide).
   async removeImages(paths) {
-    if (!paths.length) return;
-    await sb.storage.from(BUCKET).remove(paths);
+    if (!paths.length) return [];
+    const { data, error } = await sb.storage.from(BUCKET).remove(paths);
+    if (error) {
+      console.warn('Imagens não removidas:', error.message);
+      return paths;
+    }
+    const removidos = new Set((data || []).map((d) => d.name));
+    return paths.filter((p) => !removidos.has(p));
+  },
+  // Administrador: lista todas as imagens do bucket (pasta dono/fornecedor/arquivo) com a data de envio.
+  async listAllImages() {
+    const arquivos = [];
+    const donos = check(await sb.storage.from(BUCKET).list('', { limit: 1000 }));
+    for (const dono of donos.filter((x) => x.id === null)) {
+      const fornecedores = check(await sb.storage.from(BUCKET).list(dono.name, { limit: 1000 }));
+      for (const forn of fornecedores.filter((x) => x.id === null)) {
+        const pasta = `${dono.name}/${forn.name}`;
+        const itens = check(await sb.storage.from(BUCKET).list(pasta, { limit: 1000 }));
+        for (const f of itens.filter((x) => x.id)) {
+          arquivos.push({ path: `${pasta}/${f.name}`, createdAt: f.created_at });
+        }
+      }
+    }
+    return arquivos;
+  },
+  // Administrador: caminhos de imagens que ainda são usadas por algum fornecedor (logo e fotos).
+  async referencedImagePaths() {
+    const linhas = check(await sb.from('suppliers').select('logo_url, supplier_photos(url)'));
+    const usados = new Set();
+    for (const s of linhas) {
+      const refs = [s.logo_url, ...(s.supplier_photos || []).map((p) => p.url)];
+      for (const r of refs) {
+        const p = imagePathFromUrl(r);
+        if (p) usados.add(p);
+      }
+    }
+    return usados;
   },
 };
-
-// Caminho do arquivo dentro do bucket, a partir da URL pública (usado para limpar imagens antigas).
-export function imagePathFromUrl(url = '') {
-  const marker = `/object/public/${BUCKET}/`;
-  const i = String(url).indexOf(marker);
-  return i >= 0 ? decodeURIComponent(String(url).slice(i + marker.length)) : null;
-}
 
 function slugFor(text) {
   return String(text)

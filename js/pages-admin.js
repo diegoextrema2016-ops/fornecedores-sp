@@ -978,6 +978,12 @@ export function adminBackup() {
       <p class="muted">Escolha o arquivo JSON gerado no passo 1. Os fornecedores entram com o mesmo status que tinham. Contas e favoritos não são importados.</p>
       <input type="file" accept="application/json,.json" data-backup-file>
       <div data-backup-preview></div>
+    </section>
+    <section class="card">
+      <h2>3. Limpar imagens não usadas</h2>
+      <p class="muted">Procura no armazenamento arquivos que nenhum fornecedor usa (logo ou foto) e que têm mais de 24 horas. A verificação só lista. Nada é apagado sem a sua confirmação.</p>
+      <button class="btn btn-secondary" type="button" data-orphans-scan>Verificar imagens não usadas</button>
+      <div data-orphans-result></div>
     </section>`);
 }
 
@@ -991,7 +997,43 @@ function readLocalBackupSafe() {
 
 export function mountAdminBackup(root) {
   let pending = null;
+  let orphanList = [];
   root.addEventListener('click', async (ev) => {
+    if (ev.target.closest('[data-orphans-scan]')) {
+      const out = root.querySelector('[data-orphans-result]');
+      out.innerHTML = '<p class="muted">Verificando...</p>';
+      try {
+        orphanList = await store.images.orphans();
+        out.innerHTML = orphanList.length
+          ? `<p>Encontrei <strong>${formatCount(orphanList.length)}</strong> imagem(ns) não usada(s).</p>
+             <button class="btn btn-secondary" type="button" data-orphans-run>Apagar ${formatCount(orphanList.length)} imagem(ns)</button>`
+          : '<p class="muted">Nenhuma imagem não usada.</p>';
+      } catch (err) {
+        orphanList = [];
+        out.innerHTML = `<p class="muted">Não foi possível verificar: ${e(err.message)}</p>`;
+      }
+      return;
+    }
+    if (ev.target.closest('[data-orphans-run]') && orphanList.length) {
+      const lista = orphanList;
+      const ok = await confirmDialog({
+        title: 'Apagar imagens não usadas?',
+        text: `${formatCount(lista.length)} arquivo(s) serão apagados do armazenamento. Não é possível desfazer.`,
+        confirmLabel: 'Apagar',
+      });
+      if (!ok) return;
+      orphanList = [];
+      const out = root.querySelector('[data-orphans-result]');
+      try {
+        const falharam = await store.images.removeOrphans(lista);
+        out.innerHTML = falharam.length
+          ? `<p class="muted">${formatCount(lista.length - falharam.length)} apagada(s). ${formatCount(falharam.length)} não puderam ser apagadas; tente de novo.</p>`
+          : `<p class="muted">${formatCount(lista.length)} imagem(ns) apagada(s).</p>`;
+      } catch (err) {
+        out.innerHTML = `<p class="muted">Não foi possível apagar: ${e(err.message)}</p>`;
+      }
+      return;
+    }
     if (ev.target.closest('[data-backup-download]')) {
       const backup = readLocalBackupSafe();
       if (!backup) return toast('Não há dados para exportar.', 'error');

@@ -1,5 +1,5 @@
 {
-  "buildCommand": "node scripts/build.mjs",
+  "buildCommand": "node scripts/build.mjs && node scripts/verifica-dist.mjs",
   "outputDirectory": "dist",
   "cleanUrls": false,
   "headers": [
@@ -16,7 +16,13 @@
     },
     { "source": "/js/(.*)","headers": [{ "key": "Cache-Control", "value": "public, max-age=300, stale-while-revalidate=86400" }] },
     { "source": "/css/(.*)", "headers": [{ "key": "Cache-Control", "value": "public, max-age=300, stale-while-revalidate=86400" }] },
-    { "source": "/img/(.*)", "headers": [{ "key": "Cache-Control", "value": "public, max-age=2592000" }] }
+    { "source": "/img/(.*)", "headers": [{ "key": "Cache-Control", "value": "public, max-age=2592000" }] },
+    { "source": "/fornecedor/:slug", "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }] },
+    { "source": "/fornecedores", "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }] },
+    { "source": "/categorias", "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }] },
+    { "source": "/categorias/:slug", "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }] },
+    { "source": "/regiao/:slug", "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }] },
+    { "source": "/mapa", "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }] }
   ],
   "functions": {
     "api/sugerir-descricao.js": { "maxDuration": 30 }
@@ -30,8 +36,8 @@
   ],
   "rewrites": [
     { "source": "/admin/:path*", "destination": "/admin/index.html" },
-    { "source": "/fornecedor/:slug", "destination": "/site/index.html" },
-    { "source": "/categorias/:slug", "destination": "/site/index.html" },
-    { "source": "/regiao/:slug", "destination": "/site/index.html" }
+    { "source": "/fornecedor/:slug", "destination": "/fornecedores/index.html" },
+    { "source": "/categorias/:slug", "destination": "/categorias/index.html" },
+    { "source": "/regiao/:slug", "destination": "/mapa/index.html" }
   ]
 }

@@ -1,7 +1,7 @@
 // Sugestão de descrição comercial com IA (função da Vercel).
 // Regras:
 //  - só responde a quem está logado no site (confere o token no Supabase);
-//  - limite de uso por conta (função consume_rate_limit no banco); se o banco não responder, bloqueia;
+//  - limite de uso por conta (função consume_limite_usuario no banco, por auth.uid()); se o banco não responder, bloqueia;
 //  - as chaves ficam nas variáveis de ambiente da Vercel, nunca no código:
 //      GROQ_API_KEY (gratuita, console.groq.com) tem prioridade;
 //      GEMINI_API_KEY (gratuita, Google AI Studio) é usada se a Groq não estiver configurada;
@@ -9,9 +9,6 @@
 //  - sem nenhuma chave, responde { fallback: true } e o site usa sugestões prontas;
 //  - erros para o usuário são genéricos; o detalhe técnico vai só para o log da Vercel.
 import { SUPABASE } from '../js/config.js';
-
-// Quantas sugestões cada conta pode pedir por hora.
-const LIMITE_POR_HORA = 100;
 
 const MSG_IA_INDISPONIVEL = 'A IA não respondeu agora. Tente de novo em alguns instantes.';
 
@@ -55,23 +52,25 @@ async function identificarUsuario(token) {
   return usuario?.id ? usuario : null;
 }
 
-// Conta uma sugestão para este usuário.
+// Conta uma sugestão para este usuário. A função do banco usa o próprio usuário do token (auth.uid())
+// e o limite de 100 por hora fica definido lá (supabase/migration-011). consume_rate_limit não é mais
+// chamável por usuários: a chave de cota não vem do cliente.
 // true = dentro do limite; false = limite atingido; null = banco indisponível (o pedido é recusado).
-async function consumirLimite(token, uid) {
+async function consumirLimite(token) {
   try {
-    const r = await fetch(`${SUPABASE.url}/rest/v1/rpc/consume_rate_limit`, {
+    const r = await fetch(`${SUPABASE.url}/rest/v1/rpc/consume_limite_usuario`, {
       method: 'POST',
       headers: { apikey: SUPABASE.anonKey, Authorization: `Bearer ${token}`, 'content-type': 'application/json' },
-      body: JSON.stringify({ p_chave: `sugerir:${uid}`, p_limite: LIMITE_POR_HORA, p_janela_segundos: 3600 }),
+      body: JSON.stringify({ p_acao: 'sugerir' }),
       signal: AbortSignal.timeout(5000),
     });
     if (!r.ok) {
-      console.error('consume_rate_limit respondeu', r.status);
+      console.error('consume_limite_usuario respondeu', r.status);
       return null;
     }
     return (await r.json()) === true;
   } catch (err) {
-    console.error('consume_rate_limit falhou', err?.message);
+    console.error('consume_limite_usuario falhou', err?.message);
     return null;
   }
 }
@@ -184,7 +183,7 @@ export default async function handler(req, res) {
     const usuario = token ? await identificarUsuario(token) : null;
     if (!usuario) return res.status(401).json({ error: 'Entre na sua conta para usar a sugestão.' });
 
-    const dentroDoLimite = await consumirLimite(token, usuario.id);
+    const dentroDoLimite = await consumirLimite(token);
     if (dentroDoLimite === null) return res.status(503).json({ error: 'Serviço indisponível agora. Tente de novo em instantes.' });
     if (!dentroDoLimite) return res.status(429).json({ error: 'Muitas sugestões em pouco tempo. Aguarde alguns minutos e tente de novo.' });
 

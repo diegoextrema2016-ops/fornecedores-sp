@@ -5,7 +5,7 @@ import { bannersMarkup } from './banners.js';
 import { CATEGORIES, REGIONS, SUPPLIER_TYPES } from './data.js';
 import { store } from './store.js';
 import { go } from './nav.js';
-import { canSeeContacts } from './access.js';
+import { canSeeCatalog } from './access.js';
 import { filterSuppliers, sortSuppliers, paginate, rankCategoriesByAccess } from './search.js';
 import { escapeHtml as e, formatCount, mapsLink, whatsappTarget, instagramHandle, normalizeUrl, formatPhone, maskPhone, maskHandle } from './utils.js';
 import {
@@ -57,6 +57,34 @@ function countByCategory() {
   return counts;
 }
 
+// Catálogo fechado: sem assinatura ativa a página não mostra fornecedores, fotos nem contagens
+// (decisões D1 e D2). Mostra só o convite aos planos.
+function catalogGate({ title, description, crumbs, heading, intro = '' }) {
+  return {
+    title,
+    description,
+    html: `
+    ${breadcrumbs(crumbs)}
+    <section class="container section-tight">
+      <h1>${e(heading)}</h1>
+      ${intro ? `<p class="lead">${e(intro)}</p>` : ''}
+      <div class="card blur-banner">
+        <p><strong>O catálogo de fornecedores é exclusivo para assinantes.</strong></p>
+        <p class="small muted">Com a assinatura ativa você vê fornecedores, fotos, WhatsApp, Instagram e endereços. O pagamento é feito por Pix.</p>
+        <a class="btn btn-primary" href="/planos">Ver planos de acesso</a>
+      </div>
+    </section>`,
+  };
+}
+
+// Categorias da home: com assinatura, só as que têm fornecedores (com contagem); sem, todas, só com nome.
+function categoriasDaHome(counts) {
+  if (canSeeCatalog()) {
+    return allCategories().filter((c) => (counts[c.slug] || 0) > 0).slice(0, 9).map((c) => categoryCard(c, counts[c.slug] || 0)).join('');
+  }
+  return allCategories().slice(0, 9).map((c) => categoryCard(c, null)).join('');
+}
+
 // Mantém o botão de favorito sincronizado em toda a página.
 function wireFavorites(root) {
   root.addEventListener('click', (ev) => {
@@ -74,7 +102,7 @@ function wireFavorites(root) {
 // Borrão para quem não tem assinatura: o conteúdo fica embaçado e um aviso leva aos planos.
 // Visual apenas; a proteção real dos contatos fica no banco (RLS).
 function blurGate(html) {
-  if (canSeeContacts()) return html;
+  if (canSeeCatalog()) return html;
   return `<div class="blur-gate">
     <div class="card blur-banner">
       <p><strong>Assine para ver os contatos dos fornecedores</strong></p>
@@ -88,7 +116,7 @@ function blurGate(html) {
 export function home() {
   const counts = countByCategory();
   const featured = store.suppliers.approved().filter((s) => s.featured);
-  const blurred = !canSeeContacts();
+  const blurred = !canSeeCatalog();
   const popular = ['Eletrônicos', 'Moda feminina', 'Tênis', 'Acessórios', 'Perfumes'];
   return {
     title: 'Fornecedores Atacado SP | Brás, Moda, Tênis e Eletrônicos',
@@ -121,7 +149,7 @@ export function home() {
       </div>
       <div class="grid grid-categories">
         ${topCategoryCard()}
-        ${allCategories().filter((c) => (counts[c.slug] || 0) > 0).slice(0, 9).map((c) => categoryCard(c, counts[c.slug] || 0)).join('')}
+        ${categoriasDaHome(counts)}
       </div>
     </section>
 
@@ -216,7 +244,7 @@ export function categoriesIndex() {
       <p class="lead">Encontre fornecedores pelo segmento do seu negócio.</p>
       <div class="grid grid-categories">
         ${topCategoryCard()}
-        ${allCategories().map((c) => categoryCard(c, counts[c.slug] || 0)).join('')}
+        ${allCategories().map((c) => categoryCard(c, canSeeCatalog() ? counts[c.slug] || 0 : null)).join('')}
       </div>
     </section>`,
   };
@@ -224,6 +252,7 @@ export function categoriesIndex() {
 
 // Cartão "Mais acessados", sempre o primeiro da lista de categorias.
 function topCategoryCard() {
+  if (!canSeeCatalog()) return ''; // o ranking depende de acessos e fornecedores: só para assinantes
   const n = rankCategoriesByAccess(allCategories(), store.suppliers.approved()).length;
   return `
   <a class="category-card category-card-top" href="/categorias/mais-acessados">
@@ -238,6 +267,9 @@ function topCategoryCard() {
 
 // Categorias ordenadas pelos acessos dos seus fornecedores.
 export function mostAccessedPage() {
+  if (!canSeeCatalog()) {
+    return catalogGate({ title: `Categorias mais acessadas | ${SITE.shortName}`, description: 'Categorias mais acessadas do catálogo.', crumbs: [{ label: 'Início', href: '/site' }, { label: 'Categorias', href: '/categorias' }, { label: 'Mais acessados' }], heading: 'Mais acessados' });
+  }
   const ranked = rankCategoriesByAccess(allCategories(), store.suppliers.approved());
   const items = ranked.map((r, i) => `
       <li class="ranked-item">
@@ -263,6 +295,9 @@ export function mostAccessedPage() {
 export function categoryPage({ slug }, query) {
   const cat = store.categories.get(slug);
   if (!cat) return notFound();
+  if (!canSeeCatalog()) {
+    return catalogGate({ title: `${cat.name} | Categorias`, description: cat.description || '', crumbs: [{ label: 'Início', href: '/site' }, { label: 'Categorias', href: '/categorias' }, { label: cat.name }], heading: `Fornecedores de ${cat.name}`, intro: cat.description });
+  }
   return listingPage({
     title: `Fornecedores de ${cat.name} em São Paulo | Atacado`,
     description: `${cat.description || ''} Fornecedores de ${cat.name} no atacado de São Paulo.`.trim(),
@@ -279,6 +314,9 @@ export function categoryPage({ slug }, query) {
 export function regionPage({ slug }, query) {
   const region = store.regions.get(slug);
   if (!region) return notFound();
+  if (!canSeeCatalog()) {
+    return catalogGate({ title: `${region.name} | Mapa de fornecedores`, description: region.description || '', crumbs: [{ label: 'Início', href: '/site' }, { label: 'Mapa', href: '/mapa' }, { label: region.name }], heading: `Fornecedores em ${region.name}`, intro: region.description });
+  }
   const prep = regiaoPrep(region.name);
   return listingPage({
     title: `Fornecedores ${prep} ${region.name} | São Paulo`,
@@ -293,6 +331,9 @@ export function regionPage({ slug }, query) {
 }
 
 export function suppliersPage(_params, query) {
+  if (!canSeeCatalog()) {
+    return catalogGate({ title: `Todos os fornecedores | ${SITE.shortName}`, description: 'Catálogo de fornecedores de São Paulo, para assinantes.', crumbs: [{ label: 'Início', href: '/site' }, { label: 'Fornecedores' }], heading: 'Fornecedores' });
+  }
   return listingPage({
     title: `Todos os fornecedores | ${SITE.shortName}`,
     description: 'Lista de fornecedores de São Paulo com filtros por categoria, subcategoria, tipo de venda e WhatsApp.',
@@ -478,6 +519,10 @@ function hrefWith(base, query, changes) {
 
 // ---------- Página do fornecedor ----------
 export function supplierPage({ slug }) {
+  // Fichas individuais só para assinantes (e dono/administrador): visitantes não recebem nem o nome.
+  if (!canSeeCatalog()) {
+    return catalogGate({ title: `Fornecedor | ${SITE.shortName}`, description: 'Ficha de fornecedor, para assinantes.', crumbs: [{ label: 'Início', href: '/site' }, { label: 'Fornecedores', href: '/fornecedores' }], heading: 'Ficha de fornecedor' });
+  }
   const s = store.suppliers.findBySlug(slug);
   if (!s || s.status !== 'approved') return notFound();
   const viewedKey = `spf:viewed:${s.id}`;
@@ -485,7 +530,7 @@ export function supplierPage({ slug }) {
     sessionStorage.setItem(viewedKey, '1');
     store.suppliers.incrementViews(s.id);
   }
-  const unlocked = canSeeContacts();
+  const unlocked = canSeeCatalog();
   // Dado escondido do visitante não é "não informado": ele existe, só está reservado a assinantes.
   const semDado = unlocked ? 'Não informado' : 'Disponível para assinantes';
   const links = supplierMapLinks(s);
@@ -508,7 +553,7 @@ export function supplierPage({ slug }) {
     ])}
     <article class="container supplier-profile">
       <header class="profile-head">
-        <div class="logo-box logo-lg" aria-hidden="true">${s.logo ? `<img src="${e(s.logo)}" alt="">` : e((s.name || '?').slice(0, 2).toUpperCase())}</div>
+        <div class="logo-box logo-lg" aria-hidden="true">${store.images.url(s.logo) ? `<img src="${e(store.images.url(s.logo))}" alt="">` : e((s.name || '?').slice(0, 2).toUpperCase())}</div>
         <div>
           <p class="eyebrow">${e(catName[s.category] || '')}${s.subcategory ? ` · ${e(s.subcategory)}` : ''}</p>
           <h1>${e(s.name)}</h1>
@@ -578,6 +623,9 @@ export function supplierPage({ slug }) {
 
 // ---------- Mapa ----------
 export function mapPage() {
+  if (!canSeeCatalog()) {
+    return catalogGate({ title: `Mapa de fornecedores | ${SITE.shortName}`, description: 'Fornecedores por região, para assinantes.', crumbs: [{ label: 'Início', href: '/site' }, { label: 'Mapa' }], heading: 'Mapa de fornecedores por bairro' });
+  }
   const groups = store.regions.list().map((r) => ({
     region: r,
     list: store.suppliers.approved().filter((s) => s.bairro === r.slug),
@@ -605,12 +653,12 @@ export function mapPage() {
           <section class="card">
             <h2><a href="/regiao/${e(region.slug)}">${e(region.name)}</a></h2>
             <p class="muted small">${e(region.description)}</p>
-            ${!canSeeContacts() ? `<p class="muted small">${list.length === 0 ? 'Nenhum fornecedor aprovado ainda.' : `${list.length} ${list.length === 1 ? 'fornecedor aprovado' : 'fornecedores aprovados'}.`} Os nomes e as rotas aparecem para assinantes.</p>`
+            ${!canSeeCatalog() ? `<p class="muted small">${list.length === 0 ? 'Nenhum fornecedor aprovado ainda.' : `${list.length} ${list.length === 1 ? 'fornecedor aprovado' : 'fornecedores aprovados'}.`} Os nomes e as rotas aparecem para assinantes.</p>`
               : list.length ? `<ul class="plain-list">${list.map((s) => `
               <li>
                 <a href="/fornecedor/${e(s.slug)}"><strong>${e(s.name)}</strong></a>
-                <span class="muted small"> · ${canSeeContacts() ? e(s.address ? `${s.address}${s.number ? `, ${s.number}` : ''}` : 'Endereço a confirmar') : 'endereço para assinantes'}</span>
-                ${canSeeContacts() ? `<a class="small" target="_blank" rel="noopener noreferrer" href="${e(mapsLink({ address: s.address, number: s.number, bairro: region.name, cep: s.cep }))}">Rota</a>` : ''}
+                <span class="muted small"> · ${canSeeCatalog() ? e(s.address ? `${s.address}${s.number ? `, ${s.number}` : ''}` : 'Endereço a confirmar') : 'endereço para assinantes'}</span>
+                ${canSeeCatalog() ? `<a class="small" target="_blank" rel="noopener noreferrer" href="${e(mapsLink({ address: s.address, number: s.number, bairro: region.name, cep: s.cep }))}">Rota</a>` : ''}
               </li>`).join('')}</ul>`
               : '<p class="muted">Nenhum fornecedor cadastrado nesta região ainda.</p>'}
           </section>`).join('')}
@@ -621,6 +669,10 @@ export function mapPage() {
 
 // ---------- Favoritos ----------
 export function favoritesPage() {
+  // Favoritos são só para assinantes ativos (decisão D6).
+  if (!canSeeCatalog()) {
+    return catalogGate({ title: `Meus fornecedores favoritos | ${SITE.shortName}`, description: 'Favoritos, para assinantes.', crumbs: [{ label: 'Início', href: '/site' }, { label: 'Favoritos' }], heading: 'Meus fornecedores favoritos', intro: 'Os favoritos ficam disponíveis com a assinatura ativa.' });
+  }
   const ids = store.favorites.list();
   const list = ids.map((id) => store.suppliers.get(id)).filter((s) => s && s.status === 'approved');
   const loggedIn = Boolean(store.session.get());

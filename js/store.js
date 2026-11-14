@@ -6,15 +6,22 @@
 //  - As escritas (salvar, aprovar, categorias...) vão ao banco primeiro. Só depois a cópia local é atualizada.
 //  - Única exceção: os favoritos de quem ainda não tem conta ficam neste navegador (preferência, não dado de negócio).
 //    Ao entrar na conta, são copiados para o banco.
-import { api, imagePathFromUrl, AUTH_REDIRECT } from './api.js';
+import { api, AUTH_REDIRECT } from './api.js';
 import { PLANS } from './config.js';
 import { slugify } from './utils.js';
 import * as M from './mapping.js';
 import { instagramKey, phoneKey } from './extract.js';
+import { bestSubscription, hasActiveSubscription, accessExpiresAt } from './assinatura.js';
+import { imagePathFromUrl, imageRefsOf } from './imagens.js';
 
 const GUEST_FAV_KEY = 'spf:v2:guest-favorites';
 const SESSION_CACHE_KEY = 'spf:session-cache';
 const PENDING_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const IMAGE_ORPHAN_AGE_MS = 24 * 60 * 60 * 1000; // imagens mais novas que isso nunca são apagadas como órfãs
+
+// Referência de imagem (formato /object/public/...) -> URL assinada que expira. Só existe na memória:
+// nunca é gravada no banco nem no cache da aba. As referências é que são salvas.
+let signedImages = new Map();
 
 // Cópia em memória, recarregada por refresh().
 const state = {
@@ -60,15 +67,6 @@ function upsertBy(list, item, key) {
   else list.push(item);
 }
 
-// Assinatura que vale agora: a ativa com vencimento mais distante; senão, a mais recente.
-function bestSubscription() {
-  const now = Date.now();
-  const active = state.subscriptions
-    .filter((s) => s.status === 'active' && new Date(s.expiresAt).getTime() > now)
-    .sort((a, b) => new Date(b.expiresAt) - new Date(a.expiresAt))[0];
-  return active || state.subscriptions[0] || null;
-}
-
 // Converte um data URL em Blob sem usar fetch: o CSP do site não libera data: em connect-src,
 // então fetch(dataUrl) falha com "Failed to fetch".
 function dataUrlToBlob(dataUrl) {
@@ -101,7 +99,10 @@ let everLoaded = false; // a cópia já foi carregada ao menos uma vez nesta vis
 const JANELA_DE_CACHE_MS = 5 * 60 * 1000;
 function refresh({ maxAgeMs = 0 } = {}) {
   const janela = Math.max(maxAgeMs, JANELA_DE_CACHE_MS);
-  const usable = maxAgeMs > 0 && Date.now() - lastRefreshAt < janela && state.session?.role !== 'admin';
+  // Quando a assinatura vence, a cópia deixa de valer: a próxima carga já vem vazia do banco.
+  const vencimento = accessExpiresAt(state.subscriptions);
+  const usable = maxAgeMs > 0 && Date.now() - lastRefreshAt < janela && Date.now() < vencimento
+    && state.session?.role !== 'admin';
   if (usable && !inFlight) return Promise.resolve();
   if (!inFlight) inFlight = doRefresh().finally(() => { inFlight = null; });
   return inFlight;
@@ -110,11 +111,14 @@ function refresh({ maxAgeMs = 0 } = {}) {
 async function doRefresh() {
   const user = await api.currentUser();
   // Catálogo e fornecedores são independentes: buscamos os dois ao mesmo tempo.
+  // O banco só devolve fornecedores a quem tem direito (assinante ativo, dono ou administrador).
   const [catalog, rawSuppliers] = await Promise.all([api.loadCatalog(), api.loadSuppliers()]);
   const categories = catalog.categories.map((c) =>
     M.categoryFromRow(c, catalog.subcategories.filter((s) => s.category_id === c.id)));
   const slugMap = new Map(categories.map((c) => [c.id, c.slug]));
   const suppliers = rawSuppliers.map((r) => M.supplierFromRow(r, slugMap));
+  // Imagens: URLs assinadas só para quem recebeu as linhas acima (o banco recusa o resto).
+  const signed = await api.signImageUrls(imageRefsOf(rawSuppliers));
 
   let session = null;
   let favorites = guestFavorites();
@@ -133,13 +137,19 @@ async function doRefresh() {
       : { id: user.id, name: user.user_metadata?.name || user.email, email: user.email, type: 'comprador' };
     session = { ...base, role: base.type === 'admin' ? 'admin' : 'user' };
     favorites = loadedFavorites;
-    const guest = guestFavorites();
-    if (guest.length) {
-      await api.addFavorites(user.id, guest);
-      setGuestFavorites([]);
-      favorites = [...new Set([...favorites, ...guest])];
-    }
     subscriptions = subs.map(M.subscriptionFromRow);
+    // Favoritos são só para assinantes ativos (sem assinatura, o banco não aceita gravar).
+    // Os guardados neste navegador ficam para depois da assinatura, se a conta não tiver acesso agora.
+    const guest = guestFavorites();
+    if (guest.length && hasActiveSubscription(subscriptions)) {
+      try {
+        await api.addFavorites(user.id, guest);
+        setGuestFavorites([]);
+        favorites = [...new Set([...favorites, ...guest])];
+      } catch {
+        emitError('Não foi possível copiar seus favoritos para a conta. Eles continuam neste navegador.');
+      }
+    }
     if (session.role === 'admin') {
       const [allUsers, allSubs] = await Promise.all([api.loadUsers(), api.loadAllSubscriptions()]);
       users = allUsers.map(M.userFromRow);
@@ -147,6 +157,7 @@ async function doRefresh() {
     }
   }
 
+  signedImages = signed;
   Object.assign(state, { session, categories, suppliers, favorites, subscriptions, users, allSubscriptions, regions: catalog.regions.map(M.regionFromRow) });
   lastRefreshAt = Date.now();
   everLoaded = true;
@@ -212,11 +223,13 @@ const auth = {
       // Mesmo com erro, a sessão deste navegador é descartada abaixo.
     }
     state.session = null;
+    state.suppliers = [];
     state.favorites = [];
     state.subscriptions = [];
     state.users = [];
     state.allSubscriptions = [];
-    clearAdminSnapshot();
+    signedImages = new Map();
+    clearAdminSnapshot(); // também apaga o cache de sessão
   },
 };
 
@@ -254,7 +267,7 @@ async function saveSupplier(data, { asAdmin = false, checkDuplicates = false } =
   // Imagens antigas que saíram do cadastro são apagadas (sem bloquear o salvamento se falhar).
   const dropped = [...(existing?.photos || []), existing?.logo]
     .filter((u) => u && u !== logo && !photoUrls.includes(u))
-    .map(imagePathFromUrl)
+    .map((u) => imagePathFromUrl(u))
     .filter(Boolean);
 
   const supplierRow = M.supplierToRow({ ...merged, slug, logo }, { categoryId, asAdmin });
@@ -336,6 +349,7 @@ const suppliers = {
   async remove(id) {
     // Some da cópia na hora; se o banco recusar, o fornecedor volta à lista.
     const anterior = state.suppliers;
+    const alvo = anterior.find((s) => s.id === id);
     state.suppliers = anterior.filter((s) => s.id !== id);
     saveAdminSnapshot(); // ao atualizar a página, ele já não volta
     try {
@@ -345,6 +359,9 @@ const suppliers = {
       saveAdminSnapshot();
       throw err;
     }
+    // Depois da linha apagada, apaga as imagens dele. Não é fatal: o que sobrar aparece na limpeza de imagens.
+    const caminhos = alvo ? [alvo.logo, ...(alvo.photos || [])].map((u) => imagePathFromUrl(u)).filter(Boolean) : [];
+    if (caminhos.length) await api.removeImages(caminhos);
   },
 };
 
@@ -496,11 +513,10 @@ const favorites = {
 const subscriptions = {
   // Assinatura mais relevante do usuário logado (ativa, ou a mais recente).
   get() {
-    return bestSubscription();
+    return bestSubscription(state.subscriptions);
   },
   isActive() {
-    const sub = bestSubscription();
-    return Boolean(sub) && sub.status === 'active' && new Date(sub.expiresAt).getTime() > Date.now();
+    return hasActiveSubscription(state.subscriptions);
   },
   // Registra o pedido de assinatura por Pix como pendente. Só o administrador confirma e ativa.
   async requestPix({ planId, amount }) {
@@ -628,6 +644,29 @@ function restoreSessionCache() {
 }
 restoreSessionCache();
 
+// ---------- Imagens ----------
+const images = {
+  // URL assinada de uma referência salva no banco. Vazia se não houver (ou se o acesso não permitir).
+  url(ref) {
+    return ref ? (signedImages.get(ref) || '') : '';
+  },
+  // Administrador: caminhos de imagens do bucket que nenhum fornecedor usa e que têm mais de 24 horas.
+  // Não apaga nada; quem apaga é removeOrphans, depois que o administrador confirma a lista.
+  async orphans() {
+    if (state.session?.role !== 'admin') throw new Error('Somente administradores podem limpar imagens.');
+    const [arquivos, usados] = await Promise.all([api.listAllImages(), api.referencedImagePaths()]);
+    const limite = Date.now() - IMAGE_ORPHAN_AGE_MS;
+    return arquivos
+      .filter((a) => !usados.has(a.path) && new Date(a.createdAt).getTime() < limite)
+      .map((a) => a.path);
+  },
+  // Apaga os caminhos informados. Devolve os que não foram removidos (vazio = tudo certo).
+  async removeOrphans(paths) {
+    if (state.session?.role !== 'admin') throw new Error('Somente administradores podem limpar imagens.');
+    return api.removeImages(paths);
+  },
+};
+
 // Impressão do conteúdo da cópia: serve para saber se uma atualização em segundo plano trouxe mudanças.
 function fingerprint() {
   return JSON.stringify([state.categories, state.regions, state.suppliers, state.favorites, state.subscriptions, state.users, state.allSubscriptions]);
@@ -645,4 +684,5 @@ export const store = {
   users,
   favorites,
   subscriptions,
+  images,
 };

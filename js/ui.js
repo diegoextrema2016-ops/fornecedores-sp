@@ -1,7 +1,8 @@
 // Componentes de interface que devolvem HTML (strings). Todo texto vindo do usuário passa por escapeHtml.
 import { SITE } from './config.js';
 import { escapeHtml as e, whatsappTarget, mapsLink, formatCount, instagramHandle, normalizeUrl, formatPhone, maskPhone, maskHandle } from './utils.js';
-import { canSeeContacts } from './access.js';
+import { canSeeCatalog } from './access.js';
+import { store } from './store.js';
 import { subcategoriasDoFornecedor } from './search.js';
 
 export const icon = {
@@ -89,14 +90,15 @@ export function categoryCard(cat, count) {
     <span class="category-body">
       <strong>${e(cat.name)}</strong>
       <span class="muted small">${e(cat.description || '')}</span>
-      <span class="category-count">${formatCount(count)} ${count === 1 ? 'fornecedor' : 'fornecedores'}</span>
+      ${count == null ? '' : `<span class="category-count">${formatCount(count)} ${count === 1 ? 'fornecedor' : 'fornecedores'}</span>`}
     </span>
   </a>`;
 }
 
 // Carrossel com até 4 fotos cadastradas pelo fornecedor (rolagem horizontal com setas).
 export function photosCarousel(s = {}, max = 4) {
-  const photos = (s.photos || []).filter(Boolean).slice(0, max);
+  // Fotos são referências no banco; aqui viram URLs assinadas (quem não pode ver recebe lista vazia).
+  const photos = (s.photos || []).map((ref) => store.images.url(ref)).filter(Boolean).slice(0, max);
   if (!photos.length) return '';
   return `
   <section class="card carousel" aria-label="Fotos da loja" data-carousel>
@@ -167,7 +169,7 @@ export function openPhotoViewer(srcs, index = 0, alt = 'Foto') {
   host.querySelector('.photo-viewer-close').focus();
 }
 
-export function supplierCard(s, { categoryName = '', regionName = '', favorite = false, unlocked = canSeeContacts() } = {}) {
+export function supplierCard(s, { categoryName = '', regionName = '', favorite = false, unlocked = canSeeCatalog() } = {}) {
   // Para visitantes, o cartão não mostra logo nem nome reais: aparece um rótulo genérico.
   // (Visual apenas; o link da ficha ainda tem o endereço público do fornecedor.)
   const masked = !unlocked;
@@ -199,7 +201,7 @@ export function supplierCard(s, { categoryName = '', regionName = '', favorite =
   return `
   <article class="supplier-card">
     <div class="supplier-card-top">
-      <div class="logo-box" aria-hidden="true">${masked ? '<span class="logo-mask">SP</span>' : (s.logo ? `<img src="${e(s.logo)}" alt="" loading="lazy">` : e((s.name || '?').slice(0, 2).toUpperCase()))}</div>
+      <div class="logo-box" aria-hidden="true">${masked ? '<span class="logo-mask">SP</span>' : (store.images.url(s.logo) ? `<img src="${e(store.images.url(s.logo))}" alt="" loading="lazy">` : e((s.name || '?').slice(0, 2).toUpperCase()))}</div>
       <div class="supplier-title">
         <h3><a href="/fornecedor/${e(s.slug)}">${e(shownName)}</a></h3>
         <div class="badges">

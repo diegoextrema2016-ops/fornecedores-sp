@@ -1,8 +1,11 @@
 // Build do site para a Vercel: gera em dist/ as páginas HTML públicas, o sitemap e o robots.txt.
-// Lê apenas dados públicos (categorias, bairros e fornecedores aprovados), com a chave publicável.
-// Nenhuma chave secreta é usada. Se a leitura falhar, o build para e a Vercel mantém a versão anterior.
 //
-// Teste local sem internet: SEO_FIXTURE=caminho/dados.json npm run build
+// Catálogo fechado: o build NÃO lê fornecedores. Só lê categorias e bairros (nomes públicos, decisão D1),
+// que o banco libera a visitantes. Nenhum fornecedor, foto, contato ou contagem entra no dist/.
+// Quem tem assinatura vê o catálogo no app, depois do login, pelo banco.
+// O build também confere o resultado (scripts/verifica-dist.mjs) e falha se achar dado de fornecedor.
+//
+// Teste local sem internet: SEO_FIXTURE=caminho/dados.json npm run build (os fornecedores do arquivo são ignorados)
 import { readFile, writeFile, mkdir, cp, rm } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
@@ -28,20 +31,17 @@ async function fetchAll(resource, query) {
   return rows;
 }
 
+// Só categorias e bairros. Nada de fornecedores.
 async function loadData() {
   if (process.env.SEO_FIXTURE) {
-    return JSON.parse(await readFile(process.env.SEO_FIXTURE, 'utf8'));
+    const fixture = JSON.parse(await readFile(process.env.SEO_FIXTURE, 'utf8'));
+    return { categories: fixture.categories || [], regions: fixture.regions || [] };
   }
-  const [categories, regions, suppliers] = await Promise.all([
+  const [categories, regions] = await Promise.all([
     fetchAll('categories', 'select=id,slug,name,description,status,sort_order&order=sort_order.asc,name.asc'),
     fetchAll('regions', 'select=slug,name,description,sort_order&order=sort_order.asc,name.asc'),
-    fetchAll(
-      'suppliers',
-      'select=id,slug,name,description,category_id,subcategory,supplier_type,bairro,city,state,sale_wholesale,sale_retail,sale_resellers,ships_other_cities,min_order,hours,tags,logo_url,verified,featured,is_demo,approval_status,supplier_photos(url,position)' +
-        '&approval_status=eq.approved&is_demo=eq.false&order=id.asc',
-    ),
   ]);
-  return { categories, regions, suppliers };
+  return { categories, regions };
 }
 
 async function write(relPath, content) {
@@ -75,45 +75,17 @@ async function main() {
 
   const categories = data.categories.filter((c) => c.status !== 'inactive');
   const regions = data.regions;
-  const suppliers = data.suppliers.filter((s) => s.approval_status === 'approved' && !s.is_demo);
-  const catById = new Map(categories.map((c) => [c.id, c]));
-  const regionBySlug = new Map(regions.map((r) => [r.slug, r]));
-  const regionName = (slug) => regionBySlug.get(slug)?.name || '';
-  const categoryName = (id) => catById.get(id)?.name || '';
-  const byCat = new Map();
-  const byRegion = new Map();
-  for (const s of suppliers) {
-    if (!byCat.has(s.category_id)) byCat.set(s.category_id, []);
-    byCat.get(s.category_id).push(s);
-    if (!byRegion.has(s.bairro)) byRegion.set(s.bairro, []);
-    byRegion.get(s.bairro).push(s);
-  }
-  const listed = (c) => !seo.RESTRICTED_CATEGORY_SLUGS.includes(c.slug) && (byCat.get(c.id)?.length || 0) > 0;
-  const listedCategories = categories.filter(listed);
-  const listedRegions = regions.filter((r) => (byRegion.get(r.slug)?.length || 0) > 0);
   const sitemap = [];
-  const featured = suppliers.filter((s) => s.featured).slice(0, 12);
-  const sortedByName = (arr) => arr.slice().sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
 
-  // Início, listagens e páginas institucionais
-  await write('site/index.html', seo.homePage({ categories: listedCategories, regions: listedRegions, suppliers, featured }));
+  // Início (só nomes de categorias e bairros) e páginas institucionais: são as únicas indexadas.
+  await write('site/index.html', seo.homePage({ categories, regions }));
   sitemap.push({ path: '/site' });
   sitemap.push({ path: '/' });
 
-  await write('categorias/index.html', seo.categoriesIndexPage({
-    categories: listedCategories,
-    counts: Object.fromEntries(listedCategories.map((c) => [c.id, byCat.get(c.id)?.length || 0])),
-  }));
-  sitemap.push({ path: '/categorias' });
-
-  await write('fornecedores/index.html', seo.suppliersIndexPage({ suppliers: sortedByName(suppliers), regionName, categoryName }));
-  sitemap.push({ path: '/fornecedores' });
-
-  await write('mapa/index.html', seo.mapPage({
-    regions,
-    suppliersByRegion: Object.fromEntries(regions.map((r) => [r.slug, sortedByName(byRegion.get(r.slug) || [])])),
-  }));
-  sitemap.push({ path: '/mapa' });
+  // Lista do catálogo e mapa: apresentação sem nenhum dado, fora do Google.
+  await write('categorias/index.html', seo.categoriesIndexPage({ categories }));
+  await write('fornecedores/index.html', seo.catalogShellPage({ path: '/fornecedores', title: 'Fornecedores', h1: 'Fornecedores', description: 'Catálogo de fornecedores de São Paulo, exclusivo para assinantes.' }));
+  await write('mapa/index.html', seo.catalogShellPage({ path: '/mapa', title: 'Mapa de fornecedores', h1: 'Mapa de fornecedores por bairro', description: 'Mapa de fornecedores por bairro em São Paulo, exclusivo para assinantes.' }));
 
   const info = [
     { path: '/sobre', title: 'Como funciona', h1: 'Como funciona', description: 'Conheça o Fornecedores Atacado SP e como funciona o portal.' },
@@ -126,18 +98,12 @@ async function main() {
     sitemap.push({ path: page.path });
   }
 
-  // Categorias (inclusive as sem fornecedores e a restrita, que ficam noindex)
+  // Categorias e bairros: só nome e descrição, fora do Google (noindex). Sem contagens.
   for (const cat of categories) {
-    const list = sortedByName(byCat.get(cat.id) || []);
-    await write(`categorias/${cat.slug}/index.html`, seo.categoryPage({ category: cat, suppliers: list, regionName }));
-    if (listed(cat)) sitemap.push({ path: `/categorias/${cat.slug}` });
+    await write(`categorias/${cat.slug}/index.html`, seo.categoryPage({ category: cat }));
   }
-
-  // Regiões (bairros). Só entram no sitemap as que têm fornecedores de São Paulo.
   for (const region of regions) {
-    const list = sortedByName(byRegion.get(region.slug) || []);
-    await write(`regiao/${region.slug}/index.html`, seo.regionPage({ region, suppliers: list, categoryName }));
-    if (list.length && seo.isSpRegion(list)) sitemap.push({ path: `/regiao/${region.slug}` });
+    await write(`regiao/${region.slug}/index.html`, seo.regionPage({ region }));
   }
 
   // Planos e guias (conteúdo público próprio)
@@ -150,17 +116,8 @@ async function main() {
     sitemap.push({ path: `/guias/${g.slug}` });
   }
 
-  // Fichas dos fornecedores aprovados: geradas para o site, mas NÃO entram no sitemap nem são indexadas.
-  for (const s of suppliers) {
-    const category = catById.get(s.category_id);
-    const related = sortedByName((byCat.get(s.category_id) || []).filter((o) => o.id !== s.id)).slice(0, 6);
-    await write(`fornecedor/${s.slug}/index.html`, seo.supplierPage({
-      supplier: s,
-      category,
-      regionName,
-      related,
-    }));
-  }
+  // Fichas de fornecedores: NÃO são geradas. /fornecedor/<slug> é servido pelo app (vercel.json),
+  // com X-Robots-Tag noindex, e a ficha só aparece para assinantes.
 
   // Áreas que não devem aparecer no Google (o app carrega o conteúdo)
   const shells = [
@@ -185,7 +142,7 @@ async function main() {
   await write('robots.txt', seo.robotsTxt());
   await write('sitemap.xml', seo.sitemapXml(sitemap));
 
-  console.log(`Build OK: ${sitemap.length} URLs no sitemap, ${suppliers.length} fichas de fornecedores, ${listedCategories.length} categorias listadas, ${listedRegions.length} bairros com fornecedores.`);
+  console.log(`Build OK: ${sitemap.length} URLs no sitemap, ${categories.length} categorias e ${regions.length} bairros (só nomes). Nenhum fornecedor foi lido nem publicado.`);
 }
 
 main().catch((err) => {

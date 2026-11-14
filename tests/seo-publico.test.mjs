@@ -5,71 +5,76 @@ import { join } from 'node:path';
 import * as seo from '../scripts/seo.mjs';
 import { GUIAS, REGIAO_TEXTO, regiaoPrep } from '../js/conteudo.js';
 import { PLANS } from '../js/config.js';
-
-const raiz = new URL('..', import.meta.url).pathname;
+import { fileURLToPath } from 'node:url';
+const raiz = fileURLToPath(new URL('..', import.meta.url));
+const fixture = JSON.parse(readFileSync(join(raiz, 'tests/fixtures-seo.json'), 'utf8'));
 
 const cat = { id: 'c1', slug: 'moda-feminina', name: 'Moda feminina', description: 'Vestuário feminino.' };
 const bras = { slug: 'bras', name: 'Brás', description: 'Polo de atacado.' };
-const ceara = { slug: 'fortaleza-ce', name: 'Ceará', description: '' };
-const regionName = (slug) => (slug === 'bras' ? 'Brás' : '');
-const supplier = {
-  id: 's1', slug: 'vazevedo-modas', name: 'Vazevedo Modas', description: 'Roupas femininas para revenda.',
-  category_id: 'c1', subcategory: '', supplier_type: 'atacadista', bairro: 'bras', city: 'São Paulo', state: 'SP',
-  sale_wholesale: true, sale_retail: false, sale_resellers: false, ships_other_cities: true,
-  min_order: '', hours: '', tags: [], logo_url: null, verified: false, featured: false, supplier_photos: [],
-};
-const jsonLd = (html) => [...html.matchAll(/<script type="application\/ld\+json">(.*?)<\/script>/gs)].map((m) => m[1]).join('\n');
 
-test('ficha de fornecedor não é indexada (noindex) e o nome não vai para dados estruturados da listagem', () => {
-  const html = seo.supplierPage({ supplier, category: cat, regionName, related: [] });
-  assert.ok(html.includes('<meta name="robots" content="noindex, nofollow">'));
+// Todas as páginas estáticas que o build gera (com dados de exemplo, nenhum fornecedor).
+function todasAsPaginas() {
+  return [
+    seo.homePage({ categories: [cat], regions: [bras] }),
+    seo.categoriesIndexPage({ categories: [cat] }),
+    seo.categoryPage({ category: cat }),
+    seo.regionPage({ region: bras }),
+    seo.catalogShellPage({ path: '/fornecedores', title: 'Fornecedores', h1: 'Fornecedores' }),
+    seo.catalogShellPage({ path: '/mapa', title: 'Mapa', h1: 'Mapa de fornecedores por bairro' }),
+    seo.planosPage(),
+    seo.guiasIndexPage(),
+    ...GUIAS.map((g) => seo.guiaPage(g)),
+    seo.notFoundPage(),
+    seo.sitemapXml([{ path: '/' }, { path: '/planos' }]),
+    seo.robotsTxt(),
+  ];
+}
+
+test('nenhuma página gerada contém nome, slug ou contato de fornecedor do banco', () => {
+  const saida = todasAsPaginas().join('\n').toLowerCase();
+  for (const s of fixture.suppliers || []) {
+    assert.ok(!saida.includes(String(s.name).toLowerCase()), `nome de fornecedor vazou: ${s.name}`);
+    assert.ok(!saida.includes(`/fornecedor/${s.slug}`), `link para ficha vazou: ${s.slug}`);
+  }
+  assert.ok(!/supabase\.co\/storage|\/object\/public\//.test(saida), 'URL de Storage no HTML estático');
 });
 
-test('sitemap nunca inclui fichas de fornecedores', () => {
-  const xml = seo.sitemapXml([{ path: '/' }, { path: '/categorias/moda-feminina' }, { path: '/regiao/bras' }]);
+test('nenhuma página gerada tem cartão de fornecedor nem contagem por categoria ou bairro', () => {
+  const saida = todasAsPaginas().join('\n');
+  assert.ok(!saida.includes('supplier-card'));
+  assert.ok(!/\d+\s+fornecedores? (aprovados?|encontrados?|cadastrados?)/.test(saida), 'contagem de fornecedores');
+});
+
+test('sitemap nunca inclui fichas de fornecedores nem páginas de catálogo', () => {
+  const xml = seo.sitemapXml([{ path: '/' }, { path: '/site' }, { path: '/planos' }, { path: '/guias' }]);
   assert.ok(!xml.includes('/fornecedor/'));
+  assert.ok(!xml.includes('/categorias/'));
+  assert.ok(!xml.includes('/regiao/'));
 });
 
-test('mapa público lista bairros e quantidades, sem nomes de fornecedores', () => {
-  const html = seo.mapPage({ regions: [bras], suppliersByRegion: { bras: [supplier] } });
-  assert.ok(!html.includes('Vazevedo'), 'nome do fornecedor não pode aparecer no mapa');
-  assert.ok(!html.includes('/fornecedor/'), 'mapa não pode linkar fichas');
-  assert.ok(html.includes('1 fornecedor aprovado.'));
+test('páginas de catálogo ficam noindex, mas são rastreáveis (robots não bloqueia o noindex)', () => {
+  const txt = seo.robotsTxt();
+  assert.ok(!/Disallow: \/(fornecedor|categorias|regiao|mapa)/.test(txt), 'bloquear rastreio impede o Google de ver o noindex');
+  assert.ok(seo.categoryPage({ category: cat }).includes('noindex'));
+  assert.ok(seo.regionPage({ region: bras }).includes('noindex'));
+  assert.ok(seo.catalogShellPage({ path: '/mapa', title: 'Mapa', h1: 'Mapa' }).includes('noindex'));
 });
 
-test('dados estruturados da categoria e da região não têm nomes de fornecedores', () => {
-  const c = jsonLd(seo.categoryPage({ category: cat, suppliers: [supplier], regionName }));
-  const r = jsonLd(seo.regionPage({ region: bras, suppliers: [supplier], categoryName: () => 'Moda feminina' }));
-  assert.ok(!c.includes('Vazevedo') && !c.includes('ItemList'));
-  assert.ok(!r.includes('Vazevedo') && !r.includes('ItemList'));
-});
-
-test('região fora de SP fica noindex (o texto fala de São Paulo)', () => {
-  const ce = { ...supplier, state: 'CE', bairro: 'fortaleza-ce' };
-  const html = seo.regionPage({ region: ceara, suppliers: [ce], categoryName: () => 'Moda' });
-  assert.ok(html.includes('noindex'));
-  assert.equal(seo.isSpRegion([ce]), false);
-  assert.equal(seo.isSpRegion([supplier]), true);
-});
-
-test('preposição certa no nome da região', () => {
+test('região: título com a preposição certa e texto próprio', () => {
   assert.equal(regiaoPrep('Brás'), 'no');
   assert.equal(regiaoPrep('Bom Retiro'), 'no');
   assert.equal(regiaoPrep('25 de Março'), 'na');
   assert.equal(regiaoPrep('Santa Ifigênia'), 'na');
-  const html = seo.regionPage({ region: { slug: '25-de-marco', name: '25 de Março', description: '' }, suppliers: [supplier], categoryName: () => 'Moda' });
+  const html = seo.regionPage({ region: { slug: '25-de-marco', name: '25 de Março', description: '' } });
   assert.ok(html.includes('<h1>Fornecedores na 25 de Março, São Paulo</h1>'));
-});
-
-test('região com texto próprio mostra o texto na página', () => {
-  const html = seo.regionPage({ region: bras, suppliers: [supplier], categoryName: () => 'Moda' });
-  assert.ok(html.includes(REGIAO_TEXTO.bras.slice(0, 40)));
+  const brasHtml = seo.regionPage({ region: bras });
+  assert.ok(brasHtml.includes(REGIAO_TEXTO.bras.slice(0, 40)));
 });
 
 test('página de planos mostra os preços de PLANS e o botão de planos', () => {
   const html = seo.planosPage();
   const mensal = PLANS.find((p) => p.id === 'mensal');
-  assert.ok(html.includes('R$' + ' ' + '29,90') || html.includes('29,90'), 'preço do plano mensal');
+  assert.ok(html.includes('29,90'), 'preço do plano mensal');
   assert.ok(html.includes(mensal.name));
   assert.ok(html.includes('data-action="unlock"'));
   assert.ok(html.includes('<link rel="canonical" href="https://www.fornecedoresdesp.com.br/planos">'));

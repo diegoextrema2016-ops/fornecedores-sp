@@ -1,9 +1,10 @@
-// Regra de acesso aos contatos. Administrador sempre tem acesso; demais usuários precisam de assinatura ativa.
-// Esta checagem roda no navegador só para a interface (botões, borrão). A proteção real está no banco:
-// a tabela supplier_contacts só é lida por dono, administrador e assinante ativo (ver supabase/schema.sql).
+// Regra de acesso ao catálogo (fornecedores, fotos, contatos). Administrador sempre tem acesso;
+// demais usuários precisam de assinatura ativa, que expira na data exata (sem carência).
+// Esta checagem roda no navegador só para a interface. A proteção real está no banco: fornecedores,
+// fotos, contatos e imagens só são lidos por assinante ativo, dono e administrador (supabase/migration-007 a 009).
 import { store } from './store.js';
 
-export function canSeeContacts() {
+export function canSeeCatalog() {
   const session = store.session.get();
   if (!session) return false;
   if (session.role === 'admin') return true;

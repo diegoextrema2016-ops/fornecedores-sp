@@ -1,8 +1,11 @@
 // Geração do HTML público para mecanismos de busca (usado pelo build na Vercel).
 // Funções puras: recebem dados já lidos do banco e devolvem texto HTML, XML ou JSON.
-// Regra: só usa informações que existem nos dados. O que estiver vazio não aparece.
+//
+// Regra do catálogo fechado (decisões D1 a D4): o HTML estático NÃO contém fornecedores, fotos,
+// contatos, endereços, contagens por categoria ou região, nem fichas individuais. O build só usa
+// nomes de categorias e bairros (públicos) e páginas institucionais. O catálogo é entregue pelo app,
+// depois do login e da verificação de assinatura, pelo banco.
 import { SITE, BANNERS, SUPABASE } from '../js/config.js';
-import { SUPPLIER_TYPES } from '../js/data.js';
 import { bannersMarkup, bannerPreloadLinks as preloadBanners } from '../js/banners.js';
 import { planosMainHtml, guiasIndexMainHtml, guiaMainHtml, REGIAO_TEXTO, regiaoPrep } from '../js/conteudo.js';
 
@@ -57,8 +60,6 @@ const truncate = (text, max = 155) => {
   return cut.slice(0, cut.lastIndexOf(' ') > 80 ? cut.lastIndexOf(' ') : cut.length).replace(/[,;:\s]+$/, '') + '…';
 };
 
-export const typeLabel = (value) => SUPPLIER_TYPES.find((t) => t.value === value)?.label || '';
-
 // ---------- Dados estruturados (schema.org) ----------
 
 export const organizationJsonLd = () => ({
@@ -70,6 +71,7 @@ export const organizationJsonLd = () => ({
   description: SITE.description,
 });
 
+// Sem SearchAction: a busca de fornecedores fica atrás do login e da assinatura, não há URL pública para indexar.
 export const websiteJsonLd = () => ({
   '@context': 'https://schema.org',
   '@type': 'WebSite',
@@ -77,11 +79,6 @@ export const websiteJsonLd = () => ({
   url: absUrl('/site'),
   inLanguage: 'pt-BR',
   description: SITE.description,
-  potentialAction: {
-    '@type': 'SearchAction',
-    target: { '@type': 'EntryPoint', urlTemplate: absUrl('/fornecedores?q={search_term_string}') },
-    'query-input': 'required name=search_term_string',
-  },
 });
 
 export const breadcrumbJsonLd = (items) => ({
@@ -95,7 +92,6 @@ export const breadcrumbJsonLd = (items) => ({
   })),
 });
 
-// Não usamos lista de fornecedores em dados estruturados: ela publicaria nomes e links para fichas que não são indexadas.
 export const articleJsonLd = ({ title, description, path }) => ({
   '@context': 'https://schema.org',
   '@type': 'Article',
@@ -106,9 +102,6 @@ export const articleJsonLd = ({ title, description, path }) => ({
   author: { '@type': 'Organization', name: SITE.name },
   publisher: { '@type': 'Organization', name: SITE.name, url: absUrl('/site') },
 });
-
-// Região só é indexada se tiver fornecedores de São Paulo (algumas regiões do banco são de outros estados).
-export const isSpRegion = (suppliers) => suppliers.some((s) => s.state === 'SP');
 
 // ---------- Cabeçalho e documento ----------
 
@@ -203,104 +196,6 @@ function breadcrumbHtml(items) {
     .join('')}</ol></nav>`;
 }
 
-// Ícones iguais aos do site (js/ui.js).
-const ICON = {
-  heart: '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M12 21s-7.5-4.6-9.5-9.1C1 8.6 3 5 6.6 5c2 0 3.4 1.1 4.4 2.5C12 6.1 13.4 5 15.4 5 19 5 21 8.6 21.5 11.9 19.5 16.4 12 21 12 21z"/></svg>',
-  pin: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 22s7-6.2 7-12a7 7 0 1 0-14 0c0 5.8 7 12 7 12z"/><circle cx="12" cy="10" r="2.5"/></svg>',
-  check: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="m5 12 4 4 10-10"/></svg>',
-  wa: '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2zm4.5-6.1c-.2-.1-1.4-.7-1.6-.8s-.4-.1-.5.1-.6.8-.8.9-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.2-.4.2-.4.6-1.2.1-.2 0-.3 0-.4l-.7-1.8c-.2-.4-.4-.4-.5-.4h-.5a.9.9 0 0 0-.6.3 2.6 2.6 0 0 0-.8 2 4.5 4.5 0 0 0 .9 2.4 10.4 10.4 0 0 0 4 3.5c1.5.6 2.1.7 2.8.6a2.4 2.4 0 0 0 1.6-1.1 2 2 0 0 0 .1-1.1c0-.1-.2-.2-.4-.3z"/></svg>',
-};
-
-// Cartão igual ao que o visitante vê no site: sem nome real, logo, WhatsApp nem Instagram.
-// Assim a página pré-renderizada e o site ficam iguais, e nenhum nome ou @ aparece antes do carregamento.
-// ctx.categoryName(id) e ctx.regionName(bairroSlug) devolvem os nomes para o cartão.
-function visitorCardHtml(s, { categoryName = () => '', regionName = () => '' } = {}) {
-  const region = s.bairro ? regionName(s.bairro) : '';
-  const label = `Fornecedor${region ? ` em ${region}` : ' de atacado'}`;
-  const location = [region, s.city || 'São Paulo'].filter(Boolean).join(' · ');
-  const sales = [
-    s.sale_wholesale && 'Atacado',
-    s.sale_retail && 'Varejo',
-    s.sale_resellers && 'Lojistas',
-    s.ships_other_cities && 'Envio para outras cidades',
-  ].filter(Boolean);
-  return `<article class="supplier-card">
-    <div class="supplier-card-top">
-      <div class="logo-box" aria-hidden="true"><span class="logo-mask">SP</span></div>
-      <div class="supplier-title">
-        <h3><a href="/fornecedor/${esc(s.slug)}">${esc(label)}</a></h3>
-        <div class="badges">
-          ${s.verified ? `<span class="badge badge-verified">${ICON.check} Verificado</span>` : ''}
-          <span class="badge">${esc(categoryName(s.category_id))}</span>
-        </div>
-      </div>
-      <button class="fav-btn" type="button" aria-label="Salvar nos favoritos">${ICON.heart}</button>
-    </div>
-    <p class="supplier-location muted small">${ICON.pin} ${esc(location)}</p>
-    <p class="supplier-desc">${esc(s.description || 'Descrição não informada.')}</p>
-    <p class="supplier-sale small">${sales.map((l) => `<span class="tag">${esc(l)}</span>`).join('')}</p>
-    <p class="contact-line small">${ICON.wa} <span>WhatsApp para assinantes</span></p>
-    <div class="supplier-actions">
-      <a class="btn btn-secondary" href="/fornecedor/${esc(s.slug)}">Ver fornecedor</a>
-      <button class="btn btn-primary" type="button" data-action="unlock">Ver contato completo</button>
-    </div>
-  </article>`;
-}
-
-function visitorGridHtml(list, ctx = {}) {
-  if (!list.length) return '<p>Ainda não há fornecedores aprovados nesta lista.</p>';
-  return `<div class="grid grid-3">${list.map((s) => visitorCardHtml(s, ctx)).join('')}</div>`;
-}
-
-// Lista com o mesmo borrão do site: cartões embaçados e o aviso de planos por cima.
-function listingGateHtml(list, ctx = {}) {
-  if (!list.length) return visitorGridHtml(list, ctx);
-  return `<div class="blur-gate">
-    <div class="card blur-banner">
-      <p><strong>Assine para ver os contatos dos fornecedores</strong></p>
-      <p class="small muted">WhatsApp, Instagram e endereço completos são liberados após o pagamento via Pix.</p>
-      <button class="btn btn-primary" type="button" data-action="unlock">Ver planos de acesso</button>
-    </div>
-    <div class="blur-content" aria-hidden="true">${visitorGridHtml(list, ctx)}</div>
-  </div>`;
-}
-
-// Mesma ordem de "relevância" do site, sem busca: destaque, verificado, acessos e nome.
-const byRelevance = (a, b) =>
-  (b.featured === true) - (a.featured === true)
-  || (b.verified === true) - (a.verified === true)
-  || (b.views || 0) - (a.views || 0)
-  || String(a.name || '').localeCompare(String(b.name || ''), 'pt-BR');
-
-// ---------- Textos originais por categoria e região (com números reais) ----------
-
-// O texto é montado com contagens e nomes reais do banco. Não há afirmações sobre fornecedores específicos.
-export function categorySeoText(cat, suppliers, regionNames) {
-  const n = suppliers.length;
-  const wholesale = suppliers.filter((s) => s.sale_wholesale).length;
-  const ships = suppliers.filter((s) => s.ships_other_cities).length;
-  const regions = [...new Set(suppliers.map((s) => regionNames(s.bairro)).filter(Boolean))];
-  const paragraphs = [];
-  paragraphs.push(`Nesta página estão ${n === 1 ? 'o fornecedor aprovado' : `os ${n} fornecedores aprovados`} de ${cat.name.toLowerCase()} do ${SITE.shortName}.${regions.length ? ` Eles estão em ${regions.length === 1 ? 'um bairro' : 'bairros'} como ${listJoin(regions)}.` : ''}`);
-  if (n) {
-    const parts = [];
-    if (wholesale) parts.push(`${wholesale} ${wholesale === 1 ? 'vende' : 'vendem'} no atacado`);
-    if (ships) parts.push(`${ships} ${ships === 1 ? 'envia' : 'enviam'} para outras cidades`);
-    if (parts.length) paragraphs.push(`Entre eles, ${listJoin(parts)}. As informações de cada loja, como tipo de fornecedor, pedido mínimo e horário, aparecem na ficha de cada fornecedor.`);
-  }
-  paragraphs.push('Para ver WhatsApp, Instagram e endereço completo, é preciso ter acesso aos contatos. Os dados de cada fornecedor são cadastrados e conferidos pela equipe antes de publicar.');
-  return paragraphs;
-}
-
-export function regionSeoText(region, suppliers, categoryNames) {
-  const n = suppliers.length;
-  const cats = [...new Set(suppliers.map((s) => categoryNames(s.category_id)).filter(Boolean))];
-  const paragraphs = [];
-  paragraphs.push(`${n === 1 ? 'Há 1 fornecedor aprovado' : `Há ${n} fornecedores aprovados`} no bairro ${region.name}, em São Paulo.${region.description ? ` ${clean(region.description)}` : ''}`);
-  if (cats.length) paragraphs.push(`As categorias representadas aqui são ${listJoin(cats.slice(0, 8))}${cats.length > 8 ? ' e outras' : ''}.`);
-  return paragraphs;
-}
-
 export function listJoin(items) {
   if (items.length <= 1) return items.join('');
   return `${items.slice(0, -1).join(', ')} e ${items[items.length - 1]}`;
@@ -308,7 +203,8 @@ export function listJoin(items) {
 
 // ---------- Páginas ----------
 
-export function homePage({ categories, regions, suppliers, featured }) {
+// Home pré-gerada: textos e links para categorias e bairros (só nomes). Sem fornecedores, sem destaques.
+export function homePage({ categories, regions }) {
   const title = 'Fornecedores Atacado SP | Brás, Moda, Tênis e Eletrônicos';
   const description = 'Encontre fornecedores de atacado em São Paulo, Brás e 25 de Março. Explore lojas de roupas, moda feminina, tênis, eletrônicos e muito mais.';
   const catLinks = categories.map((c) => `<li><a href="/categorias/${esc(c.slug)}">${esc(c.name)}</a></li>`).join('');
@@ -321,15 +217,7 @@ export function homePage({ categories, regions, suppliers, featured }) {
       <p class="eyebrow">25 de Março · Brás · Pari · Bom Retiro</p>
       <h1>Encontre fornecedores de atacado em São Paulo</h1>
       <p class="lead">Compare lojas e distribuidores por categoria, subcategoria e bairro, e encontre o fornecedor certo para o seu negócio.</p>
-      <form class="search-hero" role="search" action="/fornecedores" method="get">
-        <label class="sr-only" for="hero-q">Buscar</label>
-        <input id="hero-q" name="q" type="search" placeholder="Busque produtos, fornecedores ou categorias..." autocomplete="off">
-        <button class="btn btn-primary" type="submit">Buscar</button>
-      </form>
-      <div class="chips" aria-label="Pesquisas populares">
-        <span class="muted small">Populares:</span>
-        ${['Eletrônicos', 'Moda feminina', 'Tênis', 'Acessórios', 'Perfumes'].map((t) => `<a class="chip" href="/fornecedores?q=${encodeURIComponent(t)}&origem=popular">${esc(t)}</a>`).join('')}
-      </div>
+      <p class="small muted">O catálogo de fornecedores é exclusivo para assinantes. <a href="/planos">Conheça os planos</a>.</p>
     </div>
   </section>
   ${staticBanners()}
@@ -338,10 +226,6 @@ export function homePage({ categories, regions, suppliers, featured }) {
     <ul class="plain-list two-col">${catLinks}</ul>
     <h2>Bairros e regiões</h2>
     <ul class="plain-list two-col">${regLinks}</ul>
-    ${featured.length ? `<h2>Fornecedores em destaque</h2>${visitorGridHtml(featured, {
-      categoryName: (id) => categories.find((c) => c.id === id)?.name || '',
-      regionName: (slug) => regions.find((r) => r.slug === slug)?.name || '',
-    })}` : ''}
   </section>`;
   return documentHtml({
     title, description, path: '/site', mainHtml: main, nav: staticHeader(), footer: staticFooter(),
@@ -349,41 +233,40 @@ export function homePage({ categories, regions, suppliers, featured }) {
   });
 }
 
-export function categoriesIndexPage({ categories, counts }) {
+// Lista de categorias: só o nome e a descrição da categoria. Sem contagem (decisão D2).
+// Fica fora do Google (noindex): sem fornecedores, a página seria pobre em conteúdo.
+export function categoriesIndexPage({ categories }) {
   const title = 'Categorias de fornecedores | Fornecedores Atacado SP';
-  const description = 'Fornecedores por categoria em São Paulo: moda feminina, moda masculina, roupas infantis, tênis, eletrônicos, bolsas, perfumes e mais.';
-  const items = categories.map((c) => `<li><a href="/categorias/${esc(c.slug)}"><strong>${esc(c.name)}</strong></a> <span class="muted small">${counts[c.id] || 0} fornecedores</span>${c.description ? `<br><span class="small">${esc(clean(c.description))}</span>` : ''}</li>`).join('');
+  const description = 'Categorias de fornecedores de atacado em São Paulo. O catálogo é exclusivo para assinantes.';
+  const items = categories.map((c) => `<li><a href="/categorias/${esc(c.slug)}"><strong>${esc(c.name)}</strong></a>${c.description ? `<br><span class="small">${esc(clean(c.description))}</span>` : ''}</li>`).join('');
   const main = `
   <section class="container section-tight">
     ${breadcrumbHtml([{ label: 'Início', path: '/site' }, { label: 'Categorias' }])}
     <h1>Categorias de fornecedores</h1>
-    <p>Escolha uma categoria para ver os fornecedores aprovados de São Paulo.</p>
+    <p>O catálogo de fornecedores é exclusivo para assinantes. <a href="/planos">Conheça os planos</a>.</p>
     <ul class="plain-list">${items}</ul>
   </section>`;
   return documentHtml({
-    title, description, path: '/categorias', mainHtml: main, nav: staticNav(), footer: staticFooter(),
+    title, description, path: '/categorias', noindex: true, mainHtml: main, nav: staticNav(), footer: staticFooter(),
     jsonld: [breadcrumbJsonLd([{ label: 'Início', path: '/site' }, { label: 'Categorias', path: '/categorias' }])],
   });
 }
 
-export function categoryPage({ category, suppliers, regionName }) {
-  const restricted = RESTRICTED_CATEGORY_SLUGS.includes(category.slug);
-  const noindex = restricted || suppliers.length === 0;
-  const title = `Fornecedores de ${category.name} em São Paulo | Atacado`;
-  const base = category.description ? clean(category.description) : `Fornecedores de ${category.name} em São Paulo.`;
-  const description = truncate(`${base} Fornecedores de ${category.name} no atacado de São Paulo.`);
-  const paragraphs = categorySeoText(category, suppliers, regionName);
+// Página de categoria: nome e descrição. Sem fornecedores, fotos, contagens nem texto sobre eles.
+// Fora do Google (noindex), como a lista do catálogo.
+export function categoryPage({ category }) {
+  const title = `Fornecedores de ${category.name} | Catálogo para assinantes`;
+  const base = category.description ? clean(category.description) : `Fornecedores de ${category.name}.`;
+  const description = truncate(`${base} O catálogo de fornecedores é exclusivo para assinantes.`);
   const main = `
   <section class="container section-tight">
     ${breadcrumbHtml([{ label: 'Início', path: '/site' }, { label: 'Categorias', path: '/categorias' }, { label: category.name }])}
-    <h1>Fornecedores de ${esc(category.name)} em São Paulo</h1>
+    <h1>Fornecedores de ${esc(category.name)}</h1>
     ${category.description ? `<p>${esc(clean(category.description))}</p>` : ''}
-    ${paragraphs.map((p) => `<p>${esc(p)}</p>`).join('')}
-    <h2>Fornecedores</h2>
-    ${listingGateHtml(suppliers, { categoryName: () => category.name, regionName })}
+    <p>Os fornecedores desta categoria aparecem para assinantes. <a href="/planos">Conheça os planos</a>.</p>
   </section>`;
   return documentHtml({
-    title, description, path: `/categorias/${category.slug}`, noindex, mainHtml: main,
+    title, description, path: `/categorias/${category.slug}`, noindex: true, mainHtml: main,
     nav: staticNav(), footer: staticFooter(),
     jsonld: [
       breadcrumbJsonLd([{ label: 'Início', path: '/site' }, { label: 'Categorias', path: '/categorias' }, { label: category.name, path: `/categorias/${category.slug}` }]),
@@ -391,132 +274,39 @@ export function categoryPage({ category, suppliers, regionName }) {
   });
 }
 
-export function regionPage({ region, suppliers, categoryName }) {
-  // Sem fornecedores de SP a página não é indexada (o texto fala de São Paulo).
-  const noindex = suppliers.length === 0 || !isSpRegion(suppliers);
+// Página de bairro: nome e descrição. Sem fornecedores nem contagens. Fora do Google (noindex).
+export function regionPage({ region }) {
   const prep = regiaoPrep(region.name);
-  const title = `Fornecedores ${prep} ${region.name} | São Paulo`;
-  const description = truncate(`${region.name}, São Paulo: fornecedores de atacado aprovados no bairro. ${region.description ? clean(region.description) : ''}`);
-  const paragraphs = regionSeoText(region, suppliers, categoryName);
+  const title = `Fornecedores ${prep} ${region.name} | Catálogo para assinantes`;
+  const description = truncate(`${region.name}, São Paulo. ${region.description ? clean(region.description) : ''} O catálogo é exclusivo para assinantes.`);
   const own = REGIAO_TEXTO[region.slug];
   const main = `
   <section class="container section-tight">
     ${breadcrumbHtml([{ label: 'Início', path: '/site' }, { label: 'Mapa', path: '/mapa' }, { label: region.name }])}
     <h1>Fornecedores ${prep} ${esc(region.name)}, São Paulo</h1>
-    ${own ? `<p>${esc(own)}</p>` : ''}
-    ${paragraphs.map((p) => `<p>${esc(p)}</p>`).join('')}
-    <h2>Fornecedores</h2>
-    ${listingGateHtml(suppliers, { categoryName, regionName: () => region.name })}
+    ${own ? `<p>${esc(own)}</p>` : (region.description ? `<p>${esc(clean(region.description))}</p>` : '')}
+    <p>Os fornecedores deste bairro aparecem para assinantes. <a href="/planos">Conheça os planos</a>.</p>
   </section>`;
   return documentHtml({
-    title, description, path: `/regiao/${region.slug}`, noindex, mainHtml: main,
-    nav: staticNav(), footer: staticFooter(),
+    title, description, path: `/regiao/${region.slug}`, noindex: true, mainHtml: main, nav: staticNav(), footer: staticFooter(),
     jsonld: [
       breadcrumbJsonLd([{ label: 'Início', path: '/site' }, { label: 'Mapa', path: '/mapa' }, { label: region.name, path: `/regiao/${region.slug}` }]),
     ],
   });
 }
 
-export function suppliersIndexPage({ suppliers, regionName, categoryName }) {
-  const title = 'Todos os fornecedores de São Paulo | Fornecedores Atacado SP';
-  const description = 'Lista de fornecedores de atacado de São Paulo, com filtros por categoria, bairro, tipo de venda e WhatsApp.';
-  const ctx = { categoryName: categoryName || (() => ''), regionName: regionName || (() => '') };
-  const shown = [...suppliers].sort(byRelevance).slice(0, SITE.pageSize);
-  // Mesmo layout da página de fornecedores do site (título, texto, filtros e cartões), para a troca ser imperceptível.
+// Lista de fornecedores e mapa: só a apresentação do catálogo, sem nenhum dado. Fora do Google (noindex).
+export function catalogShellPage({ path, title, h1, description }) {
   const main = `
   <section class="container section-tight">
-    ${breadcrumbHtml([{ label: 'Início', path: '/site' }, { label: 'Fornecedores' }])}
-    <h1>Fornecedores</h1>
-    <p class="lead">Pesquise por nome, produto, categoria ou localização. Use os filtros para refinar.</p>
-    <div class="listing">
-      <aside class="filters" aria-label="Filtros">
-        <details class="filters-details"><summary class="filters-summary">Filtros</summary></details>
-      </aside>
-      <div class="listing-main">
-        <div class="listing-toolbar">
-          <p class="muted">${new Intl.NumberFormat('pt-BR').format(suppliers.length)} ${suppliers.length === 1 ? 'fornecedor encontrado' : 'fornecedores encontrados'}</p>
-        </div>
-        ${listingGateHtml(shown, ctx)}
-      </div>
-    </div>
+    ${breadcrumbHtml([{ label: 'Início', path: '/site' }, { label: h1 }])}
+    <h1>${esc(h1)}</h1>
+    <p>O catálogo de fornecedores é exclusivo para assinantes. <a href="/planos">Conheça os planos</a>.</p>
   </section>`;
   return documentHtml({
-    title, description, path: '/fornecedores', mainHtml: main, nav: staticNav(), footer: staticFooter(),
-    jsonld: [breadcrumbJsonLd([{ label: 'Início', path: '/site' }, { label: 'Fornecedores', path: '/fornecedores' }])],
-  });
-}
-
-export function supplierPage({ supplier: s, category, regionName, related }) {
-  const place = regionName(s.bairro) || s.city || 'São Paulo';
-  const title = `${s.name} | Fornecedor em ${place}`;
-  const description = truncate(s.description || `${s.name}, fornecedor de ${category?.name || 'atacado'} em ${place}, São Paulo.`);
-  const yesNo = (v) => (v ? 'Sim' : 'Não');
-  const facts = [
-    ['Tipo de fornecedor', typeLabel(s.supplier_type)],
-    ['Bairro', regionName(s.bairro)],
-    ['Cidade', [s.city, s.state].filter(Boolean).join(' - ')],
-    ['Venda no atacado', yesNo(s.sale_wholesale)],
-    ['Venda no varejo', yesNo(s.sale_retail)],
-    ['Venda para lojistas', yesNo(s.sale_resellers)],
-    ['Envio para outras cidades', yesNo(s.ships_other_cities)],
-    ['Pedido mínimo', s.min_order],
-    ['Horário de funcionamento', s.hours],
-  ].filter(([, v]) => v);
-  const photos = (s.supplier_photos || []).slice().sort((a, b) => (a.position ?? 0) - (b.position ?? 0)).map((p) => p.url).filter(Boolean);
-  const logo = s.logo_url || '';
-  const image = logo || photos[0] || '';
-  const tags = Array.isArray(s.tags) ? s.tags.filter(Boolean) : [];
-  const main = `
-  <article class="container supplier-profile">
-    ${breadcrumbHtml([
-      { label: 'Início', path: '/site' },
-      ...(category ? [{ label: 'Categorias', path: '/categorias' }, { label: category.name, path: `/categorias/${category.slug}` }] : []),
-      { label: s.name },
-    ])}
-    <header>
-      <p class="eyebrow">${esc(category?.name || '')}${s.subcategory ? ` · ${esc(s.subcategory)}` : ''}</p>
-      <h1>${esc(s.name)}</h1>
-      ${s.verified ? '<p class="badge">Fornecedor verificado</p>' : ''}
-    </header>
-    ${logo ? `<img src="${esc(logo)}" alt="Logo de ${esc(s.name)}" width="160" loading="lazy">` : ''}
-    ${s.description ? `<p>${esc(clean(s.description))}</p>` : ''}
-    <h2>Informações</h2>
-    <dl class="facts">${facts.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}</dl>
-    ${tags.length ? `<p class="small">Palavras-chave: ${esc(tags.join(', '))}</p>` : ''}
-    ${photos.length ? `<h2>Fotos</h2><div class="photo-grid">${photos.map((u) => `<img src="${esc(u)}" alt="Foto de ${esc(s.name)}" loading="lazy">`).join('')}</div>` : ''}
-    <p class="muted small">WhatsApp, Instagram e endereço completo ficam disponíveis para quem tem acesso aos contatos.</p>
-    ${related.length ? `<h2>Outros fornecedores de ${esc(category?.name || '')}</h2>${visitorGridHtml(related, { categoryName: (id) => (id === category?.id ? category.name : ''), regionName })}` : ''}
-  </article>`;
-  // Fichas não são indexadas: a página continua acessível a quem tem o link, mas não aparece no Google.
-  return documentHtml({
-    title, description, path: `/fornecedor/${s.slug}`, noindex: true, mainHtml: main, nav: staticNav(), footer: staticFooter(),
-    image, ogType: 'website',
-    jsonld: [breadcrumbJsonLd([
-      { label: 'Início', path: '/site' },
-      ...(category ? [{ label: 'Categorias', path: '/categorias' }, { label: category.name, path: `/categorias/${category.slug}` }] : []),
-      { label: s.name, path: `/fornecedor/${s.slug}` },
-    ])],
-  });
-}
-
-// Mapa público: só bairros e quantidades. Os nomes dos fornecedores ficam fora (são protegidos).
-export function mapPage({ regions, suppliersByRegion }) {
-  const title = 'Mapa de fornecedores por bairro | Fornecedores Atacado SP';
-  const description = 'Encontre fornecedores por bairro em São Paulo: 25 de Março, Brás, Pari, Bom Retiro e Santa Ifigênia.';
-  const sections = regions.map((r) => {
-    const n = (suppliersByRegion[r.slug] || []).length;
-    const linha = n === 0 ? 'Nenhum fornecedor aprovado ainda.' : `${n} ${n === 1 ? 'fornecedor aprovado' : 'fornecedores aprovados'}.`;
-    return `<h2><a href="/regiao/${esc(r.slug)}">${esc(r.name)}</a></h2><p class="muted small">${esc(linha)}</p>`;
-  }).join('');
-  const main = `
-  <section class="container section-tight">
-    ${breadcrumbHtml([{ label: 'Início', path: '/site' }, { label: 'Mapa' }])}
-    <h1>Mapa de fornecedores por bairro</h1>
-    ${sections}
-  </section>`;
-  return documentHtml({
-    title, description, path: '/mapa', mainHtml: main, nav: staticNav(), footer: staticFooter(),
-    jsonld: [breadcrumbJsonLd([{ label: 'Início', path: '/site' }, { label: 'Mapa', path: '/mapa' }])],
+    title: `${title} | Fornecedores Atacado SP`, description, path, noindex: true, mainHtml: main,
+    nav: staticNav(), footer: staticFooter(),
+    jsonld: [breadcrumbJsonLd([{ label: 'Início', path: '/site' }, { label: h1, path }])],
   });
 }
 
@@ -543,8 +333,8 @@ export function noindexShell({ path, title, description = 'Área restrita do For
 }
 
 export function planosPage() {
-  const title = 'Planos de acesso aos contatos | Fornecedores Atacado SP';
-  const description = 'Conheça os planos do Fornecedores Atacado SP e tenha acesso ao WhatsApp, Instagram e endereço dos fornecedores de São Paulo.';
+  const title = 'Planos de acesso ao catálogo | Fornecedores Atacado SP';
+  const description = 'Conheça os planos do Fornecedores Atacado SP e tenha acesso ao catálogo de fornecedores de São Paulo, com contatos e endereços.';
   return documentHtml({
     title, description, path: '/planos', mainHtml: planosMainHtml(), nav: staticNav(), footer: staticFooter(),
     jsonld: [breadcrumbJsonLd([{ label: 'Início', path: '/site' }, { label: 'Planos', path: '/planos' }])],
@@ -594,6 +384,8 @@ ${body}
 `;
 }
 
+// Não bloqueamos as rotas do catálogo aqui: o Google precisa rastrear a página para ver o "noindex"
+// (se já estiverem indexadas, a remoção depende disso). Só áreas privadas ficam fora do rastreamento.
 export function robotsTxt() {
   return `User-agent: *
 Allow: /

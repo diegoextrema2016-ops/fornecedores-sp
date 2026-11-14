@@ -2,9 +2,10 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import * as seo from '../scripts/seo.mjs';
 
-const raiz = new URL('..', import.meta.url).pathname;
+const raiz = fileURLToPath(new URL('../', import.meta.url));
 const ler = (p) => readFileSync(join(raiz, p), 'utf8');
 
 test('páginas geradas não têm script inline (a CSP bloqueia script inline)', () => {
@@ -44,7 +45,7 @@ test('vercel.json envia os cabeçalhos de segurança em todas as páginas', () =
 test('endpoint de IA não devolve detalhe técnico do provedor ao usuário', () => {
   const codigo = ler('api/sugerir-descricao.js');
   assert.ok(!/erro \$\{r\.status\}/.test(codigo), 'não pode repassar o código de erro do provedor');
-  assert.ok(codigo.includes("consume_rate_limit"), 'falta o limite de uso por conta');
+  assert.ok(codigo.includes("rpc/consume_limite_usuario"), 'falta o limite de uso por conta (RPC consume_limite_usuario)');
 });
 
 test('.gitignore impede commit de arquivos .env', () => {
