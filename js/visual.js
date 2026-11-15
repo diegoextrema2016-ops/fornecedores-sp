@@ -101,7 +101,7 @@ export function headerHtml({ session = null, route = '', pularConteudo = true } 
   <header class="site-header" id="site-header">
     <div class="container header-inner">
       <a class="brand" href="/site" aria-label="${esc(SITE.name)}: início">${marca()}
-        <span class="brand-text"><strong>Fornecedores</strong><small>SP · Atacado</small></span>
+        <span class="brand-text"><strong>Fornecedores de SP</strong><small>O Maior Guia de Fornecedores</small></span>
       </a>
       <nav class="main-nav" id="main-nav" aria-label="Principal">
         ${link('/categorias', 'Categorias', is('/categorias'))}
