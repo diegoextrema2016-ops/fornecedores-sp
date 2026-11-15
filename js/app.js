@@ -197,6 +197,12 @@ async function render({ fromMemory = false } = {}) {
   if (!fromMemory && !primeiraVez) atualizarEmSegundoPlano(id);
 }
 
+// Fotos chegam depois da lista: redesenha a tela atual (formulários não são redesenhados).
+window.addEventListener('spf:imagens', () => {
+  if (main.querySelector('form')) return;
+  renderLocal();
+});
+
 function atualizarEmSegundoPlano(id) {
   const antes = store.fingerprint();
   store.refresh({ maxAgeMs: 30000 })
