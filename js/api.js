@@ -201,17 +201,19 @@ export const api = {
       check(await sb.from('favorites').delete().eq('user_id', userId).eq('supplier_id', supplierId));
     }
   },
-  async requestSubscription({ userId, planId, amount }) {
-    const now = new Date().toISOString();
-    return check(await sb.from('subscriptions').insert({
-      user_id: userId,
-      plan: planId,
-      amount,
-      starts_at: now,
-      expires_at: now,
-      status: 'pending',
-      payment_note: 'Pix informado pelo cliente; aguardando conferência',
-    }).select().single());
+  // Inicia o pagamento pelo Mercado Pago (Pix ou cartão). Devolve o link do checkout.
+  async criarPagamento(planId) {
+    const { data } = await sb.auth.getSession();
+    const token = data?.session?.access_token;
+    if (!token) throw new Error('Entre na sua conta para assinar.');
+    const r = await fetch('/api/mercadopago/criar-pagamento', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', authorization: `Bearer ${token}` },
+      body: JSON.stringify({ planId }),
+    });
+    const corpo = await r.json().catch(() => ({}));
+    if (!r.ok || !corpo.url) throw new Error(corpo.error || 'Não foi possível iniciar o pagamento.');
+    return corpo.url;
   },
   // Administrador: todos os pedidos e assinaturas, com nome e e-mail de quem pagou.
   async loadAllSubscriptions() {

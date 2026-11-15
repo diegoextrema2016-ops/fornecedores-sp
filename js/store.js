@@ -16,7 +16,6 @@ import { imagePathFromUrl, imageRefsOf } from './imagens.js';
 
 const GUEST_FAV_KEY = 'spf:v2:guest-favorites';
 const SESSION_CACHE_KEY = 'spf:session-cache';
-const PENDING_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const IMAGE_ORPHAN_AGE_MS = 24 * 60 * 60 * 1000; // imagens mais novas que isso nunca são apagadas como órfãs
 
 // Referência de imagem (formato /object/public/...) -> URL assinada que expira. Só existe na memória:
@@ -517,18 +516,6 @@ const subscriptions = {
   },
   isActive() {
     return hasActiveSubscription(state.subscriptions);
-  },
-  // Registra o pedido de assinatura por Pix como pendente. Só o administrador confirma e ativa.
-  async requestPix({ planId, amount }) {
-    if (!state.session) throw new Error('Entre na sua conta para assinar.');
-    lastRefreshAt = 0;
-    const pending = state.subscriptions.find((s) =>
-      s.status === 'pending' && Date.now() - new Date(s.createdAt || 0).getTime() < PENDING_TTL_MS);
-    if (pending) return pending;
-    const sub = M.subscriptionFromRow(await api.requestSubscription({ userId: state.session.id, planId, amount }));
-    state.subscriptions = [sub, ...state.subscriptions];
-    state.allSubscriptions = [sub, ...state.allSubscriptions];
-    return sub;
   },
   // Administrador: todos os pedidos, com nome de quem pagou.
   adminList() {

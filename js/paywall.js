@@ -1,14 +1,11 @@
-// Janela de assinatura para liberar os contatos, paga por Pix.
-// Ao abrir o Pix, o pedido fica registrado como "pendente" no banco. O administrador confere o pagamento
-// e ativa a assinatura; só então os contatos aparecem para o cliente.
-import { PLANS, PIX } from './config.js';
+// Janela de assinatura para liberar os contatos. O pagamento é feito pelo Mercado Pago (Pix ou cartão):
+// o servidor cria o pedido e, quando o pagamento é aprovado, o acesso é liberado automaticamente.
+import { PLANS } from './config.js';
 import { store } from './store.js';
-import { escapeHtml as e, formatDate, pixPayload, whatsappLink } from './utils.js';
-import { toast, icon } from './ui.js';
+import { api } from './api.js';
+import { escapeHtml as e, formatDate } from './utils.js';
+import { toast } from './ui.js';
 import { subscriptionInfo } from './access.js';
-
-// Canal de atendimento para o cliente enviar o comprovante do Pix.
-const CANAL_COMPROVANTE = '35991545650';
 
 const money = (v) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 
@@ -59,7 +56,7 @@ function showPlans() {
   const status = active
     ? `<p class="notice">Seu acesso está ativo até <strong>${formatDate(sub.expiresAt)}</strong>. Você pode renovar agora para estender o prazo.</p>`
     : sub && sub.status === 'pending'
-      ? '<p class="notice">Você já informou um pagamento por Pix. Assim que for conferido, o acesso é liberado.</p>'
+      ? '<p class="notice">Você tem um pagamento em andamento. Assim que o Mercado Pago confirmar, o acesso é liberado automaticamente.</p>'
       : '';
   const host = frame(`
     <h3 id="pw-title">Acesso completo aos fornecedores</h3>
@@ -71,53 +68,27 @@ function showPlans() {
           <h4>${e(p.name)}</h4>
           <p class="plan-price"><strong>${money(p.price)}</strong> <span class="muted">/ ${p.days} dias</span></p>
           <p class="muted small">${e(p.description)}</p>
-          <button class="btn btn-primary btn-block" type="button" data-plan="${e(p.id)}">Pagar com Pix</button>
+          <button class="btn btn-primary btn-block" type="button" data-plan="${e(p.id)}">Pagar com Pix ou cartão</button>
         </div>`).join('')}
     </div>
+    <p class="muted small">Pagamento seguro pelo Mercado Pago. O acesso é liberado automaticamente após a confirmação.</p>
     <p class="muted small">Ao assinar, você confirma que leu os <a href="/termos" data-close>termos de uso</a>.</p>`);
-  host.querySelectorAll('[data-plan]').forEach((b) => b.addEventListener('click', () => {
-    const plan = PLANS.find((p) => p.id === b.dataset.plan);
-    if (plan) showPix(plan);
-  }));
+  host.querySelectorAll('[data-plan]').forEach((b) => b.addEventListener('click', () => pagar(b)));
 }
 
-// Mensagem pronta para o WhatsApp, com o plano e o valor pagos.
-function mensagemComprovante(plan) {
-  return `Olá! Segue o comprovante do Pix de ${money(plan.price)} (${plan.name}) para liberação do meu acesso ao site Fornecedores Atacado SP.`;
-}
-
-// Mostra o QR e o código copia e cola, e registra o pedido como pendente.
-function showPix(plan) {
-  const code = pixPayload({ key: PIX.key, amount: plan.price, name: PIX.name, city: PIX.city });
-  const host = frame(`
-    <h3 id="pw-title">Pague com Pix</h3>
-    <div class="checkout-summary card">
-      <p><strong>${e(plan.name)}</strong></p>
-      <p class="plan-price"><strong>${money(plan.price)}</strong> <span class="muted">por ${plan.days} dias</span></p>
-    </div>
-    <div class="pix-box">
-      <img src="${e(PIX.qrImage)}" alt="QR code Pix de ${money(plan.price)}" width="220" height="220">
-      <p class="small muted">No app do seu banco, escolha Pix, depois Ler QR Code, e confira o valor antes de confirmar.</p>
-      <label class="small" for="pix-code">Ou use o código Pix copia e cola:</label>
-      <textarea id="pix-code" class="pix-code" readonly rows="3">${e(code)}</textarea>
-      <button class="btn btn-ghost btn-block" type="button" id="pix-copy">Copiar código Pix</button>
-    </div>
-    <div class="notice notice-warn" role="note"><strong>Após o pagamento</strong>, o acesso é liberado pelo administrador depois da conferência do Pix. Envie o comprovante pelo nosso canal de atendimento para agilizar a liberação do seu acesso.</div>
-    <a class="btn btn-whatsapp btn-block" href="${e(whatsappLink(CANAL_COMPROVANTE, mensagemComprovante(plan)))}" target="_blank" rel="noopener noreferrer">${icon.wa} Enviar comprovante pelo WhatsApp</a>
-    <div class="modal-actions">
-      <button class="btn btn-ghost" type="button" data-back>Voltar</button>
-    </div>`);
-  host.querySelector('[data-back]').addEventListener('click', showPlans);
-  host.querySelector('#pix-copy').addEventListener('click', async () => {
-    try {
-      await navigator.clipboard.writeText(code);
-      toast('Código Pix copiado.');
-    } catch {
-      host.querySelector('#pix-code').select();
-      toast('Selecione o código e copie manualmente.', 'error');
-    }
-  });
-  store.subscriptions.requestPix({ planId: plan.id, amount: plan.price }).catch((err) => {
-    toast(err.message || 'Não foi possível registrar o pedido. Tente de novo.', 'error');
-  });
+// Cria o pedido no servidor e leva a pessoa ao checkout do Mercado Pago.
+async function pagar(botao) {
+  const plano = PLANS.find((p) => p.id === botao.dataset.plan);
+  if (!plano) return;
+  const texto = botao.textContent;
+  botao.disabled = true;
+  botao.textContent = 'Abrindo pagamento…';
+  try {
+    const url = await api.criarPagamento(plano.id);
+    window.location.href = url;
+  } catch (err) {
+    toast(err.message || 'Não foi possível iniciar o pagamento. Tente de novo.', 'error');
+    botao.disabled = false;
+    botao.textContent = texto;
+  }
 }
