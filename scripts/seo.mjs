@@ -20,7 +20,7 @@ export const SHARED_HEAD_LINKS = `<link rel="preconnect" href="https://fonts.goo
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   ${SUPABASE_HOST ? `<link rel="preconnect" href="${SUPABASE_HOST}" crossorigin>` : ''}
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Manrope:wght@600;700;800&display=swap">
   <link rel="stylesheet" href="/css/styles.css">
   ${APP_MODULES.map((m) => `<link rel="modulepreload" href="/js/${m}.js">`).join('\n  ')}`;
 
@@ -177,7 +177,7 @@ export function staticBanners() {
 
 export function staticNav() {
   return `<nav class="main-nav" aria-label="Principal">
-  <a href="/site">Início</a> <a href="/categorias">Categorias</a> <a href="/fornecedores">Fornecedores</a> <a href="/mapa">Mapa</a> <a href="/sobre">Como funciona</a> <a href="/cadastro">Cadastrar fornecedor</a>
+  <a href="/site">Início</a> <a href="/categorias">Categorias</a> <a href="/fornecedores">Fornecedores</a> <a href="/mapa">Mapa</a> <a href="/sobre">Como funciona</a> <a class="nav-cta" href="/cadastro">Cadastrar fornecedor</a>
 </nav>`;
 }
 
@@ -247,7 +247,7 @@ export function categoriesIndexPage({ categories }) {
     <ul class="plain-list">${items}</ul>
   </section>`;
   return documentHtml({
-    title, description, path: '/categorias', noindex: true, mainHtml: main, nav: staticNav(), footer: staticFooter(),
+    title, description, path: '/categorias', noindex: true, mainHtml: main, nav: staticHeader(), footer: staticFooter(),
     jsonld: [breadcrumbJsonLd([{ label: 'Início', path: '/site' }, { label: 'Categorias', path: '/categorias' }])],
   });
 }
@@ -267,7 +267,7 @@ export function categoryPage({ category }) {
   </section>`;
   return documentHtml({
     title, description, path: `/categorias/${category.slug}`, noindex: true, mainHtml: main,
-    nav: staticNav(), footer: staticFooter(),
+    nav: staticHeader(), footer: staticFooter(),
     jsonld: [
       breadcrumbJsonLd([{ label: 'Início', path: '/site' }, { label: 'Categorias', path: '/categorias' }, { label: category.name, path: `/categorias/${category.slug}` }]),
     ],
@@ -288,7 +288,7 @@ export function regionPage({ region }) {
     <p>Os fornecedores deste bairro aparecem para assinantes. <a href="/planos">Conheça os planos</a>.</p>
   </section>`;
   return documentHtml({
-    title, description, path: `/regiao/${region.slug}`, noindex: true, mainHtml: main, nav: staticNav(), footer: staticFooter(),
+    title, description, path: `/regiao/${region.slug}`, noindex: true, mainHtml: main, nav: staticHeader(), footer: staticFooter(),
     jsonld: [
       breadcrumbJsonLd([{ label: 'Início', path: '/site' }, { label: 'Mapa', path: '/mapa' }, { label: region.name, path: `/regiao/${region.slug}` }]),
     ],
@@ -305,7 +305,7 @@ export function catalogShellPage({ path, title, h1, description }) {
   </section>`;
   return documentHtml({
     title: `${title} | Fornecedores Atacado SP`, description, path, noindex: true, mainHtml: main,
-    nav: staticNav(), footer: staticFooter(),
+    nav: staticHeader(), footer: staticFooter(),
     jsonld: [breadcrumbJsonLd([{ label: 'Início', path: '/site' }, { label: h1, path }])],
   });
 }
@@ -319,7 +319,7 @@ export function staticInfoPage({ path, title, description, h1, noindex = false }
     <p>${esc(description)}</p>
   </section>`;
   return documentHtml({
-    title: `${title} | Fornecedores Atacado SP`, description, path, noindex, mainHtml: main, nav: staticNav(), footer: staticFooter(),
+    title: `${title} | Fornecedores Atacado SP`, description, path, noindex, mainHtml: main, nav: staticHeader(), footer: staticFooter(),
     jsonld: [breadcrumbJsonLd([{ label: 'Início', path: '/site' }, { label: h1, path }])],
   });
 }
@@ -336,7 +336,7 @@ export function planosPage() {
   const title = 'Planos de acesso ao catálogo | Fornecedores Atacado SP';
   const description = 'Conheça os planos do Fornecedores Atacado SP e tenha acesso ao catálogo de fornecedores de São Paulo, com contatos e endereços.';
   return documentHtml({
-    title, description, path: '/planos', mainHtml: planosMainHtml(), nav: staticNav(), footer: staticFooter(),
+    title, description, path: '/planos', mainHtml: planosMainHtml(), nav: staticHeader(), footer: staticFooter(),
     jsonld: [breadcrumbJsonLd([{ label: 'Início', path: '/site' }, { label: 'Planos', path: '/planos' }])],
   });
 }
@@ -345,7 +345,7 @@ export function guiasIndexPage() {
   const title = 'Guias de fornecedores e atacado em São Paulo | Fornecedores Atacado SP';
   const description = 'Guias práticos para encontrar fornecedores de atacado em São Paulo, comprar roupas no atacado e escolher fornecedores para revenda.';
   return documentHtml({
-    title, description, path: '/guias', mainHtml: guiasIndexMainHtml(), nav: staticNav(), footer: staticFooter(),
+    title, description, path: '/guias', mainHtml: guiasIndexMainHtml(), nav: staticHeader(), footer: staticFooter(),
     jsonld: [breadcrumbJsonLd([{ label: 'Início', path: '/site' }, { label: 'Guias', path: '/guias' }])],
   });
 }
@@ -353,7 +353,7 @@ export function guiasIndexPage() {
 export function guiaPage(g) {
   const path = `/guias/${g.slug}`;
   return documentHtml({
-    title: g.title, description: truncate(g.description), path, mainHtml: guiaMainHtml(g), nav: staticNav(), footer: staticFooter(),
+    title: g.title, description: truncate(g.description), path, mainHtml: guiaMainHtml(g), nav: staticHeader(), footer: staticFooter(),
     ogType: 'article',
     jsonld: [
       articleJsonLd({ title: g.h1, description: truncate(g.description), path }),
@@ -369,7 +369,7 @@ export function notFoundPage() {
     path: '/404.html',
     noindex: true,
     mainHtml: `<section class="container section-tight"><h1>Página não encontrada</h1><p>O endereço pode estar errado ou a página foi removida.</p><p><a class="btn btn-primary" href="/site">Voltar ao início</a></p></section>`,
-    nav: staticNav(), footer: staticFooter(),
+    nav: staticHeader(), footer: staticFooter(),
   });
 }
 

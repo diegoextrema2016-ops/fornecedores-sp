@@ -172,6 +172,8 @@ async function comAnthropic(prompt) {
 }
 
 export default async function handler(req, res) {
+  // Na prévia as chaves de IA e o acesso ao banco são os de produção: esta função fica desligada.
+  if (process.env.VERCEL_ENV === 'preview') return res.status(503).json({ error: 'Indisponível na prévia.' });
   if (req.method !== 'POST') return res.status(405).json({ error: 'Método não permitido.' });
 
   try {

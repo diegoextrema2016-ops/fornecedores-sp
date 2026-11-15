@@ -6,23 +6,30 @@
 // O build também confere o resultado (scripts/verifica-dist.mjs) e falha se achar dado de fornecedor.
 //
 // Teste local sem internet: SEO_FIXTURE=caminho/dados.json npm run build (os fornecedores do arquivo são ignorados)
-import { readFile, writeFile, mkdir, cp, rm } from 'node:fs/promises';
+import { readFile, writeFile, mkdir, cp, rm, readdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { SUPABASE } from '../js/config.js';
 import * as seo from './seo.mjs';
 import { GUIAS } from '../js/conteudo.js';
+import { ehPrevia, configuracaoDePrevia, referenciasDeProducao, PROD_SUPABASE_URL, PROD_SITE } from './preview-config.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = join(ROOT, 'dist');
 const PAGE_SIZE = 1000;
+const EXTENSOES_DE_TEXTO = /\.(html|js|mjs|json|xml|txt|css)$/;
+
+// Na prévia (Vercel, ambiente Preview) o alvo é o projeto DEV; em produção, o de js/config.js.
+// configuracaoDePrevia falha fechada: se algo estiver errado, o build para antes de ler ou publicar qualquer coisa.
+const PREVIA = ehPrevia(process.env) ? configuracaoDePrevia(process.env, SUPABASE.anonKey) : null;
+const ALVO = PREVIA ? { url: PREVIA.supabaseUrl, anonKey: PREVIA.anonKey } : { url: SUPABASE.url, anonKey: SUPABASE.anonKey };
 
 async function fetchAll(resource, query) {
   const rows = [];
   for (let offset = 0; ; offset += PAGE_SIZE) {
-    const url = `${SUPABASE.url}/rest/v1/${resource}?${query}&limit=${PAGE_SIZE}&offset=${offset}`;
-    const res = await fetch(url, { headers: { apikey: SUPABASE.anonKey, Authorization: `Bearer ${SUPABASE.anonKey}` } });
+    const url = `${ALVO.url}/rest/v1/${resource}?${query}&limit=${PAGE_SIZE}&offset=${offset}`;
+    const res = await fetch(url, { headers: { apikey: ALVO.anonKey, Authorization: `Bearer ${ALVO.anonKey}` } });
     if (!res.ok) throw new Error(`Falha ao ler ${resource} (HTTP ${res.status}): ${(await res.text()).slice(0, 200)}`);
     const page = await res.json();
     rows.push(...page);
@@ -48,6 +55,35 @@ async function write(relPath, content) {
   const file = join(OUT, relPath);
   await mkdir(dirname(file), { recursive: true });
   await writeFile(file, content, 'utf8');
+}
+
+async function listarTextos(dir) {
+  const achados = [];
+  for (const entrada of await readdir(dir, { withFileTypes: true })) {
+    const caminho = join(dir, entrada.name);
+    if (entrada.isDirectory()) achados.push(...(await listarTextos(caminho)));
+    else if (EXTENSOES_DE_TEXTO.test(entrada.name)) achados.push(caminho);
+  }
+  return achados;
+}
+
+// Prévia: troca o projeto, a chave e o domínio de produção pelos da prévia, pede que os buscadores não indexem
+// e confere que nada de produção restou. Se restar algo, o build falha e nada é publicado.
+async function aplicarPrevia(previa) {
+  const trocas = [[PROD_SUPABASE_URL, previa.supabaseUrl], [SUPABASE.anonKey, previa.anonKey], [PROD_SITE, previa.siteUrl]];
+  const arquivos = await listarTextos(OUT);
+  for (const arquivo of arquivos) {
+    let texto = await readFile(arquivo, 'utf8');
+    for (const [de, para] of trocas) texto = texto.split(de).join(para);
+    if (arquivo.endsWith('.html')) texto = texto.split('<meta name="robots" content="index, follow">').join('<meta name="robots" content="noindex, nofollow">');
+    await writeFile(arquivo, texto, 'utf8');
+  }
+  await writeFile(join(OUT, 'robots.txt'), 'User-agent: *\nDisallow: /\n', 'utf8');
+  const lidos = [];
+  for (const arquivo of await listarTextos(OUT)) lidos.push({ nome: relative(OUT, arquivo), texto: await readFile(arquivo, 'utf8') });
+  const achados = referenciasDeProducao(lidos, SUPABASE.anonKey);
+  if (achados.length) throw new Error(`prévia recusada: referências de produção restaram em ${achados.join(', ')}`);
+  console.log(`Prévia: ${arquivos.length} arquivos apontados para o projeto DEV (${previa.supabaseUrl}), sem indexação, sem nenhuma referência de produção.`);
 }
 
 async function main() {
@@ -141,6 +177,8 @@ async function main() {
   await write('404.html', seo.notFoundPage());
   await write('robots.txt', seo.robotsTxt());
   await write('sitemap.xml', seo.sitemapXml(sitemap));
+
+  if (PREVIA) await aplicarPrevia(PREVIA);
 
   console.log(`Build OK: ${sitemap.length} URLs no sitemap, ${categories.length} categorias e ${regions.length} bairros (só nomes). Nenhum fornecedor foi lido nem publicado.`);
 }

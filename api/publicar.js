@@ -16,6 +16,8 @@ async function administradorLogado(token) {
 }
 
 export default async function handler(req, res) {
+  // Na prévia não há publicação: esta função fala com o projeto de produção e com o Deploy Hook real.
+  if (process.env.VERCEL_ENV === 'preview') return res.status(503).json({ error: 'Indisponível na prévia.' });
   if (req.method !== 'POST') return res.status(405).json({ error: 'Método não permitido.' });
 
   const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
