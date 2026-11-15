@@ -95,7 +95,7 @@ export function headerHtml({ session = null, route = '', pularConteudo = true } 
   const contaAcoes = session
     ? `<a class="btn btn-ghost btn-sm hide-sm" href="/favoritos" aria-label="Meus favoritos">${icon('heart', 17)}<span>Favoritos</span></a>
        <a class="btn btn-ghost btn-sm hide-sm" href="/sair">Sair</a>`
-    : `<a class="btn btn-ghost btn-sm" href="/login">Entrar</a>`;
+    : `<a class="btn btn-ghost btn-sm btn-entrar" href="/login">Entrar</a>`;
   return `
   ${pularConteudo ? '<a class="skip-link" href="#main">Pular para o conteúdo</a>' : ''}
   <header class="site-header" id="site-header">
