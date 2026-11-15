@@ -5,8 +5,7 @@
 // contatos, endereços, contagens por categoria ou região, nem fichas individuais. O build só usa
 // nomes de categorias e bairros (públicos) e páginas institucionais. O catálogo é entregue pelo app,
 // depois do login e da verificação de assinatura, pelo banco.
-import { SITE, BANNERS, SUPABASE } from '../js/config.js';
-import { bannersMarkup, bannerPreloadLinks as preloadBanners } from '../js/banners.js';
+import { SITE, SUPABASE } from '../js/config.js';
 import { planosMainHtml, guiasIndexMainHtml, guiaMainHtml, REGIAO_TEXTO, regiaoPrep } from '../js/conteudo.js';
 import { headerHtml, footerHtml, icon as svgIcon, iconeDaCategoria } from '../js/visual.js';
 const svgSeta = () => svgIcon('arrow', 16);
@@ -25,11 +24,6 @@ export const SHARED_HEAD_LINKS = `<link rel="preconnect" href="https://fonts.goo
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Manrope:wght@600;700;800&display=swap">
   <link rel="stylesheet" href="/css/styles.css">
   ${APP_MODULES.map((m) => `<link rel="modulepreload" href="/js/${m}.js">`).join('\n  ')}`;
-
-// Imagem principal da home (banner): pré-carregada para aparecer logo (mesma lógica do site).
-function bannerPreloadLinks() {
-  return preloadBanners(BANNERS, esc);
-}
 
 // Ícone da página (o mesmo do index.html), preenchido pelo build.
 let FAVICON = '';
@@ -137,7 +131,6 @@ export function documentHtml({ title, description, path, noindex = false, jsonld
   <meta name="twitter:image" content="${esc(image)}">` : ''}
   ${FAVICON}
   ${SHARED_HEAD_LINKS}
-  ${path === '/site' ? bannerPreloadLinks() : ''}
   ${jsonScripts}
 </head>
 <body>
@@ -157,10 +150,6 @@ export function documentHtml({ title, description, path, noindex = false, jsonld
 // Cabeçalho da versão pré-gerada: igual ao do site (marca, menu e Entrar), para a troca na carga ser invisível.
 export function staticHeader() {
   return headerHtml({ session: null, route: '', pularConteudo: false });
-}
-
-export function staticBanners() {
-  return bannersMarkup(BANNERS, esc);
 }
 
 export function staticNav() {
@@ -213,7 +202,6 @@ export function homePage({ categories, regions }) {
       </aside>
     </div>
   </section>
-  <section class="container banner-block">${staticBanners()}</section>
   <section class="section-tight container">
     <h2>Categorias</h2>
     <ul class="plain-list two-col">${catLinks}</ul>

@@ -1,7 +1,6 @@
 // Páginas públicas. Cada página exporta uma função (params, query) => { title, description, html, mount? }.
-import { SITE, BANNERS } from './config.js';
+import { SITE } from './config.js';
 import { api } from './api.js';
-import { bannersMarkup } from './banners.js';
 import { CATEGORIES, REGIONS, SUPPLIER_TYPES } from './data.js';
 import { store } from './store.js';
 import { go } from './nav.js';
@@ -161,8 +160,6 @@ export function home() {
         </aside>
       </div>
     </section>
-
-    <section class="container banner-block">${bannersHtml()}</section>
 
     <section class="section container" id="categorias">
       <div class="section-head">
@@ -821,7 +818,3 @@ export function notFound() {
 
 export { skeletonCards, icon };
 
-// Faixa de banners da home: um por vez, rola para o lado (swipe).
-function bannersHtml() {
-  return bannersMarkup(BANNERS, e);
-}
