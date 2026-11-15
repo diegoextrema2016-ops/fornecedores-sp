@@ -127,7 +127,7 @@ export function home() {
       <div class="container hero-grid">
         <div class="hero-copy">
           <p class="eyebrow-pill"><span class="dot" aria-hidden="true"></span>Atacado em São Paulo · 25 de Março, Brás, Pari e Bom Retiro</p>
-          <h1>Encontre fornecedores de atacado em São Paulo</h1>
+          <h1>O Maior Guia de Fornecedores de São Paulo</h1>
           <p class="lead">Compare lojas e distribuidores por categoria, subcategoria e bairro. Veja tipo de venda e pedido mínimo antes de falar com cada um.</p>
           <form class="search-hero" role="search" data-search-form data-target="/fornecedores">
             <label class="sr-only" for="hero-q">Buscar</label>
