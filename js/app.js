@@ -1,5 +1,5 @@
 // Ponto de entrada: roteamento por endereço limpo (/rota?query), proteção das rotas do painel e renderização.
-import { SITE } from './config.js';
+import { SITE, SUPABASE } from './config.js';
 import { store } from './store.js';
 import { header, footer, toast, openPhotoViewer, skeletonCards } from './ui.js';
 import * as pub from './pages-public.js';
@@ -13,6 +13,14 @@ import { go, currentLocation, normalizeTarget } from './nav.js';
 // Páginas que não devem aparecer no Google (também marcadas no HTML gerado pelo build).
 const NOINDEX_PATH = /^\/(admin|login|registro|cadastro|favoritos|sair|conta|esqueci-senha|redefinir-senha|reenviar-confirmacao)(\/|$)/;
 
+// Abre a conexão com o Supabase antes da primeira consulta (poupa o aperto de mão de rede).
+(() => {
+  const l = document.createElement('link');
+  l.rel = 'preconnect';
+  l.href = SUPABASE.url;
+  l.crossOrigin = 'anonymous';
+  document.head.appendChild(l);
+})();
 const main = document.getElementById('main');
 const headerHost = document.getElementById('header');
 const footerHost = document.getElementById('footer');
