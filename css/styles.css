@@ -150,7 +150,7 @@ main > * { animation: rise .5s var(--ease) both; }
 }
 .brand-text { display: flex; flex-direction: column; line-height: 1; gap: .2rem; }
 .brand-text strong { font-family: var(--font-display); font-size: 1rem; font-weight: 800; letter-spacing: .02em; color: #fff; }
-.brand-text small { font-size: .66rem; color: var(--on-ink-muted); letter-spacing: .18em; text-transform: uppercase; font-weight: 600; }
+.brand-text small { font-size: .66rem; color: var(--on-ink-muted); letter-spacing: .18em; font-weight: 600; }
 .main-nav { display: flex; align-items: center; gap: .15rem; margin-left: auto; }
 .main-nav > a {
   position: relative; color: var(--on-ink); padding: .55rem .8rem; border-radius: 10px; font-weight: 550; font-size: .93rem; white-space: nowrap;
