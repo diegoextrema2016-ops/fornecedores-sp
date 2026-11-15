@@ -187,7 +187,7 @@ main > * { animation: rise .5s var(--ease) both; }
 .hero-copy { min-width: 0; }
 .eyebrow-pill { display: inline-flex; align-items: center; gap: .55rem; padding: .4rem .85rem .4rem .5rem; border-radius: 999px; background: rgba(255, 255, 255, .07); border: 1px solid rgba(255, 255, 255, .12); font-size: .82rem; font-weight: 600; color: var(--on-ink); margin-bottom: 1.25rem; }
 .eyebrow-pill .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--cyan); box-shadow: 0 0 0 4px rgba(34, 211, 238, .2); }
-.hero h1 { color: #fff; font-size: clamp(2.1rem, 1.3rem + 3vw, 3.7rem); line-height: 1.04; letter-spacing: -.03em; max-width: 16ch; }
+.hero h1 { color: #fff; font-size: clamp(2.1rem, 1.2rem + 2.5vw, 3.4rem); line-height: 1.08; letter-spacing: -.03em; max-width: 22ch; text-wrap: balance; }
 .hero h1 .accent { background: linear-gradient(100deg, #7ea2ff 0%, var(--cyan) 90%); -webkit-background-clip: text; background-clip: text; color: transparent; }
 .hero .lead { color: var(--on-ink); margin: 1.1rem 0 1.75rem; font-size: clamp(1.02rem, .98rem + .25vw, 1.15rem); max-width: 52ch; }
 .search-hero {
