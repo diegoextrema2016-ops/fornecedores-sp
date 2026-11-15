@@ -116,7 +116,7 @@ function blurGate(html) {
 export function home() {
   const counts = countByCategory();
   const popular = ['Eletrônicos', 'Moda feminina', 'Tênis', 'Acessórios', 'Perfumes'];
-  const categorias = allCategories().slice(0, 8);
+  const categorias = allCategories().filter((c) => !c.restricted).slice(0, 8);
   const regioes = store.regions.list().length ? store.regions.list() : REGIONS;
   const mensal = PLANS.find((p) => p.id === 'mensal');
   const preco = mensal ? mensal.price.toFixed(2).replace('.', ',') : '29,90';
@@ -126,8 +126,9 @@ export function home() {
     html: `
     <section class="hm-hero">
       <div class="container hm-hero-inner">
+        <p class="hm-kicker">Atacado em São Paulo</p>
         <h1>Encontre fornecedores para o seu negócio</h1>
-        <p class="hm-lead">Pesquise por produto, categoria ou bairro de São Paulo e encontre atacadistas e distribuidores sem complicação.</p>
+        <p class="hm-lead">Pesquise por produto, categoria ou bairro e encontre atacadistas e distribuidores de São Paulo em poucos cliques.</p>
         <form class="hm-search" role="search" data-search-form data-target="/fornecedores">
           <label class="sr-only" for="hero-q">Buscar</label>
           <span class="hm-search-ico" aria-hidden="true">${icon.search}</span>
@@ -141,17 +142,40 @@ export function home() {
       </div>
     </section>
 
-    <section class="hm-section">
+    <section class="hm-trust">
+      <div class="container hm-trust-grid">
+        <div class="hm-trust-item"><span class="hm-trust-ico" aria-hidden="true">${svg('filter', 20)}</span><div><strong>Busca por categoria e bairro</strong><span>Encontre o fornecedor certo sem rodar o centro.</span></div></div>
+        <div class="hm-trust-item"><span class="hm-trust-ico" aria-hidden="true">${icon.wa}</span><div><strong>Contato direto</strong><span>Fale com o fornecedor pelo WhatsApp, sem intermediários.</span></div></div>
+        <div class="hm-trust-item"><span class="hm-trust-ico" aria-hidden="true">${svg('arrow', 20)}</span><div><strong>Cadastros aprovados</strong><span>Cada fornecedor passa pela análise da equipe.</span></div></div>
+      </div>
+    </section>
+
+    <section class="hm-section hm-section-gray">
       <div class="container">
         <div class="hm-head">
-          <h2>Categorias</h2>
+          <div><p class="hm-eyebrow">Segmentos</p><h2>Categorias de fornecedores</h2></div>
           <a class="link-arrow" href="/categorias">Ver todas ${svg('arrow', 16)}</a>
         </div>
         <div class="hm-cats">
           ${categorias.map((c) => `<a class="hm-cat" href="/categorias/${e(c.slug)}">
-            <span class="hm-cat-ico" aria-hidden="true">${iconeDaCategoria(c.slug, 24)}</span>
-            <span class="hm-cat-name">${e(c.name)}</span>
+            <span class="hm-cat-ico" aria-hidden="true">${iconeDaCategoria(c.slug, 26)}</span>
+            <strong class="hm-cat-name">${e(c.name)}</strong>
+            <span class="hm-cat-desc">${e(c.description || '')}</span>
             ${canSeeCatalog() && counts[c.slug] ? `<span class="hm-cat-count">${counts[c.slug]} fornecedores</span>` : ''}
+          </a>`).join('')}
+        </div>
+      </div>
+    </section>
+
+    <section class="hm-section">
+      <div class="container">
+        <div class="hm-head">
+          <div><p class="hm-eyebrow">Localização</p><h2>Regiões de São Paulo</h2></div>
+        </div>
+        <div class="hm-regions">
+          ${regioes.map((r) => `<a class="hm-region" href="/regiao/${e(r.slug)}">
+            <strong>${e(r.name)}</strong>
+            <span>${e(r.description || '')}</span>
           </a>`).join('')}
         </div>
       </div>
@@ -159,52 +183,44 @@ export function home() {
 
     <section class="hm-section hm-section-gray">
       <div class="container">
-        <div class="hm-head"><h2>Regiões de São Paulo</h2></div>
-        <div class="hm-regions">
-          ${regioes.map((r) => `<a class="hm-region" href="/regiao/${e(r.slug)}">${e(r.name)}</a>`).join('')}
+        <div class="hm-head">
+          <div><p class="hm-eyebrow">Passo a passo</p><h2>Como funciona</h2></div>
+        </div>
+        <div class="hm-steps">
+          <div class="hm-step"><span class="hm-step-n">1</span><h3>Pesquise</h3><p>Por produto, fornecedor, categoria ou bairro.</p></div>
+          <div class="hm-step"><span class="hm-step-n">2</span><h3>Compare</h3><p>Veja tipo de venda, atacado, varejo e pedido mínimo.</p></div>
+          <div class="hm-step"><span class="hm-step-n">3</span><h3>Fale com o fornecedor</h3><p>Com o acesso de assinante, WhatsApp e endereço ficam liberados.</p></div>
         </div>
       </div>
     </section>
 
     <section class="hm-section">
-      <div class="container">
-        <div class="hm-head"><h2>Como funciona</h2></div>
-        <div class="hm-steps">
-          <div class="hm-step"><span class="hm-step-n">01</span><h3>Pesquise</h3><p>Por produto, fornecedor, categoria ou bairro.</p></div>
-          <div class="hm-step"><span class="hm-step-n">02</span><h3>Compare</h3><p>Veja tipo de venda, atacado, varejo e pedido mínimo.</p></div>
-          <div class="hm-step"><span class="hm-step-n">03</span><h3>Fale com o fornecedor</h3><p>Com o acesso de assinante, WhatsApp e endereço ficam liberados.</p></div>
-        </div>
-      </div>
-    </section>
-
-    <section class="hm-section hm-section-gray">
-      <div class="container">
-        <div class="hm-head"><h2>Planos</h2></div>
-        <div class="hm-plan">
-          <div>
-            <p class="hm-plan-name">${mensal ? e(mensal.name) : 'Acesso completo mensal'}</p>
-            <p class="hm-plan-price">R$ ${preco} <span>por 30 dias</span></p>
-            <p>Contatos, WhatsApp e endereço completos de todos os fornecedores. Pague com Pix ou cartão, e o acesso é liberado automaticamente.</p>
-          </div>
+      <div class="container hm-two">
+        <div class="hm-plan hm-plan-destaque">
+          <p class="hm-plan-tag">Para compradores</p>
+          <p class="hm-plan-name">${mensal ? e(mensal.name) : 'Acesso completo mensal'}</p>
+          <p class="hm-plan-price">R$ ${preco} <span>por 30 dias</span></p>
+          <p>Contatos, WhatsApp e endereço completos de todos os fornecedores. Pague com Pix ou cartão, e o acesso é liberado automaticamente.</p>
           <a class="btn btn-primary btn-lg" href="/planos">Ver planos de acesso</a>
         </div>
-      </div>
-    </section>
-
-    <section class="hm-section">
-      <div class="container">
         <div class="hm-plan">
-          <div>
-            <p class="hm-plan-name">Tem uma loja ou distribuidora?</p>
-            <p>Cadastre seu negócio e seja encontrado por compradores. Os cadastros passam por aprovação.</p>
-          </div>
+          <p class="hm-plan-tag">Para lojistas</p>
+          <p class="hm-plan-name">Tem uma loja ou distribuidora?</p>
+          <p>Cadastre seu negócio e seja encontrado por compradores de São Paulo. Os cadastros passam por aprovação.</p>
           <a class="btn btn-ghost btn-lg" href="/cadastro">Cadastrar fornecedor ${svg('arrow', 18)}</a>
         </div>
       </div>
+    </section>
+
+    <section class="container hm-cta">
+      <div>
+        <h2>Encontre o fornecedor certo hoje</h2>
+        <p>Comece pela busca ou explore as categorias.</p>
+      </div>
+      <a class="btn hm-cta-btn btn-lg" href="/fornecedores">Buscar fornecedores ${svg('arrow', 18)}</a>
     </section>`,
     mount: (root) => {
       root.querySelectorAll('[data-search-form]').forEach((f) => wireSearchForm(f));
-      // Troca a lista inicial pelas buscas mais feitas no site, quando houver buscas suficientes.
       api.buscasPopulares(5).then((termos) => {
         const box = root.querySelector('[data-populares]');
         if (!box || termos.length < 3) return;
