@@ -121,7 +121,7 @@ export const api = {
   },
   // Destaques para todos os visitantes: só colunas públicas, sem contatos (migração 014).
   async loadFeaturedPublic() {
-    return check(await sb.from('destaques_publicos').select('id,name,slug,description,category_id,bairro,city,tags,logo_url,verified'));
+    return check(await sb.from('destaques_publicos').select('id,name,slug,description,category_id,bairro,city,tags,logo_url,verified,created_at').order('created_at', { ascending: false }));
   },
   async loadFavorites(userId) {
     const rows = check(await sb.from('favorites').select('supplier_id').eq('user_id', userId));
