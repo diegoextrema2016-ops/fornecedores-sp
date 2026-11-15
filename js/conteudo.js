@@ -100,7 +100,7 @@ export function planosMainHtml() {
     <section class="container section-tight">
       <nav class="breadcrumbs" aria-label="Você está em"><ol><li><a href="/site">Início</a></li><li aria-current="page">Planos</li></ol></nav>
       <h1>Planos de acesso aos fornecedores</h1>
-      <p class="lead">Qualquer visitante vê a descrição e as principais informações de cada fornecedor. Os contatos completos (WhatsApp, Instagram e endereço) são liberados por assinatura.</p>
+      <p class="lead">O catálogo inteiro de fornecedores é exclusivo para assinantes. Com a assinatura ativa você vê todos os fornecedores, fotos, WhatsApp, Instagram e endereços.</p>
       <div class="grid grid-2">${cards}</div>
       <p><button class="btn btn-primary btn-lg" type="button" data-action="unlock">Ver planos de acesso</button></p>
       <p class="small muted">O pagamento é feito por Pix. Depois da confirmação, o acesso aos contatos é liberado.</p>
