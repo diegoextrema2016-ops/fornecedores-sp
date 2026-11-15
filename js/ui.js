@@ -186,7 +186,7 @@ export function supplierCard(s, { categoryName = '', regionName = '', favorite =
       <p class="supplier-sale">${saleLabels(s).map((l) => `<span class="tag">${e(l)}</span>`).join('')}</p>
       <div class="sc-contact">${contactLine}${igLine}</div>
       <div class="supplier-actions">
-        <a class="btn btn-secondary" href="/fornecedor/${e(s.slug)}">Ver ficha ${icon.arrow}</a>
+        <a class="btn btn-secondary" href="/fornecedor/${e(s.slug)}">Ver fornecedor ${icon.arrow}</a>
         ${primaryAction}
       </div>
     </div>

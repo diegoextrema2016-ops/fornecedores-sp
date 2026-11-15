@@ -131,7 +131,7 @@ function cardDestaquePublico(s, nomeCategoria) {
     </div>
     ${s.description ? `<p class="dp-desc">${e(s.description)}</p>` : ''}
     ${tags ? `<div class="dp-tags">${tags}</div>` : ''}
-    <a class="btn btn-ghost btn-sm dp-ficha" href="/fornecedor/${e(s.slug)}">Ver ficha ${svg('arrow', 16)}</a>
+    <a class="btn btn-ghost btn-sm dp-ficha" href="/fornecedor/${e(s.slug)}">Ver fornecedor ${svg('arrow', 16)}</a>
   </article>`;
 }
 
