@@ -189,8 +189,10 @@ export function home() {
     ${featured.length || blurred ? `
     <section class="section container">
       <div class="section-head"><div><p class="eyebrow">Seleção da equipe</p><h2>Fornecedores em destaque</h2><p class="muted">Escolhidos pela equipe do portal.</p></div></div>
-      ${blurred ? `<div class="carousel-wrap featured-wrap">
+      ${blurred ? `<div class="carousel-wrap featured-wrap" data-carousel>
+        <button class="carousel-arrow carousel-prev" type="button" data-carousel-prev aria-label="Anterior" hidden>&#8249;</button>
         <div class="carousel-track featured-track" data-destaques-publicos></div>
+        <button class="carousel-arrow carousel-next" type="button" data-carousel-next aria-label="Próximo" hidden>&#8250;</button>
       </div>
       <p class="small muted">Contatos completos, WhatsApp e endereço são liberados para assinantes. <button class="btn btn-ghost btn-sm" type="button" data-action="unlock">Ver planos de acesso</button></p>` : `
       <div class="carousel-wrap featured-wrap" data-carousel>
@@ -237,6 +239,7 @@ export function home() {
             if (!linhas.length) { box.closest('section')?.remove(); return; }
             const categorias = store.categories.list();
             box.innerHTML = linhas.map((s) => `<div class="featured-item">${cardDestaquePublico(s, categorias.find((c) => c.id === s.category_id)?.name || '')}</div>`).join('');
+            box.closest('[data-carousel]').querySelectorAll('[data-carousel-prev], [data-carousel-next]').forEach((b) => { b.hidden = linhas.length < 2; });
           }).catch(() => box.closest('section')?.remove());
         }
       }
