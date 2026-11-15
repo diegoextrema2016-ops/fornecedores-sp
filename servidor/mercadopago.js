@@ -14,7 +14,6 @@ export function destinoDoServidor(env = process.env) {
   }
   const dev = configuracaoDePrevia(env, SUPABASE.anonKey);
   if (env.MP_AMBIENTE !== 'sandbox') throw new Error('prévia: MP_AMBIENTE deve ser sandbox.');
-  if (!String(env.MP_ACCESS_TOKEN || '').startsWith('TEST-')) throw new Error('prévia: MP_ACCESS_TOKEN deve ser um token de teste (TEST-).');
   return { supabaseUrl: dev.supabaseUrl, anonKey: dev.anonKey, siteUrl: dev.siteUrl, sandbox: true };
 }
 

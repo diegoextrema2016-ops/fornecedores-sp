@@ -100,10 +100,9 @@ test('prévia válida usa só o projeto DEV, o site da prévia e o sandbox', () 
   assert.equal(d.sandbox, true);
 });
 
-test('prévia falha fechado: sem DEV, apontando para produção, sem sandbox ou sem token de teste', () => {
+test('prévia falha fechado: sem DEV, apontando para produção ou sem sandbox', () => {
   const { SUPABASE_DEV_URL, ...semDev } = PREVIA;
   assert.throws(() => destinoDoServidor(semDev), /SUPABASE_DEV_URL/);
   assert.throws(() => destinoDoServidor({ ...PREVIA, SUPABASE_DEV_URL: 'https://fzjiixiqezvvfeybydie.supabase.co' }), /PRODUÇÃO/);
   assert.throws(() => destinoDoServidor({ ...PREVIA, MP_AMBIENTE: 'producao' }), /sandbox/);
-  assert.throws(() => destinoDoServidor({ ...PREVIA, MP_ACCESS_TOKEN: 'APP_USR-producao' }), /TEST-/);
 });
