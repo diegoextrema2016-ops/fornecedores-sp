@@ -659,6 +659,7 @@ fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
   .menu-toggle { display: inline-grid; }
   .header-actions .btn-cadastro, .header-actions .btn-ghost { display: none; }
   .header-actions .btn-entrar { display: inline-flex; }
+  .site-header { backdrop-filter: none; -webkit-backdrop-filter: none; }
   .main-nav {
     position: fixed; top: var(--header-h); left: 0; right: 0; bottom: 0; margin: 0; flex-direction: column; align-items: stretch; gap: .25rem;
     background: rgba(11, 16, 32, .98); padding: 1.25rem 1.25rem 2rem; overflow-y: auto; display: none;
