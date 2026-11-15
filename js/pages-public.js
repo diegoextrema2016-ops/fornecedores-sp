@@ -238,7 +238,7 @@ export function home() {
           api.loadFeaturedPublic().then((linhas) => {
             if (!linhas.length) { box.closest('section')?.remove(); return; }
             const categorias = store.categories.list();
-            box.innerHTML = linhas.map((s) => `<div class="featured-item">${cardDestaquePublico(s, categorias.find((c) => c.id === s.category_id)?.name || '')}</div>`).join('');
+            box.innerHTML = linhas.map((s) => `<div class="featured-item dp-item">${cardDestaquePublico(s, categorias.find((c) => c.id === s.category_id)?.name || '')}</div>`).join('');
             box.closest('[data-carousel]').querySelectorAll('[data-carousel-prev], [data-carousel-next]').forEach((b) => { b.hidden = linhas.length < 2; });
           }).catch(() => box.closest('section')?.remove());
         }
