@@ -117,7 +117,8 @@ async function doRefresh() {
   const slugMap = new Map(categories.map((c) => [c.id, c.slug]));
   const suppliers = rawSuppliers.map((r) => M.supplierFromRow(r, slugMap));
   // Imagens: URLs assinadas só para quem recebeu as linhas acima (o banco recusa o resto).
-  const signed = await api.signImageUrls(imageRefsOf(rawSuppliers));
+  // Começa já, em paralelo com o perfil; a tela não espera por ela (as fotos entram depois).
+  const signing = api.signImageUrls(imageRefsOf(rawSuppliers)).catch(() => new Map());
 
   let session = null;
   let favorites = guestFavorites();
@@ -156,12 +157,16 @@ async function doRefresh() {
     }
   }
 
-  signedImages = signed;
   Object.assign(state, { session, categories, suppliers, favorites, subscriptions, users, allSubscriptions, regions: catalog.regions.map(M.regionFromRow) });
   lastRefreshAt = Date.now();
   everLoaded = true;
   saveAdminSnapshot();
   saveSessionCache();
+  signing.then((signed) => {
+    signedImages = signed;
+    saveSessionCache();
+    if (typeof window !== 'undefined') window.dispatchEvent(new Event('spf:imagens'));
+  });
 }
 
 // ---------- Autenticação ----------
@@ -608,6 +613,7 @@ function saveSessionCache() {
     sessionStorage.setItem(SESSION_CACHE_KEY, JSON.stringify({
       at: lastRefreshAt, session: state.session, categories: state.categories, regions: state.regions,
       suppliers: state.suppliers, favorites: state.favorites, subscriptions: state.subscriptions,
+      signed: [...signedImages.entries()], signedAt: Date.now(),
     }));
   } catch {
     // Espaço cheio ou armazenamento bloqueado: segue sem a cópia.
@@ -625,6 +631,10 @@ function restoreSessionCache() {
     });
     lastRefreshAt = Number(snap.at) || 0;
     everLoaded = true;
+    // URLs assinadas valem 1 hora: reaproveitamos só enquanto têm folga.
+    if (Array.isArray(snap.signed) && Date.now() - (Number(snap.signedAt) || 0) < 45 * 60 * 1000) {
+      signedImages = new Map(snap.signed);
+    }
   } catch {
     try { sessionStorage.removeItem(SESSION_CACHE_KEY); } catch {}
   }
