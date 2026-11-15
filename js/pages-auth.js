@@ -1,5 +1,6 @@
 // Telas dos links de e-mail: pedir recuperação, criar nova senha, retorno de confirmação/troca de e-mail e "Minha conta".
 import { SITE } from './config.js';
+import { authFrameHtml } from './visual.js';
 import { store } from './store.js';
 import { api, authReturn } from './api.js';
 import { go } from './nav.js';
@@ -38,15 +39,19 @@ export function forgotPasswordPage() {
     noindex: true,
     html: `
     ${breadcrumbs([{ label: 'Início', href: '/site' }, { label: 'Entrar', href: '/login' }, { label: 'Recuperar senha' }])}
-    <section class="container section-tight narrow" id="forgot-area">
-      <h1>Recuperar senha</h1>
-      <form class="card form" id="forgot-form" novalidate>
+    ${authFrameHtml({
+      eyebrow: 'Acesso à conta',
+      title: 'Recuperar senha',
+      lead: 'Enviaremos um link para criar uma nova senha no seu e-mail.',
+      id: 'forgot-area',
+      corpo: `
+      <form class="form" id="forgot-form" novalidate>
         <p class="muted">Informe o e-mail da sua conta. Se ele estiver cadastrado, enviaremos um link para criar uma nova senha.</p>
         <div class="field"><label for="f-email">E-mail</label><input id="f-email" name="email" type="email" required autocomplete="email"><span class="field-error" id="err-email" role="alert"></span></div>
         <button class="btn btn-primary btn-lg" type="submit">Enviar link</button>
         <p class="muted small"><a href="/login">Voltar para entrar</a></p>
-      </form>
-    </section>`,
+      </form>`,
+    })}`,
     mount: (root) => {
       const form = root.querySelector('#forgot-form');
       form.addEventListener('submit', async (ev) => {
@@ -80,9 +85,13 @@ export function resetPasswordPage() {
     noindex: true,
     html: `
     ${breadcrumbs([{ label: 'Início', href: '/site' }, { label: 'Nova senha' }])}
-    <section class="container section-tight narrow" id="reset-area" aria-busy="true">
-      <p class="muted">Verificando seu link…</p>
-    </section>`,
+    ${authFrameHtml({
+      eyebrow: 'Recuperação de senha',
+      title: 'Criar nova senha',
+      lead: 'Escolha uma senha nova para voltar a acessar a sua conta.',
+      id: 'reset-area',
+      corpo: '<p class="muted" aria-busy="true">Verificando seu link…</p>',
+    })}`,
     mount: async (root) => {
       const area = root.querySelector('#reset-area');
       const expired = (text) => {
@@ -106,7 +115,7 @@ export function resetPasswordPage() {
 
       area.removeAttribute('aria-busy');
       area.innerHTML = `
-        <h1>Criar nova senha</h1>
+        <h2>Nova senha</h2>
         <form class="card form" id="reset-form" novalidate>
           <div class="field"><label for="n-pass">Nova senha (mínimo 8 caracteres)</label><input id="n-pass" name="password" type="password" required autocomplete="new-password"><span class="field-error" id="err-password" role="alert"></span></div>
           <div class="field"><label for="n-conf">Confirmar nova senha</label><input id="n-conf" name="confirm" type="password" required autocomplete="new-password"><span class="field-error" id="err-confirm" role="alert"></span></div>
@@ -218,14 +227,18 @@ export function resendConfirmationPage() {
     noindex: true,
     html: `
     ${breadcrumbs([{ label: 'Início', href: '/site' }, { label: 'Entrar', href: '/login' }, { label: 'Reenviar confirmação' }])}
-    <section class="container section-tight narrow" id="resend-area">
-      <h1>Pedir novo e-mail de confirmação</h1>
-      <form class="card form" id="resend-form" novalidate>
+    ${authFrameHtml({
+      eyebrow: 'Confirmação de e-mail',
+      title: 'Pedir novo e-mail de confirmação',
+      lead: 'O link de confirmação expirou ou não chegou? Envie outro para o seu e-mail.',
+      id: 'resend-area',
+      corpo: `
+      <form class="form" id="resend-form" novalidate>
         <p class="muted">Informe o e-mail usado no cadastro. Se a conta ainda não estiver confirmada, enviaremos um novo link.</p>
         <div class="field"><label for="c-email">E-mail</label><input id="c-email" name="email" type="email" required autocomplete="email"><span class="field-error" id="err-email" role="alert"></span></div>
         <button class="btn btn-primary btn-lg" type="submit">Enviar novo link</button>
-      </form>
-    </section>`,
+      </form>`,
+    })}`,
     mount: (root) => {
       const form = root.querySelector('#resend-form');
       form.addEventListener('submit', async (ev) => {

@@ -8,6 +8,8 @@
 import { SITE, BANNERS, SUPABASE } from '../js/config.js';
 import { bannersMarkup, bannerPreloadLinks as preloadBanners } from '../js/banners.js';
 import { planosMainHtml, guiasIndexMainHtml, guiaMainHtml, REGIAO_TEXTO, regiaoPrep } from '../js/conteudo.js';
+import { headerHtml, footerHtml, icon as svgIcon, iconeDaCategoria } from '../js/visual.js';
+const svgSeta = () => svgIcon('arrow', 16);
 
 // Categorias com restrição legal (venda proibida pela Anvisa, por exemplo) ficam fora do Google.
 export const RESTRICTED_CATEGORY_SLUGS = ['vapers-e-acessorios'];
@@ -154,40 +156,19 @@ export function documentHtml({ title, description, path, noindex = false, jsonld
 // Navegação simples em HTML puro. O app substitui pelo cabeçalho completo quando carrega.
 // Cabeçalho da versão pré-gerada: igual ao do site (marca, menu e Entrar), para a troca na carga ser invisível.
 export function staticHeader() {
-  return `<header class="site-header" id="site-header">
-    <div class="container header-inner">
-      <a class="brand" href="/site" aria-label="${esc(SITE.name)} - início">
-        <span class="brand-mark" aria-hidden="true">SP</span>
-        <span class="brand-text"><strong>FORNECEDORES</strong><small>ATACADO SP</small></span>
-      </a>
-      ${staticNav()}
-      <div class="header-actions">
-        <a class="btn btn-ghost" href="/login">Entrar</a>
-        <a class="btn btn-primary hide-sm" href="/cadastro">Cadastrar fornecedor</a>
-        <button class="icon-btn menu-toggle" type="button" aria-controls="main-nav" aria-expanded="false" aria-label="Abrir menu">☰</button>
-      </div>
-    </div>
-  </header>`;
+  return headerHtml({ session: null, route: '', pularConteudo: false });
 }
 
-// Faixa de banners igual à do site (mesmo markup de js/banners.js).
 export function staticBanners() {
   return bannersMarkup(BANNERS, esc);
 }
 
 export function staticNav() {
-  return `<nav class="main-nav" aria-label="Principal">
-  <a href="/site">Início</a> <a href="/categorias">Categorias</a> <a href="/fornecedores">Fornecedores</a> <a href="/mapa">Mapa</a> <a href="/sobre">Como funciona</a> <a class="nav-cta" href="/cadastro">Cadastrar fornecedor</a>
-</nav>`;
+  return staticHeader();
 }
 
 export function staticFooter() {
-  return `<footer class="site-footer">
-  <nav aria-label="Rodapé">
-    <a href="/categorias">Categorias</a> <a href="/fornecedores">Fornecedores</a> <a href="/mapa">Mapa</a> <a href="/cadastro">Cadastre sua loja</a> <a href="/sobre">Sobre</a> <a href="/contato">Contato</a> <a href="/privacidade">Privacidade</a> <a href="/termos">Termos de uso</a>
-  </nav>
-  <p>${esc(SITE.name)} · São Paulo</p>
-</footer>`;
+  return footerHtml();
 }
 
 function breadcrumbHtml(items) {
@@ -211,17 +192,29 @@ export function homePage({ categories, regions }) {
   const regLinks = regions.map((r) => `<li><a href="/regiao/${esc(r.slug)}">${esc(r.name)}</a></li>`).join('');
   // Mesma ordem e mesmo texto da home do app (js/pages-public.js): hero, banners, categorias.
   // Assim a troca da versão pré-gerada para o app não mexe no topo da página (banner não pula nem muda).
+  const mosaico = categories.slice(0, 6).map((c) => `<a class="mosaic-tile" href="/categorias/${esc(c.slug)}"><span class="mosaic-ico" aria-hidden="true">${iconeDaCategoria(c.slug, 20)}</span><strong>${esc(c.name)}</strong><span class="mosaic-go" aria-hidden="true">${svgSeta()}</span></a>`).join('');
+  // Mesma ordem e mesmo texto da home do app (js/pages-public.js): hero, banners, categorias.
+  // Assim a troca da versão pré-gerada para o app não mexe no topo da página (banner não pula nem muda).
   const main = `
   <section class="hero">
-    <div class="container hero-inner">
-      <p class="eyebrow">25 de Março · Brás · Pari · Bom Retiro</p>
-      <h1>Encontre fornecedores de atacado em São Paulo</h1>
-      <p class="lead">Compare lojas e distribuidores por categoria, subcategoria e bairro, e encontre o fornecedor certo para o seu negócio.</p>
-      <p class="small muted">O catálogo de fornecedores é exclusivo para assinantes. <a href="/planos">Conheça os planos</a>.</p>
+    <div class="container hero-grid">
+      <div class="hero-copy">
+        <p class="eyebrow-pill"><span class="dot" aria-hidden="true"></span>Atacado em São Paulo · 25 de Março, Brás, Pari e Bom Retiro</p>
+        <h1>Encontre fornecedores de atacado em São Paulo</h1>
+        <p class="lead">Compare lojas e distribuidores por categoria, subcategoria e bairro. Veja tipo de venda e pedido mínimo antes de falar com cada um.</p>
+        <div class="hero-actions">
+          <a class="btn btn-ghost-light btn-lg" href="/categorias">Explorar categorias</a>
+          <a class="btn btn-primary btn-lg" href="/planos">Ver planos de acesso</a>
+        </div>
+        <p class="small muted">O catálogo de fornecedores é exclusivo para assinantes.</p>
+      </div>
+      <aside class="hero-visual" aria-label="Categorias em destaque">
+        <div class="hero-mosaic">${mosaico}</div>
+      </aside>
     </div>
   </section>
-  ${staticBanners()}
-  <section class="container section-tight">
+  <section class="container banner-block">${staticBanners()}</section>
+  <section class="section-tight container">
     <h2>Categorias</h2>
     <ul class="plain-list two-col">${catLinks}</ul>
     <h2>Bairros e regiões</h2>

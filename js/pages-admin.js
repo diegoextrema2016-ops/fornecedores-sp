@@ -1,6 +1,7 @@
 // Painel administrativo. Acesso protegido pelo router (exige sessão de administrador).
 // Todas as gravações vão ao Supabase; o banco também confere se quem grava é administrador.
 import { SITE } from './config.js';
+import { icon as ico } from './visual.js';
 import { store } from './store.js';
 import { go, currentLocation } from './nav.js';
 import { escapeHtml as e, formatDate, formatCount, slugify } from './utils.js';
@@ -40,7 +41,7 @@ function instant(gravacao, rerender, okMessage) {
 
 // Casca comum do painel: barra lateral + conteúdo.
 export function adminLayout(active, title, body) {
-  const link = (href, key, label) => `<a class="${active === key ? 'is-active' : ''}" href="${href}">${label}</a>`;
+  const link = (href, key, label, icone) => `<a class="${active === key ? 'is-active' : ''}" href="${href}">${ico(icone, 18)}<span>${label}</span></a>`;
   const pending = store.suppliers.list({ status: 'pending' }).length;
   const payPending = store.subscriptions.adminList().filter((s) => s.status === 'pending').length;
   return {
@@ -49,19 +50,23 @@ export function adminLayout(active, title, body) {
     html: `
     <div class="admin-shell">
       <aside class="admin-side" aria-label="Painel">
-        <strong class="admin-brand">Painel</strong>
-        ${link('/admin', 'dashboard', 'Visão geral')}
-        ${link('/admin/pendentes', 'pending', `Pendentes${pending ? ` (${pending})` : ''}`)}
-        ${link('/admin/fornecedores', 'suppliers', 'Fornecedores')}
-        ${link('/admin/novo', 'new', 'Adicionar fornecedor')}
-        ${link('/admin/categorias', 'categories', 'Categorias')}
-        ${link('/admin/regioes', 'regions', 'Bairros e cidades')}
-        ${link('/admin/pagamentos', 'payments', `Pagamentos${payPending ? ` (${payPending})` : ''}`)}
-        ${link('/admin/usuarios', 'users', 'Usuários')}
-        ${link('/admin/migracao', 'backup', 'Backup e migração')}
-        <a href="/sair">Sair</a>
-      </aside>
+        <span class="admin-brand">Painel<small>Fornecedores SP</small></span>
+        <span class="admin-group">Operação</span>
+        ${link('/admin', 'dashboard', 'Visão geral', 'chart')}
+        ${link('/admin/pendentes', 'pending', `Pendentes${pending ? ` (${pending})` : ''}`, 'clock')}
+        ${link('/admin/fornecedores', 'suppliers', 'Fornecedores', 'store')}
+        ${link('/admin/novo', 'new', 'Adicionar fornecedor', 'spark')}
+        <span class="admin-group">Catálogo</span>
+        ${link('/admin/categorias', 'categories', 'Categorias', 'grid')}
+        ${link('/admin/regioes', 'regions', 'Bairros e cidades', 'map')}
+        <span class="admin-group">Financeiro e acesso</span>
+        ${link('/admin/pagamentos', 'payments', `Pagamentos${payPending ? ` (${payPending})` : ''}`, 'wallet')}
+        ${link('/admin/usuarios', 'users', 'Usuários', 'users')}
+        ${link('/admin/migracao', 'backup', 'Backup e migração', 'tag')}
+        <a class="admin-exit" href="/sair">${ico('logout', 18)}<span>Sair</span></a>
+      </aside>      </aside>
       <section class="admin-main">
+        <p class="eyebrow">Painel administrativo</p>
         <h1>${e(title)}</h1>
         ${body}
       </section>

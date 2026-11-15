@@ -4,6 +4,7 @@ import { store } from './store.js';
 import { go } from './nav.js';
 import { validateUser, escapeHtml as e } from './utils.js';
 import { toast, breadcrumbs, fieldError } from './ui.js';
+import { authFrameHtml } from './visual.js';
 import { supplierFormHtml, checkSupplierForm, readImages, LIMITS } from './forms.js';
 
 const fieldsOf = (form) => Object.fromEntries(new FormData(form).entries());
@@ -22,16 +23,20 @@ export function loginPage() {
     description: 'Acesse sua conta no Fornecedores Atacado SP.',
     html: `
     ${breadcrumbs([{ label: 'Início', href: '/site' }, { label: 'Entrar' }])}
-    <section class="container section-tight narrow">
-      <h1>Entrar</h1>
-      <form class="card form" id="login-form" novalidate>
+    ${authFrameHtml({
+      eyebrow: 'Área do cliente',
+      title: 'Entrar na sua conta',
+      lead: 'Acesse seus favoritos, o status do seu cadastro e a sua assinatura.',
+      id: 'login-area',
+      corpo: `
+      <form class="form" id="login-form" novalidate>
         <div class="field"><label for="l-email">E-mail</label><input id="l-email" name="email" type="email" required autocomplete="email"><span class="field-error" id="err-email" role="alert"></span></div>
         <div class="field"><label for="l-pass">Senha</label><input id="l-pass" name="password" type="password" required autocomplete="current-password"><span class="field-error" id="err-password" role="alert"></span></div>
         <button class="btn btn-primary btn-lg" type="submit">Entrar</button>
-        <p class="muted small"><a href="/esqueci-senha">Esqueci minha senha</a></p>
-        <p class="muted small">Ainda não tem conta? <a href="/registro">Criar conta</a></p>
-      </form>
-    </section>`,
+        <p class="small muted"><a href="/esqueci-senha">Esqueci minha senha</a></p>
+        <p class="small muted">Ainda não tem conta? <a href="/registro">Criar conta</a></p>
+      </form>`,
+    })}`,
     mount: (root) => {
       const form = root.querySelector('#login-form');
       form.addEventListener('submit', async (ev) => {
@@ -63,17 +68,21 @@ export function registerPage() {
     description: 'Crie sua conta para salvar fornecedores, assinar o acesso aos contatos e cadastrar sua loja.',
     html: `
     ${breadcrumbs([{ label: 'Início', href: '/site' }, { label: 'Criar conta' }])}
-    <section class="container section-tight narrow" id="register-area">
-      <h1>Criar conta</h1>
-      <form class="card form" id="register-form" novalidate>
+    ${authFrameHtml({
+      eyebrow: 'Novo por aqui?',
+      title: 'Criar sua conta',
+      lead: 'Uma conta libera seus favoritos e o acompanhamento do cadastro da sua loja.',
+      id: 'register-area',
+      corpo: `
+      <form class="form" id="register-form" novalidate>
         <div class="field"><label for="r-name">Nome</label><input id="r-name" name="name" required autocomplete="name"><span class="field-error" id="err-name" role="alert"></span></div>
         <div class="field"><label for="r-email">E-mail</label><input id="r-email" name="email" type="email" required autocomplete="email"><span class="field-error" id="err-email" role="alert"></span></div>
         <div class="field"><label for="r-pass">Senha (mínimo 8 caracteres)</label><input id="r-pass" name="password" type="password" required autocomplete="new-password"><span class="field-error" id="err-password" role="alert"></span></div>
         <div class="field"><label for="r-conf">Confirmar senha</label><input id="r-conf" name="confirm" type="password" required autocomplete="new-password"><span class="field-error" id="err-confirm" role="alert"></span></div>
         <button class="btn btn-primary btn-lg" type="submit">Criar conta</button>
-        <p class="muted small">Enviaremos um e-mail para confirmar o endereço. Não use uma senha que você usa em outros sites.</p>
-      </form>
-    </section>`,
+        <p class="small muted">Enviaremos um e-mail para confirmar o endereço. Não use uma senha que você usa em outros sites.</p>
+      </form>`,
+    })}`,
     mount: (root) => {
       const form = root.querySelector('#register-form');
       form.addEventListener('submit', async (ev) => {
@@ -146,8 +155,11 @@ export function cadastroPage() {
     html: `
     ${breadcrumbs([{ label: 'Início', href: '/site' }, { label: 'Cadastrar fornecedor' }])}
     <section class="container section-tight">
-      <h1>Cadastre sua loja e seja encontrado por compradores de todo o Brasil.</h1>
-      <p class="lead">Preencha os dados abaixo. Após o envio, seu cadastro fica pendente até a aprovação.</p>
+      <div class="page-head">
+        <p class="eyebrow">Para fornecedores</p>
+        <h1>Cadastre sua loja e seja encontrado por compradores de todo o Brasil.</h1>
+        <p class="lead">Preencha os dados abaixo. Após o envio, seu cadastro fica pendente até a aprovação.</p>
+      </div>
       <div class="notice notice-warn" role="note">
         Anuncie apenas produtos lícitos. Itens com venda proibida por lei ou por norma de órgãos reguladores (como a Anvisa) não podem ser cadastrados.
       </div>

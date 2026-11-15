@@ -13,6 +13,7 @@ import {
   saleLabels, supplierMapLinks, toast, photosCarousel,
 } from './ui.js';
 import { planosMainHtml, guiasIndexMainHtml, guiaMainHtml, guiaPorSlug, REGIAO_TEXTO, regiaoPrep } from './conteudo.js';
+import { icon as svg, iconeDaCategoria } from './visual.js';
 
 // Planos, índice de guias e guias: o mesmo conteúdo que o build gera em HTML (js/conteudo.js).
 export function plansPage() {
@@ -118,34 +119,55 @@ export function home() {
   const featured = store.suppliers.approved().filter((s) => s.featured);
   const blurred = !canSeeCatalog();
   const popular = ['Eletrônicos', 'Moda feminina', 'Tênis', 'Acessórios', 'Perfumes'];
+  const mosaico = allCategories().slice(0, 6);
   return {
     title: 'Fornecedores Atacado SP | Brás, Moda, Tênis e Eletrônicos',
     description: 'Encontre fornecedores de atacado em São Paulo, Brás e 25 de Março. Explore lojas de roupas, moda feminina, tênis, eletrônicos e muito mais.',
     html: `
     <section class="hero">
-      <div class="container hero-inner">
-        <p class="eyebrow">25 de Março · Brás · Pari · Bom Retiro</p>
-        <h1>Encontre fornecedores de atacado em São Paulo</h1>
-        <p class="lead">Compare lojas e distribuidores por categoria, subcategoria e bairro, e encontre o fornecedor certo para o seu negócio.</p>
-        <form class="search-hero" role="search" data-search-form data-target="/fornecedores">
-          <label class="sr-only" for="hero-q">Buscar</label>
-          <span class="search-icon">${icon.search}</span>
-          <input id="hero-q" name="q" type="search" placeholder="Busque produtos, fornecedores ou categorias..." autocomplete="off">
-          <button class="btn btn-primary" type="submit">Buscar</button>
-        </form>
-        <div class="chips" aria-label="Pesquisas populares" data-populares>
-          <span class="muted small">Populares:</span>
-          ${popular.map(chipPopular).join('')}
+      <div class="container hero-grid">
+        <div class="hero-copy">
+          <p class="eyebrow-pill"><span class="dot" aria-hidden="true"></span>Atacado em São Paulo · 25 de Março, Brás, Pari e Bom Retiro</p>
+          <h1>Encontre fornecedores de atacado em São Paulo</h1>
+          <p class="lead">Compare lojas e distribuidores por categoria, subcategoria e bairro. Veja tipo de venda e pedido mínimo antes de falar com cada um.</p>
+          <form class="search-hero" role="search" data-search-form data-target="/fornecedores">
+            <label class="sr-only" for="hero-q">Buscar</label>
+            <span class="search-icon" aria-hidden="true">${icon.search}</span>
+            <input id="hero-q" name="q" type="search" placeholder="Busque produto, fornecedor ou categoria" autocomplete="off">
+            <button class="btn btn-primary" type="submit">Buscar ${svg('arrow', 16)}</button>
+          </form>
+          <div class="hero-tools">
+            <div class="chips" aria-label="Pesquisas populares" data-populares>
+              <span class="muted small">Populares:</span>
+              ${popular.map(chipPopular).join('')}
+            </div>
+          </div>
+          <div class="hero-actions">
+            <a class="btn btn-ghost-light btn-lg" href="/categorias">Explorar categorias</a>
+            ${blurred
+              ? '<a class="btn btn-primary btn-lg" href="/planos">Ver planos de acesso</a>'
+              : '<a class="btn btn-primary btn-lg" href="/fornecedores">Ver todos os fornecedores</a>'}
+          </div>
         </div>
+        <aside class="hero-visual" aria-label="Categorias em destaque">
+          <div class="hero-mosaic">
+            ${mosaico.map((c) => `<a class="mosaic-tile" href="/categorias/${e(c.slug)}">
+              <span class="mosaic-ico" aria-hidden="true">${iconeDaCategoria(c.slug, 20)}</span>
+              <strong>${e(c.name)}</strong>
+              <span class="mosaic-go" aria-hidden="true">${svg('arrow', 16)}</span>
+            </a>`).join('')}
+          </div>
+          <p class="hero-note">${icon.lock}<span>Contatos, WhatsApp e endereços completos são exclusivos para assinantes.</span></p>
+        </aside>
       </div>
     </section>
 
-    ${bannersHtml()}
+    <section class="container banner-block">${bannersHtml()}</section>
 
-    <section class="section container">
+    <section class="section container" id="categorias">
       <div class="section-head">
-        <div><h2>Categorias</h2><p class="muted">Escolha um segmento e veja os fornecedores.</p></div>
-        <a href="/categorias" class="link-arrow">Ver todas →</a>
+        <div><p class="eyebrow">Segmentos</p><h2>Categorias de fornecedores</h2><p class="muted">Escolha um segmento e veja quem vende nele.</p></div>
+        <a href="/categorias" class="link-arrow">Ver todas as categorias ${svg('arrow', 16)}</a>
       </div>
       <div class="grid grid-categories">
         ${topCategoryCard()}
@@ -155,7 +177,7 @@ export function home() {
 
     ${featured.length ? `
     <section class="section container">
-      <div class="section-head"><div><h2>Conheça fornecedores em destaque.</h2><p class="muted">Seleção feita pela equipe do portal.</p></div></div>
+      <div class="section-head"><div><p class="eyebrow">Seleção da equipe</p><h2>Fornecedores em destaque</h2><p class="muted">Escolhidos pela equipe do portal.</p></div></div>
       <div class="carousel-wrap featured-wrap${blurred ? ' is-blurred' : ''}" data-carousel>
         ${featured.length > 1 && !blurred ? '<button class="carousel-arrow carousel-prev" type="button" data-carousel-prev aria-label="Anterior">&#8249;</button>' : ''}
         <div class="carousel-track featured-track">${featured.map((s) => `<div class="featured-item">${supplierCard(s, {
@@ -171,19 +193,22 @@ export function home() {
     </section>` : ''}
 
     <section class="section container" id="como-funciona-resumo">
+      <div class="section-head"><div><p class="eyebrow">Como funciona</p><h2>Do primeiro contato à negociação</h2></div></div>
       <div class="steps">
-        <div><span class="step-n">1</span><h3>Pesquise</h3><p class="muted">Por produto, fornecedor, categoria ou bairro.</p></div>
-        <div><span class="step-n">2</span><h3>Compare</h3><p class="muted">Veja tipo de venda, atacado, varejo e pedido mínimo.</p></div>
-        <div><span class="step-n">3</span><h3>Fale com o fornecedor</h3><p class="muted">Com o acesso de assinante, o WhatsApp e o endereço de cada fornecedor ficam liberados.</p></div>
+        <div><span class="step-n">01</span><span class="step-ico" aria-hidden="true">${icon.search}</span><h3>Pesquise</h3><p class="muted">Por produto, fornecedor, categoria ou bairro.</p></div>
+        <div><span class="step-n">02</span><span class="step-ico" aria-hidden="true">${svg('filter', 22)}</span><h3>Compare</h3><p class="muted">Veja tipo de venda, atacado, varejo e pedido mínimo.</p></div>
+        <div><span class="step-n">03</span><span class="step-ico" aria-hidden="true">${icon.wa}</span><h3>Fale com o fornecedor</h3><p class="muted">Com o acesso de assinante, o WhatsApp e o endereço de cada fornecedor ficam liberados.</p></div>
       </div>
     </section>
 
-    <section class="unlock-band container">
-      <div>
-        <h2>Quer o WhatsApp e o endereço de cada fornecedor?</h2>
-        <p class="muted">Os contatos completos ficam disponíveis para assinantes. Veja os planos e libere o acesso.</p>
+    <section class="container">
+      <div class="unlock-band">
+        <div>
+          <h2>Quer o WhatsApp e o endereço de cada fornecedor?</h2>
+          <p class="muted">Os contatos completos ficam disponíveis para assinantes. Veja os planos e libere o acesso.</p>
+        </div>
+        <button class="btn btn-primary btn-lg" type="button" data-action="unlock">Ver planos de acesso</button>
       </div>
-      <button class="btn btn-primary btn-lg" type="button" data-action="unlock">Ver planos de acesso</button>
     </section>
 
     <section class="cta-band container">
@@ -191,7 +216,7 @@ export function home() {
         <h2>Tem uma loja ou distribuidora?</h2>
         <p class="muted">Cadastre seu negócio e seja encontrado por compradores de todo o Brasil. Os cadastros passam por aprovação.</p>
       </div>
-      <a class="btn btn-primary btn-lg" href="/cadastro">Cadastrar fornecedor</a>
+      <a class="btn btn-primary btn-lg" href="/cadastro">Cadastrar fornecedor ${svg('arrow', 18)}</a>
     </section>`,
     mount: (root) => {
       root.querySelectorAll('[data-search-form]').forEach((f) => wireSearchForm(f));
@@ -256,12 +281,13 @@ function topCategoryCard() {
   const n = rankCategoriesByAccess(allCategories(), store.suppliers.approved()).length;
   return `
   <a class="category-card category-card-top" href="/categorias/mais-acessados">
-    <span class="category-icon" aria-hidden="true">🔥</span>
+    <span class="category-icon" aria-hidden="true">${svg('spark', 22)}</span>
     <span class="category-body">
       <strong>Mais acessados</strong>
-      <span class="muted small">As categorias com mais acessos aos fornecedores do site.</span>
+      <span class="category-desc">As categorias com mais acessos aos fornecedores do site.</span>
       <span class="category-count">${n} ${n === 1 ? 'categoria com fornecedores' : 'categorias com fornecedores'}</span>
     </span>
+    <span class="category-go" aria-hidden="true">${icon.arrow}</span>
   </a>`;
 }
 
@@ -373,8 +399,10 @@ function listingPage({ title, description, crumbs, heading, intro, fixed, base, 
     html: `
     ${breadcrumbs(crumbs)}
     <section class="container section-tight">
-      <h1>${e(heading)}</h1>
-      ${intro ? `<p class="lead">${e(intro)}</p>` : ''}
+      <div class="page-head">
+        <h1>${e(heading)}</h1>
+        ${intro ? `<p class="lead">${e(intro)}</p>` : ''}
+      </div>
       <div class="listing">
         <aside class="filters" aria-label="Filtros">
           <details class="filters-details" ${window.matchMedia('(min-width: 1025px)').matches ? 'open' : ''}>
@@ -384,7 +412,7 @@ function listingPage({ title, description, crumbs, heading, intro, fixed, base, 
         </aside>
         <div class="listing-main">
           <div class="listing-toolbar">
-            <p class="muted" role="status" aria-live="polite">${formatCount(p.total)} ${p.total === 1 ? 'fornecedor encontrado' : 'fornecedores encontrados'}</p>
+            <p class="count-pill" role="status" aria-live="polite">${formatCount(p.total)} ${p.total === 1 ? 'fornecedor encontrado' : 'fornecedores encontrados'}</p>
           </div>
           ${p.items.length
             ? `${blurGate(`<div class="grid grid-3">${p.items.map((s) => supplierCard(s, {

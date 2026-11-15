@@ -2,6 +2,7 @@
 // Usado pelo build (páginas pré-geradas) e pelo app, para o texto ser o mesmo nas duas versões.
 // Regra: nada aqui cita número, preço ou dado de fornecedor específico. Preços vêm de js/config.js (PLANS).
 import { PLANS, SITE } from './config.js';
+import { icon as ico } from './visual.js';
 
 const ENT = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
 const esc = (v = '') => String(v ?? '').replace(/[&<>"']/g, (c) => ENT[c]);
@@ -89,32 +90,80 @@ const brl = (v) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency:
 export const planosOferecidos = () => PLANS.filter((p) => p.offered !== false);
 
 // Marcação do conteúdo principal (sem cabeçalho e rodapé). Mesma marcação serve para o app e para o build.
+// Benefícios reais do acesso completo (cada item existe no site hoje).
+const BENEFICIOS_DO_ACESSO = [
+  'WhatsApp de todos os fornecedores',
+  'Instagram, site e endereço completo de cada loja',
+  'Rota no Google Maps e mapa por bairro',
+  'Fotos das lojas, em tela cheia',
+  'Filtros por categoria, subcategoria, bairro e tipo de venda',
+  'Favoritos salvos na sua conta',
+];
+
 export function planosMainHtml() {
   const cards = planosOferecidos().map((p) => `
-      <article class="card">
-        <h2>${esc(p.name)}</h2>
-        <p class="plan-price"><strong>${esc(brl(p.price))}</strong> <span class="muted">por ${esc(String(p.days))} dias</span></p>
-        <p>${esc(p.description)}</p>
+      <article class="plan-feature">
+        <div class="plan-top">
+          <span class="pill">${ico('spark', 14)} Acesso completo</span>
+          <h2>${esc(p.name)}</h2>
+          <p class="plan-price"><strong>${esc(brl(p.price))}</strong> <span class="muted">por ${esc(String(p.days))} dias</span></p>
+          <p class="muted">${esc(p.description)}</p>
+        </div>
+        <div class="plan-body">
+          <ul class="benefit-list">${BENEFICIOS_DO_ACESSO.map((b) => `<li>${ico('check', 14)}<span>${esc(b)}</span></li>`).join('')}</ul>
+          <div class="plan-cta">
+            <button class="btn btn-primary btn-lg btn-block" type="button" data-action="unlock">Assinar com Pix</button>
+            <p class="plan-note">Pagamento por Pix. Depois da confirmação, o acesso aos contatos é liberado.</p>
+          </div>
+        </div>
       </article>`).join('');
   return `
     <section class="container section-tight">
       <nav class="breadcrumbs" aria-label="Você está em"><ol><li><a href="/site">Início</a></li><li aria-current="page">Planos</li></ol></nav>
-      <h1>Planos de acesso aos fornecedores</h1>
-      <p class="lead">O catálogo inteiro de fornecedores é exclusivo para assinantes. Com a assinatura ativa você vê todos os fornecedores, fotos, WhatsApp, Instagram e endereços.</p>
-      <div class="grid grid-2">${cards}</div>
-      <p><button class="btn btn-primary btn-lg" type="button" data-action="unlock">Ver planos de acesso</button></p>
-      <p class="small muted">O pagamento é feito por Pix. Depois da confirmação, o acesso aos contatos é liberado.</p>
+      <div class="page-head">
+        <p class="eyebrow">Acesso aos contatos</p>
+        <h1>Planos de acesso aos fornecedores</h1>
+        <p class="lead">O catálogo inteiro de fornecedores é exclusivo para assinantes. Com a assinatura ativa você vê todos os fornecedores, fotos, WhatsApp, Instagram e endereços.</p>
+      </div>
+      ${cards}
+      <div class="compare">
+        <div class="compare-col">
+          <h3>${ico('user', 18)} Sem assinatura</h3>
+          <ul>
+            <li>${ico('check', 14)}<span>Categorias e guias de compra</span></li>
+            <li>${ico('check', 14)}<span>Informações sobre o portal e os planos</span></li>
+            <li>${ico('check', 14)}<span>Cadastro da sua loja, com aprovação</span></li>
+          </ul>
+        </div>
+        <div class="compare-col is-on">
+          <h3>${ico('spark', 18)} Com assinatura ativa</h3>
+          <ul>
+            <li>${ico('check', 14)}<span>Todos os fornecedores e fichas completas</span></li>
+            <li>${ico('check', 14)}<span>WhatsApp, Instagram e endereços liberados</span></li>
+            <li>${ico('check', 14)}<span>Mapa, rotas, fotos, favoritos e filtros</span></li>
+          </ul>
+        </div>
+      </div>
     </section>`;
 }
 
 export function guiasIndexMainHtml() {
-  const items = GUIAS.map((g) => `<li><a href="/guias/${esc(g.slug)}"><strong>${esc(g.h1)}</strong></a><br><span class="small">${esc(g.description)}</span></li>`).join('');
+  const cards = GUIAS.map((g) => `
+      <a class="guide-card" href="/guias/${esc(g.slug)}">
+        <span class="category-icon" aria-hidden="true">${ico('book', 22)}</span>
+        <h2>${esc(g.h1)}</h2>
+        <p>${esc(g.description)}</p>
+        <span class="link-arrow">Ler o guia ${ico('arrow', 16)}</span>
+      </a>`).join('');
   return `
     <section class="container section-tight">
       <nav class="breadcrumbs" aria-label="Você está em"><ol><li><a href="/site">Início</a></li><li aria-current="page">Guias</li></ol></nav>
-      <h1>Guias para quem compra no atacado em São Paulo</h1>
-      <p class="lead">Textos práticos para quem quer encontrar fornecedores de atacado e revenda em São Paulo.</p>
-      <ul class="plain-list">${items}</ul>
+      <div class="page-head">
+        <p class="eyebrow">Guias</p>
+        <h1>Guias para quem compra no atacado em São Paulo</h1>
+        <p class="lead">Textos práticos para quem quer encontrar fornecedores de atacado e revenda em São Paulo.</p>
+      </div>
+      <div class="guide-grid">${cards}</div>
     </section>`;
 }
 

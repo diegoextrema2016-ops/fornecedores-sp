@@ -4,14 +4,19 @@ import { escapeHtml as e, whatsappTarget, mapsLink, formatCount, instagramHandle
 import { canSeeCatalog } from './access.js';
 import { store } from './store.js';
 import { subcategoriasDoFornecedor } from './search.js';
+import { icon as svg, iconeDaCategoria, headerHtml, footerHtml } from './visual.js';
 
+// Ícones de uso geral (mesmos nomes de antes; o desenho agora vem de js/visual.js).
 export const icon = {
-  search: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>',
-  menu: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>',
-  heart: '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M12 21s-7.5-4.6-9.5-9.1C1 8.6 3 5 6.6 5c2 0 3.4 1.1 4.4 2.5C12 6.1 13.4 5 15.4 5 19 5 21 8.6 21.5 11.9 19.5 16.4 12 21 12 21z"/></svg>',
-  pin: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 22s7-6.2 7-12a7 7 0 1 0-14 0c0 5.8 7 12 7 12z"/><circle cx="12" cy="10" r="2.5"/></svg>',
-  check: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="m5 12 4 4 10-10"/></svg>',
-  wa: '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2zm4.5-6.1c-.2-.1-1.4-.7-1.6-.8s-.4-.1-.5.1-.6.8-.8.9-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.2-.4.2-.4.6-1.2.1-.2 0-.3 0-.4l-.7-1.8c-.2-.4-.4-.4-.5-.4h-.5a.9.9 0 0 0-.6.3 2.6 2.6 0 0 0-.8 2 4.5 4.5 0 0 0 .9 2.4 10.4 10.4 0 0 0 4 3.5c1.5.6 2.1.7 2.8.6a2.4 2.4 0 0 0 1.6-1.1 2 2 0 0 0 .1-1.1c0-.1-.2-.2-.4-.3z"/></svg>',
+  search: svg('search', 20),
+  menu: svg('menu', 22),
+  heart: svg('heart', 18),
+  pin: svg('pin', 16),
+  check: svg('check', 14),
+  arrow: svg('arrow', 16),
+  lock: svg('lock', 16),
+  wa: svg('wa', 18),
+  instagram: svg('instagram', 16),
 };
 
 export function escapeAttr(v) {
@@ -19,79 +24,28 @@ export function escapeAttr(v) {
 }
 
 export function header({ session, route }) {
-  const is = (path) => (route === path ? 'is-active' : '');
-  const isAdmin = session?.role === 'admin';
-  const account = session
-    ? `<a class="btn btn-ghost" href="/favoritos" aria-label="Meus favoritos">${icon.heart}<span class="hide-sm">Favoritos</span></a>
-       <a class="btn btn-ghost hide-sm" href="/sair">Sair</a>`
-    : `<a class="btn btn-ghost" href="/login">Entrar</a>`;
-  return `
-  <a class="skip-link" href="#main">Pular para o conteúdo</a>
-  <header class="site-header" id="site-header">
-    <div class="container header-inner">
-      <a class="brand" href="/site" aria-label="${e(SITE.name)} - início">
-        <span class="brand-mark" aria-hidden="true">SP</span>
-        <span class="brand-text"><strong>FORNECEDORES</strong><small>ATACADO SP</small></span>
-      </a>
-      <nav class="main-nav" id="main-nav" aria-label="Principal">
-        <a class="${is('/site')}" href="/site">Início</a>
-        <a class="${is('/categorias')}" href="/categorias">Categorias</a>
-        <a class="${is('/fornecedores')}" href="/fornecedores">Fornecedores</a>
-        <a class="${is('/mapa')}" href="/mapa">Mapa</a>
-        <a class="${is('/sobre')}" href="/sobre">Como funciona</a>
-        <a class="nav-cta" href="/cadastro">Cadastrar fornecedor</a>
-        ${isAdmin ? '<a href="/admin">Painel</a>' : ''}
-        ${session ? '<a class="nav-account" href="/conta">Minha conta</a>' : ''}
-        ${session ? '<a class="nav-account" href="/sair">Sair da conta</a>' : ''}
-      </nav>
-      <div class="header-actions">
-        ${account}
-        <a class="btn btn-primary hide-sm" href="/cadastro">Cadastrar fornecedor</a>
-        <button class="icon-btn menu-toggle" type="button" aria-controls="main-nav" aria-expanded="false" aria-label="Abrir menu">${icon.menu}</button>
-      </div>
-    </div>
-  </header>`;
+  return headerHtml({ session, route });
 }
 
 export function footer() {
-  const year = new Date().getFullYear();
-  return `
-  <footer class="site-footer">
-    <div class="container footer-grid">
-      <div>
-        <strong class="footer-brand">${e(SITE.name)}</strong>
-        <p class="muted">${e(SITE.tagline)}</p>
-      </div>
-      <nav aria-label="Rodapé">
-        <a href="/categorias">Categorias</a>
-        <a href="/fornecedores">Fornecedores</a>
-        <a href="/mapa">Mapa</a>
-        <a href="/cadastro">Cadastre sua loja</a>
-      </nav>
-      <nav aria-label="Institucional">
-        <a href="/sobre">Sobre</a>
-        <a href="/contato">Contato</a>
-        <a href="/privacidade">Privacidade</a>
-        <a href="/termos">Termos de uso</a>
-      </nav>
-    </div>
-    <div class="container footer-bottom muted">© ${year} ${e(SITE.name)}.</div>
-  </footer>`;
+  return footerHtml();
 }
 
 export function demoBanner() {
   return `<div class="demo-banner" role="note">Modo demonstração: os fornecedores exibidos são fictícios. Cadastre dados reais pelo painel.</div>`;
 }
 
+// Cartão de categoria: ícone em destaque, nome, descrição, contagem (só para assinantes) e seta.
 export function categoryCard(cat, count) {
   return `
   <a class="category-card" href="/categorias/${e(cat.slug)}">
-    <span class="category-icon" aria-hidden="true">${e(cat.icon || '📦')}</span>
+    <span class="category-icon" aria-hidden="true">${iconeDaCategoria(cat.slug, 22)}</span>
     <span class="category-body">
       <strong>${e(cat.name)}</strong>
-      <span class="muted small">${e(cat.description || '')}</span>
+      <span class="category-desc">${e(cat.description || '')}</span>
       ${count == null ? '' : `<span class="category-count">${formatCount(count)} ${count === 1 ? 'fornecedor' : 'fornecedores'}</span>`}
     </span>
+    <span class="category-go" aria-hidden="true">${icon.arrow}</span>
   </a>`;
 }
 
@@ -169,6 +123,7 @@ export function openPhotoViewer(srcs, index = 0, alt = 'Foto') {
   host.querySelector('.photo-viewer-close').focus();
 }
 
+// Cartão de fornecedor: faixa de capa (foto ou ícone da categoria), logo sobreposta, dados e contato.
 export function supplierCard(s, { categoryName = '', regionName = '', favorite = false, unlocked = canSeeCatalog() } = {}) {
   // Para visitantes, o cartão não mostra logo nem nome reais: aparece um rótulo genérico.
   // (Visual apenas; o link da ficha ainda tem o endereço público do fornecedor.)
@@ -183,14 +138,14 @@ export function supplierCard(s, { categoryName = '', regionName = '', favorite =
     : (unlocked ? 'Abrir link do WhatsApp' : 'Link do WhatsApp');
   // Visitante não recebe o contato, então não dá para saber se o fornecedor tem WhatsApp: nunca dizemos "Sem WhatsApp".
   const contactLine = !unlocked
-    ? `<p class="contact-line small">${icon.wa} <span>WhatsApp para assinantes</span></p>`
+    ? `<p class="contact-line small">${icon.lock} <span>WhatsApp para assinantes</span></p>`
     : !hasPhone
     ? ''
     : unlocked && wa
       ? `<a class="contact-line small wa-link" href="${e(wa)}" target="_blank" rel="noopener noreferrer" aria-label="Abrir WhatsApp de ${e(s.name)}">${icon.wa} <span>${e(waText)}</span></a>`
-      : `<p class="contact-line small">${icon.wa} <span>${e(waText)}</span>${!unlocked ? ' <span class="lock-hint">· contato completo para assinantes</span>' : ''}</p>`;
+      : `<p class="contact-line small">${icon.wa} <span>${e(waText)}</span></p>`;
   const igLine = ig
-    ? `<p class="small muted">Instagram: ${e(unlocked ? '@' + ig : maskHandle(s.instagram))}</p>`
+    ? `<p class="contact-line small">${icon.instagram} <span>${e(unlocked ? '@' + ig : maskHandle(s.instagram))}</span></p>`
     : '';
   const unlockButton = '<button class="btn btn-primary" type="button" data-action="unlock">Ver contato completo</button>';
   const primaryAction = unlocked && wa
@@ -198,29 +153,42 @@ export function supplierCard(s, { categoryName = '', regionName = '', favorite =
     : (!unlocked || hasPhone
       ? unlockButton
       : '<span class="btn btn-disabled" aria-disabled="true">Sem WhatsApp</span>');
+  const foto = unlocked ? store.images.url((s.photos || [])[0]) : '';
+  const logo = unlocked ? store.images.url(s.logo) : '';
+  const capa = foto
+    ? `<img class="sc-cover" src="${e(foto)}" alt="" loading="lazy">`
+    : `<span class="sc-placeholder" aria-hidden="true">${iconeDaCategoria(s.category, 40)}</span>`;
   return `
   <article class="supplier-card">
-    <div class="supplier-card-top">
-      <div class="logo-box" aria-hidden="true">${masked ? '<span class="logo-mask">SP</span>' : (store.images.url(s.logo) ? `<img src="${e(store.images.url(s.logo))}" alt="" loading="lazy">` : e((s.name || '?').slice(0, 2).toUpperCase()))}</div>
-      <div class="supplier-title">
-        <h3><a href="/fornecedor/${e(s.slug)}">${e(shownName)}</a></h3>
+    <div class="sc-media">
+      ${capa}
+      <div class="sc-top">
         <div class="badges">
           ${s.verified ? `<span class="badge badge-verified">${icon.check} Verificado</span>` : ''}
           ${s.isDemo ? '<span class="badge badge-demo">Demonstração</span>' : ''}
-          <span class="badge">${e(categoryName)}</span>
+        </div>
+        <button class="fav-btn ${favorite ? 'is-on' : ''}" type="button" data-action="fav" data-id="${e(s.id)}" aria-pressed="${favorite}" aria-label="${favorite ? 'Remover dos favoritos' : 'Salvar nos favoritos'}">${icon.heart}</button>
+      </div>
+    </div>
+    <div class="sc-body">
+      <div class="sc-head">
+        <div class="logo-box" aria-hidden="true">${masked ? '<span class="logo-mask">SP</span>' : (logo ? `<img src="${e(logo)}" alt="">` : e((s.name || '?').slice(0, 2).toUpperCase()))}</div>
+        <div class="supplier-title">
+          <h3><a href="/fornecedor/${e(s.slug)}">${e(shownName)}</a></h3>
+          <p class="supplier-location">${icon.pin} <span>${e(location)}</span></p>
         </div>
       </div>
-      <button class="fav-btn ${favorite ? 'is-on' : ''}" type="button" data-action="fav" data-id="${e(s.id)}" aria-pressed="${favorite}" aria-label="${favorite ? 'Remover dos favoritos' : 'Salvar nos favoritos'}">${icon.heart}</button>
-    </div>
-    <p class="supplier-location muted small">${icon.pin} ${e(location)}</p>
-    ${subcategoriasTags(s)}
-    ${s.description ? `<p class="supplier-desc">${e(s.description)}</p>` : ''}
-    <p class="supplier-sale small">${saleLabels(s).map((l) => `<span class="tag">${e(l)}</span>`).join('')}</p>
-    ${contactLine}
-    ${igLine}
-    <div class="supplier-actions">
-      <a class="btn btn-secondary" href="/fornecedor/${e(s.slug)}">Ver fornecedor</a>
-      ${primaryAction}
+      <div class="sc-meta">
+        <span class="badge badge-cat">${e(categoryName)}</span>
+        ${subcategoriasTags(s)}
+      </div>
+      ${s.description ? `<p class="supplier-desc">${e(s.description)}</p>` : ''}
+      <p class="supplier-sale">${saleLabels(s).map((l) => `<span class="tag">${e(l)}</span>`).join('')}</p>
+      <div class="sc-contact">${contactLine}${igLine}</div>
+      <div class="supplier-actions">
+        <a class="btn btn-secondary" href="/fornecedor/${e(s.slug)}">Ver ficha ${icon.arrow}</a>
+        ${primaryAction}
+      </div>
     </div>
   </article>`;
 }
@@ -231,7 +199,7 @@ function subcategoriasTags(s) {
   if (!lista.length) return '';
   const mostra = lista.slice(0, 3).map((n) => `<span class="tag tag-sub">${e(n)}</span>`).join('');
   const resto = lista.length > 3 ? `<span class="tag tag-sub">+${lista.length - 3}</span>` : '';
-  return `<p class="supplier-subs small" aria-label="Subcategorias">${mostra}${resto}</p>`;
+  return `<span class="supplier-subs" aria-label="Subcategorias">${mostra}${resto}</span>`;
 }
 
 export function saleLabels(s) {
@@ -252,16 +220,16 @@ export function pagination(p, makeHref) {
   }
   return `
   <nav class="pagination" aria-label="Paginação">
-    ${p.page > 1 ? `<a class="btn btn-ghost" href="${e(makeHref(p.page - 1))}" rel="prev">← Anterior</a>` : ''}
+    ${p.page > 1 ? `<a class="btn btn-ghost btn-sm" href="${e(makeHref(p.page - 1))}" rel="prev">${svg('arrow', 16).replace('<svg', '<svg style="transform:rotate(180deg)"')} Anterior</a>` : ''}
     ${pages.map((n) => (n === '…'
-      ? '<span class="muted">…</span>'
+      ? '<span class="muted page-gap">…</span>'
       : `<a class="page-num ${n === p.page ? 'is-current' : ''}" href="${e(makeHref(n))}" ${n === p.page ? 'aria-current="page"' : ''}>${n}</a>`)).join('')}
-    ${p.page < p.totalPages ? `<a class="btn btn-ghost" href="${e(makeHref(p.page + 1))}" rel="next">Próxima →</a>` : ''}
+    ${p.page < p.totalPages ? `<a class="btn btn-ghost btn-sm" href="${e(makeHref(p.page + 1))}" rel="next">Próxima ${icon.arrow}</a>` : ''}
   </nav>`;
 }
 
 export function emptyState(title, text, actionHtml = '') {
-  return `<div class="empty-state"><h3>${e(title)}</h3><p class="muted">${e(text)}</p>${actionHtml}</div>`;
+  return `<div class="empty-state"><span class="empty-ico" aria-hidden="true">${svg('search', 26)}</span><h3>${e(title)}</h3><p class="muted">${e(text)}</p>${actionHtml}</div>`;
 }
 
 export function skeletonCards(n = 6) {
