@@ -80,9 +80,9 @@ function catalogGate({ title, description, crumbs, heading, intro = '' }) {
 // Categorias da home: com assinatura, só as que têm fornecedores (com contagem); sem, todas, só com nome.
 function categoriasDaHome(counts) {
   if (canSeeCatalog()) {
-    return allCategories().filter((c) => (counts[c.slug] || 0) > 0).slice(0, 9).map((c) => categoryCard(c, counts[c.slug] || 0)).join('');
+    return allCategories().filter((c) => (counts[c.slug] || 0) > 0).slice(0, 6).map((c) => categoryCard(c, counts[c.slug] || 0)).join('');
   }
-  return allCategories().slice(0, 9).map((c) => categoryCard(c, null)).join('');
+  return allCategories().slice(0, 6).map((c) => categoryCard(c, null)).join('');
 }
 
 // Mantém o botão de favorito sincronizado em toda a página.
