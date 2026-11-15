@@ -112,8 +112,8 @@ export function planosMainHtml() {
         <div class="plan-body">
           <ul class="benefit-list">${BENEFICIOS_DO_ACESSO.map((b) => `<li>${ico('check', 14)}<span>${esc(b)}</span></li>`).join('')}</ul>
           <div class="plan-cta">
-            <button class="btn btn-primary btn-lg btn-block" type="button" data-action="unlock">Assinar com Pix</button>
-            <p class="plan-note">Pagamento por Pix. Depois da confirmação, o acesso aos contatos é liberado.</p>
+            <button class="btn btn-primary btn-lg btn-block" type="button" data-action="unlock">Assine agora!</button>
+            <p class="plan-note">Depois do pagamento, aguardar a confirmação.</p>
           </div>
         </div>
       </article>`).join('');
