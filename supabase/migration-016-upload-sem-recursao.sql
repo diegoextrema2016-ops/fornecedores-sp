@@ -2,7 +2,7 @@
 -- A política de INSERT conferia o limite de arquivos consultando storage.objects,
 -- o que disparava as próprias políticas de SELECT e voltava para a mesma política.
 -- A contagem passa para uma função com security definer, que não cai nessa recursão.
--- O limite de 200 arquivos por conta continua valendo.
+-- O limite de 200 arquivos por conta continua valendo para contas que não são administradoras.
 
 create or replace function public.armazenamento_tem_espaco(p_uid text)
 returns boolean
@@ -11,7 +11,7 @@ security definer
 stable
 set search_path = public, storage
 as $$
-  select (
+  select public.is_admin() or (
     select count(*)
     from storage.objects o
     where o.bucket_id = 'supplier-images'
