@@ -1,5 +1,5 @@
 // Páginas públicas. Cada página exporta uma função (params, query) => { title, description, html, mount? }.
-import { SITE } from './config.js';
+import { SITE, PLANS } from './config.js';
 import { api } from './api.js';
 import { CATEGORIES, REGIONS, SUPPLIER_TYPES } from './data.js';
 import { store } from './store.js';
@@ -115,109 +115,95 @@ function blurGate(html) {
 
 export function home() {
   const counts = countByCategory();
-  const featured = store.suppliers.approved().filter((s) => s.featured);
-  const blurred = !canSeeCatalog();
   const popular = ['Eletrônicos', 'Moda feminina', 'Tênis', 'Acessórios', 'Perfumes'];
-  const mosaico = allCategories().slice(0, 6);
+  const categorias = allCategories().slice(0, 8);
+  const regioes = store.regions.list().length ? store.regions.list() : REGIONS;
+  const mensal = PLANS.find((p) => p.id === 'mensal');
+  const preco = mensal ? mensal.price.toFixed(2).replace('.', ',') : '29,90';
   return {
     title: 'Fornecedores Atacado SP | Brás, Moda, Tênis e Eletrônicos',
     description: 'Encontre fornecedores de atacado em São Paulo, Brás e 25 de Março. Explore lojas de roupas, moda feminina, tênis, eletrônicos e muito mais.',
     html: `
-    <section class="hero">
-      <div class="container hero-grid">
-        <div class="hero-copy">
-          <p class="eyebrow-pill"><span class="dot" aria-hidden="true"></span>Atacado em São Paulo · 25 de Março, Brás, Pari e Bom Retiro</p>
-          <h1>Encontre fornecedores de atacado em São Paulo</h1>
-          <p class="lead">Compare lojas e distribuidores por categoria, subcategoria e bairro. Veja tipo de venda e pedido mínimo antes de falar com cada um.</p>
-          <form class="search-hero" role="search" data-search-form data-target="/fornecedores">
-            <label class="sr-only" for="hero-q">Buscar</label>
-            <span class="search-icon" aria-hidden="true">${icon.search}</span>
-            <input id="hero-q" name="q" type="search" placeholder="Busque produto, fornecedor ou categoria" autocomplete="off">
-            <button class="btn btn-primary" type="submit">Buscar ${svg('arrow', 16)}</button>
-          </form>
-          <div class="hero-tools">
-            <div class="chips" aria-label="Pesquisas populares" data-populares>
-              <span class="muted small">Populares:</span>
-              ${popular.map(chipPopular).join('')}
-            </div>
-          </div>
-          <div class="hero-actions">
-            <a class="btn btn-ghost-light btn-lg" href="/categorias">Explorar categorias</a>
-            ${blurred
-              ? '<a class="btn btn-primary btn-lg" href="/planos">Ver planos de acesso</a>'
-              : '<a class="btn btn-primary btn-lg" href="/fornecedores">Ver todos os fornecedores</a>'}
-          </div>
+    <section class="hm-hero">
+      <div class="container hm-hero-inner">
+        <h1>Encontre fornecedores para o seu negócio</h1>
+        <p class="hm-lead">Pesquise por produto, categoria ou bairro de São Paulo e encontre atacadistas e distribuidores sem complicação.</p>
+        <form class="hm-search" role="search" data-search-form data-target="/fornecedores">
+          <label class="sr-only" for="hero-q">Buscar</label>
+          <span class="hm-search-ico" aria-hidden="true">${icon.search}</span>
+          <input id="hero-q" name="q" type="search" placeholder="O que você procura? Ex.: tênis, bolsas, eletrônicos" autocomplete="off">
+          <button class="btn btn-primary hm-search-btn" type="submit">Buscar</button>
+        </form>
+        <div class="hm-popular chips" aria-label="Buscas populares" data-populares>
+          <span class="muted small">Populares:</span>
+          ${popular.map(chipPopular).join('')}
         </div>
-        <aside class="hero-visual" aria-label="Categorias em destaque">
-          <div class="hero-mosaic">
-            ${mosaico.map((c) => `<a class="mosaic-tile" href="/categorias/${e(c.slug)}">
-              <span class="mosaic-ico" aria-hidden="true">${iconeDaCategoria(c.slug, 20)}</span>
-              <strong>${e(c.name)}</strong>
-              <span class="mosaic-go" aria-hidden="true">${svg('arrow', 16)}</span>
-            </a>`).join('')}
-          </div>
-          <p class="hero-note">${icon.lock}<span>Contatos, WhatsApp e endereços completos são exclusivos para assinantes.</span></p>
-        </aside>
       </div>
     </section>
 
-    <section class="section container" id="categorias">
-      <div class="section-head">
-        <div><p class="eyebrow">Segmentos</p><h2>Categorias de fornecedores</h2><p class="muted">Escolha um segmento e veja quem vende nele.</p></div>
-        <a href="/categorias" class="link-arrow">Ver todas as categorias ${svg('arrow', 16)}</a>
-      </div>
-      <div class="grid grid-categories">
-        ${topCategoryCard()}
-        ${categoriasDaHome(counts)}
-      </div>
-    </section>
-
-    ${featured.length ? `
-    <section class="section container">
-      <div class="section-head"><div><p class="eyebrow">Seleção da equipe</p><h2>Fornecedores em destaque</h2><p class="muted">Escolhidos pela equipe do portal.</p></div></div>
-      <div class="carousel-wrap featured-wrap${blurred ? ' is-blurred' : ''}" data-carousel>
-        ${featured.length > 1 && !blurred ? '<button class="carousel-arrow carousel-prev" type="button" data-carousel-prev aria-label="Anterior">&#8249;</button>' : ''}
-        <div class="carousel-track featured-track">${featured.map((s) => `<div class="featured-item">${supplierCard(s, {
-          categoryName: catName[s.category], regionName: regName[s.bairro], favorite: store.favorites.has(s.id),
-        })}</div>`).join('')}</div>
-        ${featured.length > 1 && !blurred ? '<button class="carousel-arrow carousel-next" type="button" data-carousel-next aria-label="Próximo">&#8250;</button>' : ''}
-        ${blurred ? `<div class="blur-cta">
-          <p><strong>Assine para ver os fornecedores em destaque</strong></p>
-          <p class="small muted">Contatos completos, WhatsApp e endereço liberados após o pagamento via Pix.</p>
-          <button class="btn btn-primary" type="button" data-action="unlock">Ver planos de acesso</button>
-        </div>` : ''}
-      </div>
-    </section>` : ''}
-
-    <section class="section container" id="como-funciona-resumo">
-      <div class="section-head"><div><p class="eyebrow">Como funciona</p><h2>Do primeiro contato à negociação</h2></div></div>
-      <div class="steps">
-        <div><span class="step-n">01</span><span class="step-ico" aria-hidden="true">${icon.search}</span><h3>Pesquise</h3><p class="muted">Por produto, fornecedor, categoria ou bairro.</p></div>
-        <div><span class="step-n">02</span><span class="step-ico" aria-hidden="true">${svg('filter', 22)}</span><h3>Compare</h3><p class="muted">Veja tipo de venda, atacado, varejo e pedido mínimo.</p></div>
-        <div><span class="step-n">03</span><span class="step-ico" aria-hidden="true">${icon.wa}</span><h3>Fale com o fornecedor</h3><p class="muted">Com o acesso de assinante, o WhatsApp e o endereço de cada fornecedor ficam liberados.</p></div>
-      </div>
-    </section>
-
-    <section class="container">
-      <div class="unlock-band">
-        <div>
-          <h2>Quer o WhatsApp e o endereço de cada fornecedor?</h2>
-          <p class="muted">Os contatos completos ficam disponíveis para assinantes. Veja os planos e libere o acesso.</p>
+    <section class="hm-section">
+      <div class="container">
+        <div class="hm-head">
+          <h2>Categorias</h2>
+          <a class="link-arrow" href="/categorias">Ver todas ${svg('arrow', 16)}</a>
         </div>
-        <button class="btn btn-primary btn-lg" type="button" data-action="unlock">Ver planos de acesso</button>
+        <div class="hm-cats">
+          ${categorias.map((c) => `<a class="hm-cat" href="/categorias/${e(c.slug)}">
+            <span class="hm-cat-ico" aria-hidden="true">${iconeDaCategoria(c.slug, 24)}</span>
+            <span class="hm-cat-name">${e(c.name)}</span>
+            ${canSeeCatalog() && counts[c.slug] ? `<span class="hm-cat-count">${counts[c.slug]} fornecedores</span>` : ''}
+          </a>`).join('')}
+        </div>
       </div>
     </section>
 
-    <section class="cta-band container">
-      <div>
-        <h2>Tem uma loja ou distribuidora?</h2>
-        <p class="muted">Cadastre seu negócio e seja encontrado por compradores de todo o Brasil. Os cadastros passam por aprovação.</p>
+    <section class="hm-section hm-section-gray">
+      <div class="container">
+        <div class="hm-head"><h2>Regiões de São Paulo</h2></div>
+        <div class="hm-regions">
+          ${regioes.map((r) => `<a class="hm-region" href="/regiao/${e(r.slug)}">${e(r.name)}</a>`).join('')}
+        </div>
       </div>
-      <a class="btn btn-primary btn-lg" href="/cadastro">Cadastrar fornecedor ${svg('arrow', 18)}</a>
+    </section>
+
+    <section class="hm-section">
+      <div class="container">
+        <div class="hm-head"><h2>Como funciona</h2></div>
+        <div class="hm-steps">
+          <div class="hm-step"><span class="hm-step-n">01</span><h3>Pesquise</h3><p>Por produto, fornecedor, categoria ou bairro.</p></div>
+          <div class="hm-step"><span class="hm-step-n">02</span><h3>Compare</h3><p>Veja tipo de venda, atacado, varejo e pedido mínimo.</p></div>
+          <div class="hm-step"><span class="hm-step-n">03</span><h3>Fale com o fornecedor</h3><p>Com o acesso de assinante, WhatsApp e endereço ficam liberados.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="hm-section hm-section-gray">
+      <div class="container">
+        <div class="hm-head"><h2>Planos</h2></div>
+        <div class="hm-plan">
+          <div>
+            <p class="hm-plan-name">${mensal ? e(mensal.name) : 'Acesso completo mensal'}</p>
+            <p class="hm-plan-price">R$ ${preco} <span>por 30 dias</span></p>
+            <p>Contatos, WhatsApp e endereço completos de todos os fornecedores. Pague com Pix ou cartão, e o acesso é liberado automaticamente.</p>
+          </div>
+          <a class="btn btn-primary btn-lg" href="/planos">Ver planos de acesso</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="hm-section">
+      <div class="container">
+        <div class="hm-plan">
+          <div>
+            <p class="hm-plan-name">Tem uma loja ou distribuidora?</p>
+            <p>Cadastre seu negócio e seja encontrado por compradores. Os cadastros passam por aprovação.</p>
+          </div>
+          <a class="btn btn-ghost btn-lg" href="/cadastro">Cadastrar fornecedor ${svg('arrow', 18)}</a>
+        </div>
+      </div>
     </section>`,
     mount: (root) => {
       root.querySelectorAll('[data-search-form]').forEach((f) => wireSearchForm(f));
-      wireFavorites(root);
       // Troca a lista inicial pelas buscas mais feitas no site, quando houver buscas suficientes.
       api.buscasPopulares(5).then((termos) => {
         const box = root.querySelector('[data-populares]');
