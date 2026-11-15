@@ -80,3 +80,30 @@ test('acesso vencido não soma prazo: conta a partir de agora', () => {
   const venc = novoVencimento({ agora, vencimentoAtual: '2026-10-01T00:00:00Z', dias: 30 });
   assert.equal(venc.toISOString(), '2026-12-14T12:00:00.000Z');
 });
+
+import { destinoDoServidor } from '../servidor/mercadopago.js';
+const DEV_URL = 'https://pptjmgrsukucnvyolnvn.supabase.co';
+const DEV_CHAVE = 'sb_publishable_teste_dev_0000';
+const PREVIA = { VERCEL_ENV: 'preview', VERCEL_URL: 'fornecedores-sp-git-teste.vercel.app', SUPABASE_DEV_URL: DEV_URL, SUPABASE_DEV_ANON_KEY: DEV_CHAVE, MP_AMBIENTE: 'sandbox', MP_ACCESS_TOKEN: 'TEST-token' };
+
+test('produção usa o projeto e o site de produção', () => {
+  const d = destinoDoServidor({ MP_AMBIENTE: 'producao' });
+  assert.equal(d.supabaseUrl, 'https://fzjiixiqezvvfeybydie.supabase.co');
+  assert.equal(d.siteUrl, 'https://www.fornecedoresdesp.com.br');
+  assert.equal(d.sandbox, false);
+});
+
+test('prévia válida usa só o projeto DEV, o site da prévia e o sandbox', () => {
+  const d = destinoDoServidor(PREVIA);
+  assert.equal(d.supabaseUrl, DEV_URL);
+  assert.equal(d.siteUrl, 'https://fornecedores-sp-git-teste.vercel.app');
+  assert.equal(d.sandbox, true);
+});
+
+test('prévia falha fechado: sem DEV, apontando para produção, sem sandbox ou sem token de teste', () => {
+  const { SUPABASE_DEV_URL, ...semDev } = PREVIA;
+  assert.throws(() => destinoDoServidor(semDev), /SUPABASE_DEV_URL/);
+  assert.throws(() => destinoDoServidor({ ...PREVIA, SUPABASE_DEV_URL: 'https://fzjiixiqezvvfeybydie.supabase.co' }), /PRODUÇÃO/);
+  assert.throws(() => destinoDoServidor({ ...PREVIA, MP_AMBIENTE: 'producao' }), /sandbox/);
+  assert.throws(() => destinoDoServidor({ ...PREVIA, MP_ACCESS_TOKEN: 'APP_USR-producao' }), /TEST-/);
+});
