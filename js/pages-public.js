@@ -118,7 +118,6 @@ export function home() {
   const featured = store.suppliers.approved().filter((s) => s.featured);
   const blurred = !canSeeCatalog();
   const popular = ['Eletrônicos', 'Moda feminina', 'Tênis', 'Acessórios', 'Perfumes'];
-  const mosaico = allCategories().slice(0, 6);
   return {
     title: 'Fornecedores Atacado SP | Brás, Moda, Tênis e Eletrônicos',
     description: 'Encontre fornecedores de atacado em São Paulo, Brás e 25 de Março. Explore lojas de roupas, moda feminina, tênis, eletrônicos e muito mais.',
@@ -149,13 +148,6 @@ export function home() {
           </div>
         </div>
         <aside class="hero-visual" aria-label="Categorias em destaque">
-          <div class="hero-mosaic">
-            ${mosaico.map((c) => `<a class="mosaic-tile" href="/categorias/${e(c.slug)}">
-              <span class="mosaic-ico" aria-hidden="true">${iconeDaCategoria(c.slug, 20)}</span>
-              <strong>${e(c.name)}</strong>
-              <span class="mosaic-go" aria-hidden="true">${svg('arrow', 16)}</span>
-            </a>`).join('')}
-          </div>
           <p class="hero-note">${icon.lock}<span>Contatos, WhatsApp e endereços completos são exclusivos para assinantes.</span></p>
         </aside>
       </div>
