@@ -113,6 +113,28 @@ function blurGate(html) {
   </div>`;
 }
 
+// Card de destaque para visitantes: só dados públicos (migração 014). Sem WhatsApp, Instagram nem endereço.
+function cardDestaquePublico(s, nomeCategoria) {
+  const logo = s.logo_url
+    ? `<img src="${e(s.logo_url)}" alt="" loading="lazy" width="56" height="56">`
+    : `<span class="dp-inicial" aria-hidden="true">${e((s.name || '?').charAt(0).toUpperCase())}</span>`;
+  const tags = (s.tags || []).slice(0, 3).map((x) => `<span class="dp-tag">${e(x)}</span>`).join('');
+  const meta = [nomeCategoria, regName[s.bairro] || s.city].filter(Boolean).map((x) => e(x)).join(' · ');
+  return `<article class="dp-card">
+    <div class="dp-head">
+      <span class="dp-logo">${logo}</span>
+      <div class="dp-title">
+        <strong>${e(s.name)}</strong>
+        ${s.verified ? '<span class="dp-verif">Verificado</span>' : ''}
+        <span class="dp-meta">${meta}</span>
+      </div>
+    </div>
+    ${s.description ? `<p class="dp-desc">${e(s.description)}</p>` : ''}
+    ${tags ? `<div class="dp-tags">${tags}</div>` : ''}
+    <a class="btn btn-ghost btn-sm dp-ficha" href="/fornecedor/${e(s.slug)}">Ver ficha ${svg('arrow', 16)}</a>
+  </article>`;
+}
+
 export function home() {
   const counts = countByCategory();
   const featured = store.suppliers.approved().filter((s) => s.featured);
@@ -164,21 +186,20 @@ export function home() {
       </div>
     </section>
 
-    ${featured.length ? `
+    ${featured.length || blurred ? `
     <section class="section container">
       <div class="section-head"><div><p class="eyebrow">Seleção da equipe</p><h2>Fornecedores em destaque</h2><p class="muted">Escolhidos pela equipe do portal.</p></div></div>
-      <div class="carousel-wrap featured-wrap${blurred ? ' is-blurred' : ''}" data-carousel>
-        ${featured.length > 1 && !blurred ? '<button class="carousel-arrow carousel-prev" type="button" data-carousel-prev aria-label="Anterior">&#8249;</button>' : ''}
+      ${blurred ? `<div class="carousel-wrap featured-wrap">
+        <div class="carousel-track featured-track" data-destaques-publicos></div>
+      </div>
+      <p class="small muted">Contatos completos, WhatsApp e endereço são liberados para assinantes. <button class="btn btn-ghost btn-sm" type="button" data-action="unlock">Ver planos de acesso</button></p>` : `
+      <div class="carousel-wrap featured-wrap" data-carousel>
+        ${featured.length > 1 ? '<button class="carousel-arrow carousel-prev" type="button" data-carousel-prev aria-label="Anterior">&#8249;</button>' : ''}
         <div class="carousel-track featured-track">${featured.map((s) => `<div class="featured-item">${supplierCard(s, {
           categoryName: catName[s.category], regionName: regName[s.bairro], favorite: store.favorites.has(s.id),
         })}</div>`).join('')}</div>
-        ${featured.length > 1 && !blurred ? '<button class="carousel-arrow carousel-next" type="button" data-carousel-next aria-label="Próximo">&#8250;</button>' : ''}
-        ${blurred ? `<div class="blur-cta">
-          <p><strong>Assine para ver os fornecedores em destaque</strong></p>
-          <p class="small muted">Contatos completos, WhatsApp e endereço liberados após o pagamento via Pix.</p>
-          <button class="btn btn-primary" type="button" data-action="unlock">Ver planos de acesso</button>
-        </div>` : ''}
-      </div>
+        ${featured.length > 1 ? '<button class="carousel-arrow carousel-next" type="button" data-carousel-next aria-label="Próximo">&#8250;</button>' : ''}
+      </div>`}
     </section>` : ''}
 
     <section class="section container" id="como-funciona-resumo">
@@ -209,6 +230,16 @@ export function home() {
     </section>`,
     mount: (root) => {
       root.querySelectorAll('[data-search-form]').forEach((f) => wireSearchForm(f));
+      if (blurred) {
+        const box = root.querySelector('[data-destaques-publicos]');
+        if (box) {
+          api.loadFeaturedPublic().then((linhas) => {
+            if (!linhas.length) { box.closest('section')?.remove(); return; }
+            const categorias = store.categories.list();
+            box.innerHTML = linhas.map((s) => `<div class="featured-item">${cardDestaquePublico(s, categorias.find((c) => c.id === s.category_id)?.name || '')}</div>`).join('');
+          }).catch(() => box.closest('section')?.remove());
+        }
+      }
       wireFavorites(root);
       // Troca a lista inicial pelas buscas mais feitas no site, quando houver buscas suficientes.
       api.buscasPopulares(5).then((termos) => {
