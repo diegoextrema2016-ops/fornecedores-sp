@@ -21,7 +21,7 @@ function showErrors(form, errors) {
 export function loginPage() {
   return {
     title: `Entrar | ${SITE.shortName}`,
-    description: 'Acesse sua conta no Fornecedores Atacado SP.',
+    description: 'Acesse sua conta no Fornecedores de SP.',
     html: `
     ${breadcrumbs([{ label: 'Início', href: '/site' }, { label: 'Entrar' }])}
     ${authFrameHtml({
@@ -135,7 +135,7 @@ export async function logout() {
 export function cadastroPage() {
   const session = store.session.get();
   const title = `Cadastre sua loja | ${SITE.shortName}`;
-  const description = 'Cadastre seu negócio no Fornecedores Atacado SP e seja encontrado por compradores de todo o Brasil.';
+  const description = 'Cadastre seu negócio no Fornecedores de SP e seja encontrado por compradores de todo o Brasil.';
   if (!session) {
     // Depois de criar a conta ou entrar, a pessoa volta para este formulário.
     guardaDestino('/cadastro');

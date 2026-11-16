@@ -124,10 +124,10 @@ async function main() {
   await write('mapa/index.html', seo.catalogShellPage({ path: '/mapa', title: 'Mapa de fornecedores', h1: 'Mapa de fornecedores por bairro', description: 'Mapa de fornecedores por bairro em São Paulo, exclusivo para assinantes.' }));
 
   const info = [
-    { path: '/sobre', title: 'Como funciona', h1: 'Como funciona', description: 'Conheça o Fornecedores Atacado SP e como funciona o portal.' },
-    { path: '/contato', title: 'Contato', h1: 'Contato', description: 'Fale com a equipe do Fornecedores Atacado SP.' },
-    { path: '/privacidade', title: 'Privacidade', h1: 'Política de privacidade', description: 'Como o Fornecedores Atacado SP trata os dados de visitantes e de quem cadastra fornecedores.' },
-    { path: '/termos', title: 'Termos de uso', h1: 'Termos de uso', description: 'Regras de uso do Fornecedores Atacado SP para visitantes e fornecedores cadastrados.' },
+    { path: '/sobre', title: 'Como funciona', h1: 'Como funciona', description: 'Conheça o Fornecedores de SP e como funciona o portal.' },
+    { path: '/contato', title: 'Contato', h1: 'Contato', description: 'Fale com a equipe do Fornecedores de SP.' },
+    { path: '/privacidade', title: 'Privacidade', h1: 'Política de privacidade', description: 'Como o Fornecedores de SP trata os dados de visitantes e de quem cadastra fornecedores.' },
+    { path: '/termos', title: 'Termos de uso', h1: 'Termos de uso', description: 'Regras de uso do Fornecedores de SP para visitantes e fornecedores cadastrados.' },
   ];
   for (const page of info) {
     await write(`${page.path.slice(1)}/index.html`, seo.staticInfoPage(page));

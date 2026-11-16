@@ -21,15 +21,15 @@ export function plansPage(query) {
   // Volta do checkout sem aprovação (?pagamento=recusado): avisa antes dos planos.
   const aviso = avisoDoRetorno(query?.get('pagamento') === 'recusado' ? 'recusado' : '');
   return {
-    title: 'Planos de acesso aos contatos | Fornecedores Atacado SP',
-    description: 'Conheça os planos do Fornecedores Atacado SP e tenha acesso ao WhatsApp, Instagram e endereço dos fornecedores de São Paulo.',
+    title: 'Planos de acesso aos contatos | Fornecedores de SP',
+    description: 'Conheça os planos do Fornecedores de SP e tenha acesso ao WhatsApp, Instagram e endereço dos fornecedores de São Paulo.',
     html: (aviso ? `<div class="container"><div class="notice notice-warn" role="alert"><span><strong>${e(aviso.titulo)}.</strong> ${e(aviso.texto)}</span></div></div>` : '') + planosMainHtml(),
   };
 }
 
 export function guidesIndexPage() {
   return {
-    title: 'Guias de fornecedores e atacado em São Paulo | Fornecedores Atacado SP',
+    title: 'Guias de fornecedores e atacado em São Paulo | Fornecedores de SP',
     description: 'Guias práticos para encontrar fornecedores de atacado em São Paulo, comprar roupas no atacado e escolher fornecedores para revenda.',
     html: guiasIndexMainHtml(),
   };
@@ -163,7 +163,7 @@ export function home() {
   const blurred = !canSeeCatalog();
   const popular = ['Eletrônicos', 'Moda feminina', 'Tênis', 'Acessórios', 'Perfumes'];
   return {
-    title: 'Fornecedores Atacado SP | Brás, Moda, Tênis e Eletrônicos',
+    title: 'Fornecedores de SP | Brás, Moda, Tênis e Eletrônicos',
     description: 'Encontre fornecedores de atacado em São Paulo, Brás e 25 de Março. Explore lojas de roupas, moda feminina, tênis, eletrônicos e muito mais.',
     html: `
     <section class="hero">
@@ -425,6 +425,7 @@ function listingPage({ title, description, crumbs, heading, intro, fixed, base, 
     q: query.get('q') || '',
     category: query.get('categoria') || '',
     subcategory: query.get('subcategoria') || '',
+    bairro: query.get('bairro') || '',
     wholesale: query.get('atacado') === '1',
     retail: query.get('varejo') === '1',
     whatsapp: query.get('whatsapp') === '1',
@@ -498,6 +499,7 @@ function listingPage({ title, description, crumbs, heading, intro, fixed, base, 
           const nomeSub = partes.length > 1 ? partes[1] : sub;
           if (!fixed.category) put('categoria', slugSub || fd.get('categoria'));
           put('subcategoria', nomeSub);
+          if (!fixed.bairro) put('bairro', fd.get('bairro'));
           for (const k of ['atacado', 'varejo', 'whatsapp', 'verificado']) if (fd.get(k)) params.set(k, '1');
           put('ordem', fd.get('ordem') !== 'relevance' ? fd.get('ordem') : '');
           const qs = params.toString();
@@ -560,6 +562,15 @@ function filterForm({ f, fixed, base, sort }) {
       </select>
     </div>`}
     ${subcategoriaCampo}
+    ${fixed.bairro ? '' : `
+    <div class="field">
+      <label for="f-bairro">Bairro</label>
+      <select id="f-bairro" name="bairro">
+        <option value="">Todos os bairros</option>
+        ${store.regions.list().slice().sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'))
+          .map((r) => `<option value="${e(r.slug)}" ${f.bairro === r.slug ? 'selected' : ''}>${e(r.name)}</option>`).join('')}
+      </select>
+    </div>`}
     <fieldset class="field">
       <legend>Venda</legend>
       ${check('atacado', 'Venda no atacado', f.wholesale)}
@@ -775,7 +786,7 @@ export function favoritesPage() {
 export function aboutPage() {
   return {
     title: `Sobre o portal | ${SITE.shortName}`,
-    description: 'Conheça o Fornecedores Atacado SP e como funciona o portal.',
+    description: 'Conheça o Fornecedores de SP e como funciona o portal.',
     html: `
     ${breadcrumbs([{ label: 'Início', href: '/site' }, { label: 'Como funciona' }])}
     <section class="container prose" id="como-funciona">
@@ -801,7 +812,7 @@ export function aboutPage() {
 export function contactPage() {
   return {
     title: `Contato | ${SITE.shortName}`,
-    description: 'Fale com a equipe do Fornecedores Atacado SP.',
+    description: 'Fale com a equipe do Fornecedores de SP.',
     html: `
     ${breadcrumbs([{ label: 'Início', href: '/site' }, { label: 'Contato' }])}
     <section class="container section-tight narrow">

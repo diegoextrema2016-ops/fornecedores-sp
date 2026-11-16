@@ -179,7 +179,7 @@ export function listJoin(items) {
 
 // Home pré-gerada: textos e links para categorias e bairros (só nomes). Sem fornecedores, sem destaques.
 export function homePage({ categories, regions }) {
-  const title = 'Fornecedores Atacado SP | Brás, Moda, Tênis e Eletrônicos';
+  const title = 'Fornecedores de SP | Brás, Moda, Tênis e Eletrônicos';
   const description = 'Encontre fornecedores de atacado em São Paulo, Brás e 25 de Março. Explore lojas de roupas, moda feminina, tênis, eletrônicos e muito mais.';
   const catLinks = categories.map((c) => `<li><a href="/categorias/${esc(c.slug)}">${esc(c.name)}</a></li>`).join('');
   const regLinks = regions.map((r) => `<li><a href="/regiao/${esc(r.slug)}">${esc(r.name)}</a></li>`).join('');
@@ -221,7 +221,7 @@ export function homePage({ categories, regions }) {
 // Lista de categorias: só o nome e a descrição da categoria. Sem contagem (decisão D2).
 // Fica fora do Google (noindex): sem fornecedores, a página seria pobre em conteúdo.
 export function categoriesIndexPage({ categories }) {
-  const title = 'Categorias de fornecedores | Fornecedores Atacado SP';
+  const title = 'Categorias de fornecedores | Fornecedores de SP';
   const description = 'Categorias de fornecedores de atacado em São Paulo. O catálogo é exclusivo para assinantes.';
   const items = categories.map((c) => `<li><a href="/categorias/${esc(c.slug)}"><strong>${esc(c.name)}</strong></a>${c.description ? `<br><span class="small">${esc(clean(c.description))}</span>` : ''}</li>`).join('');
   const main = `
@@ -289,7 +289,7 @@ export function catalogShellPage({ path, title, h1, description }) {
     <p>O catálogo de fornecedores é exclusivo para assinantes. <a href="/planos">Conheça os planos</a>.</p>
   </section>`;
   return documentHtml({
-    title: `${title} | Fornecedores Atacado SP`, description, path, noindex: true, mainHtml: main,
+    title: `${title} | Fornecedores de SP`, description, path, noindex: true, mainHtml: main,
     nav: staticHeader(), footer: staticFooter(),
     jsonld: [breadcrumbJsonLd([{ label: 'Início', path: '/site' }, { label: h1, path }])],
   });
@@ -304,22 +304,22 @@ export function staticInfoPage({ path, title, description, h1, noindex = false }
     <p>${esc(description)}</p>
   </section>`;
   return documentHtml({
-    title: `${title} | Fornecedores Atacado SP`, description, path, noindex, mainHtml: main, nav: staticHeader(), footer: staticFooter(),
+    title: `${title} | Fornecedores de SP`, description, path, noindex, mainHtml: main, nav: staticHeader(), footer: staticFooter(),
     jsonld: [breadcrumbJsonLd([{ label: 'Início', path: '/site' }, { label: h1, path }])],
   });
 }
 
 // Páginas que dependem de login ou só fazem sentido para o usuário logado: nunca indexadas.
-export function noindexShell({ path, title, description = 'Área restrita do Fornecedores Atacado SP.' }) {
+export function noindexShell({ path, title, description = 'Área restrita do Fornecedores de SP.' }) {
   return documentHtml({
-    title: `${title} | Fornecedores Atacado SP`, description, path, noindex: true,
+    title: `${title} | Fornecedores de SP`, description, path, noindex: true,
     mainHtml: '<section class="container section-tight"><h1>Carregando…</h1></section>', nav: '', footer: '',
   });
 }
 
 export function planosPage() {
-  const title = 'Planos de acesso ao catálogo | Fornecedores Atacado SP';
-  const description = 'Conheça os planos do Fornecedores Atacado SP e tenha acesso ao catálogo de fornecedores de São Paulo, com contatos e endereços.';
+  const title = 'Planos de acesso ao catálogo | Fornecedores de SP';
+  const description = 'Conheça os planos do Fornecedores de SP e tenha acesso ao catálogo de fornecedores de São Paulo, com contatos e endereços.';
   return documentHtml({
     title, description, path: '/planos', mainHtml: planosMainHtml(), nav: staticHeader(), footer: staticFooter(),
     jsonld: [breadcrumbJsonLd([{ label: 'Início', path: '/site' }, { label: 'Planos', path: '/planos' }])],
@@ -327,7 +327,7 @@ export function planosPage() {
 }
 
 export function guiasIndexPage() {
-  const title = 'Guias de fornecedores e atacado em São Paulo | Fornecedores Atacado SP';
+  const title = 'Guias de fornecedores e atacado em São Paulo | Fornecedores de SP';
   const description = 'Guias práticos para encontrar fornecedores de atacado em São Paulo, comprar roupas no atacado e escolher fornecedores para revenda.';
   return documentHtml({
     title, description, path: '/guias', mainHtml: guiasIndexMainHtml(), nav: staticHeader(), footer: staticFooter(),
@@ -349,7 +349,7 @@ export function guiaPage(g) {
 
 export function notFoundPage() {
   return documentHtml({
-    title: 'Página não encontrada | Fornecedores Atacado SP',
+    title: 'Página não encontrada | Fornecedores de SP',
     description: 'Página não encontrada.',
     path: '/404.html',
     noindex: true,

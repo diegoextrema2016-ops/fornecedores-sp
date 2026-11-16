@@ -317,6 +317,7 @@ export function accountPage(query) {
         <h1>Minha conta</h1>
         <div data-retorno-pagamento></div>
         <div data-acesso></div>
+        <div data-cadastro></div>
         <div class="card form">
           <p>E-mail atual: <strong>${e(user.email || '')}</strong></p>
           <form id="email-form" novalidate>
@@ -334,6 +335,18 @@ export function accountPage(query) {
         return true;
       };
       desenhaAcesso();
+      // Status do próprio cadastro de fornecedor: pendente, aprovado ou não aprovado. Só o dono vê.
+      const ROTULO_CADASTRO = {
+        pending: 'Aguardando aprovação. A equipe revisa o cadastro antes de publicar.',
+        approved: 'Aprovado e publicado no catálogo.',
+        rejected: 'Não aprovado. Fale com a equipe pela página Contato para saber o motivo.',
+      };
+      api.meusCadastros(user.id).then((lista) => {
+        const caixa = area.querySelector('[data-cadastro]');
+        if (!caixa || !area.isConnected || !lista.length) return;
+        caixa.innerHTML = `<div class="card"><h2>Seu cadastro de fornecedor</h2>${lista.map((c) => `
+          <p><strong>${e(c.name)}</strong><br><span class="muted">${e(ROTULO_CADASTRO[c.approval_status] || '')}</span></p>`).join('')}</div>`;
+      }).catch(() => {});
       if (avisoDoRetorno(parametro, store.subscriptions.isActive())?.aguardando) {
         (async () => {
           for (let i = 0; i < 10; i++) {

@@ -2,8 +2,8 @@
 // NUNCA coloque chaves secretas (service_role do Supabase, senhas de banco) neste arquivo.
 
 export const SITE = {
-  name: 'FORNECEDORES ATACADO SP',
-  shortName: 'Fornecedores Atacado SP',
+  name: 'FORNECEDORES DE SP',
+  shortName: 'Fornecedores de SP',
   tagline: 'Os melhores fornecedores de São Paulo em um só lugar.',
   description:
     'Encontre fornecedores de atacado e varejo na 25 de Março, Brás, Pari e outros polos comerciais de São Paulo.',
@@ -11,7 +11,7 @@ export const SITE = {
   locale: 'pt_BR',
   contactEmail: 'fornecedorespoficial@gmail.com',
   whatsappDefaultMessage:
-    'Olá! Encontrei o fornecedor no Fornecedores Atacado SP e gostaria de mais informações.',
+    'Olá! Encontrei o fornecedor no Fornecedores de SP e gostaria de mais informações.',
   // Opcional: chave da Google Maps Embed API. Deixe vazio para usar apenas links do Google Maps (sem chave).
   googleMapsApiKey: 'AIzaSyDlw-gg-zqtvYWyTneMFSt8-h1pEjIDEag',
   pageSize: 12,

@@ -62,6 +62,10 @@ export const api = {
   async setUserType(userId, type) {
     check(await sb.from('profiles').update({ type }).eq('id', userId));
   },
+  // Cadastros de fornecedor do próprio usuário, em qualquer status (a regra do banco só deixa ver os seus).
+  async meusCadastros(userId) {
+    return check(await sb.from('suppliers').select('name, approval_status').eq('owner_id', userId).order('created_at', { ascending: false }));
+  },
 
   // ----- Autenticação -----
   async signUp({ name, email, password, redirectTo }) {

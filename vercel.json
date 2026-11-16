@@ -36,7 +36,8 @@
   ],
   "rewrites": [
     { "source": "/admin/:path*", "destination": "/admin/index.html" },
-    { "source": "/fornecedor/:slug", "destination": "/fornecedores/index.html" },
+    { "source": "/fornecedor/:slug", "destination": "/api/fornecedor/:slug" },
+    { "source": "/favicon.ico", "destination": "/img/favicon.svg" },
     { "source": "/categorias/:slug", "destination": "/categorias/index.html" },
     { "source": "/regiao/:slug", "destination": "/mapa/index.html" }
   ]
