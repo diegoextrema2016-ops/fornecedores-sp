@@ -253,7 +253,8 @@ export function fieldError(errors, key) {
 
 export function supplierMapLinks(s) {
   return {
-    maps: mapsLink({ address: s.address, number: s.number, bairro: s.bairro, city: s.city, state: s.state, cep: s.cep }),
+    // O bairro é guardado como código (ex.: "bras"); o Google Maps recebe o nome ("Brás").
+    maps: mapsLink({ address: s.address, number: s.number, bairro: store.regions.get(String(s.bairro || ''))?.name || s.bairro, city: s.city, state: s.state, cep: s.cep }),
     site: s.site ? normalizeUrl(s.site) : '',
     ig: instagramHandle(s.instagram) ? `https://www.instagram.com/${instagramHandle(s.instagram)}/` : '',
   };

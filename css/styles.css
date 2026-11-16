@@ -80,7 +80,9 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .
 
 /* Entrada suave das telas (desliga com "reduzir movimento") */
 @keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
-main > * { animation: rise .5s var(--ease) both; }
+/* .pagina envolve cada tela (js/app.js) sem criar caixa própria no layout. */
+.pagina { display: contents; }
+main > *, .pagina > * { animation: rise .5s var(--ease) both; }
 
 .container { width: min(1200px, 100% - 2.5rem); margin-inline: auto; }
 .section { padding-block: clamp(3rem, 2.2rem + 3vw, 5rem); }

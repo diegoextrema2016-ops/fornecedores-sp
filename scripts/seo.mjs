@@ -14,8 +14,12 @@ const svgSeta = () => svgIcon('arrow', 16);
 export const RESTRICTED_CATEGORY_SLUGS = ['vapers-e-acessorios'];
 
 // Conexões antecipadas (banco e biblioteca do Supabase) e módulos do site baixados em paralelo, para abrir mais rápido.
-const APP_MODULES = ['access', 'api', 'app', 'backup', 'config', 'data', 'extract', 'forms', 'import', 'mapping', 'nav',
-  'pages-account', 'pages-admin', 'pages-public', 'paywall', 'search', 'store', 'ui', 'utils'];
+// A lista é exatamente o que js/app.js importa de forma fixa (direta ou indiretamente). O painel administrativo
+// e os módulos que só ele usa (pages-admin, import, backup) ficam de fora: são baixados só pelo administrador.
+// tests/carga.test.mjs confere a lista contra os arquivos.
+export const APP_MODULES = ['access', 'api', 'app', 'assinatura', 'auth-return', 'config', 'contato', 'conteudo', 'data',
+  'descricao', 'extract', 'forms', 'imagens', 'mapping', 'nav', 'pagamento', 'pages-account', 'pages-auth',
+  'pages-public', 'paywall', 'retorno', 'search', 'store', 'ui', 'utils', 'visual'];
 const SUPABASE_HOST = (() => { try { return new URL(SUPABASE.url).origin; } catch { return ''; } })();
 export const SHARED_HEAD_LINKS = `<link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

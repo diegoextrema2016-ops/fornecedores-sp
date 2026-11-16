@@ -34,7 +34,7 @@ export function loginPage() {
         <div class="field"><label for="l-email">E-mail</label><input id="l-email" name="email" type="email" required autocomplete="email"><span class="field-error" id="err-email" role="alert"></span></div>
         <div class="field"><label for="l-pass">Senha</label><input id="l-pass" name="password" type="password" required autocomplete="current-password"><span class="field-error" id="err-password" role="alert"></span></div>
         <button class="btn btn-primary btn-lg" type="submit">Entrar</button>
-        <p class="small muted"><a href="/esqueci-senha">Esqueci minha senha</a></p>
+        <p class="small muted"><a href="/esqueci-senha">Esqueci minha senha</a> · <a href="/reenviar-confirmacao">Não recebi o e-mail de confirmação</a></p>
         <p class="small muted">Ainda não tem conta? <a href="/registro">Criar conta</a></p>
       </form>`,
     })}`,
@@ -181,7 +181,7 @@ export function cadastroPage() {
         const button = form.querySelector('button[type="submit"]');
         button.disabled = true;
         try {
-          const logo = await readImages(form.elements.logo.files, { maxBytes: LIMITS.MAX_LOGO_BYTES, max: 1 });
+          const logo = await readImages(form.elements.logo.files, { maxBytes: LIMITS.MAX_LOGO_BYTES, max: 1, maxSide: 500 });
           const photos = await readImages(form.elements.photos.files, { maxBytes: LIMITS.MAX_PHOTO_BYTES, max: LIMITS.MAX_PHOTOS });
           const saved = await store.suppliers.save({
             ...data,

@@ -92,7 +92,7 @@ test('telefone brasileiro: aceita 10 ou 11 dígitos, com ou sem DDI', () => {
 });
 
 test('admin não precisa aceitar termos (requireTerms: false)', () => {
-  const base = { name: 'X', responsible: 'R', email: 'a@b.com', category: 'bolsas', address: 'Rua', number: '1', bairro: 'bras', cep: '03000000', description: 'd', supplierType: 'fabricante', saleWholesale: true, whatsapp: '11987654321' };
+  const base = { name: 'Loja X', responsible: 'R', email: 'a@b.com', category: 'bolsas', address: 'Rua', number: '1', bairro: 'bras', cep: '03000000', description: 'd', supplierType: 'fabricante', saleWholesale: true, whatsapp: '11987654321' };
   assert.equal(validateSupplier({ ...base, acceptTerms: false }, { requireTerms: false }).ok, true);
   assert.equal(validateSupplier({ ...base, acceptTerms: false }).ok, false);
 });
@@ -130,7 +130,7 @@ test('filtro de WhatsApp aceita fornecedor que só tem link', () => {
 });
 
 test('validação rejeita link de WhatsApp inválido', () => {
-  const base = { name: 'X', responsible: 'R', email: 'a@b.com', category: 'bolsas', address: 'Rua', number: '1', bairro: 'bras', cep: '03000000', description: 'd', supplierType: 'fabricante', saleWholesale: true, acceptTerms: true };
+  const base = { name: 'Loja X', responsible: 'R', email: 'a@b.com', category: 'bolsas', address: 'Rua', number: '1', bairro: 'bras', cep: '03000000', description: 'd', supplierType: 'fabricante', saleWholesale: true, acceptTerms: true };
   assert.equal(validateSupplier({ ...base, whatsappUrl: 'https://wa.me/5511999999999' }).ok, true);
   assert.equal(validateSupplier({ ...base, whatsappUrl: 'sem-ponto' }).ok, false);
 });

@@ -94,20 +94,23 @@ export const isInstagramHandle = (v = '') => /^[a-z0-9._]{1,30}$/i.test(instagra
 // Valida o cadastro de fornecedor. Retorna { ok, errors } com mensagens por campo.
 export function validateSupplier(data, { requireTerms = true, required = true } = {}) {
   const e = {};
-  const req = (k, label) => {
-    if (required && !String(data[k] ?? '').trim()) e[k] = `${label} é obrigatório.`;
+  const req = (k, label, feminino = false) => {
+    if (required && !String(data[k] ?? '').trim()) e[k] = `${label} é ${feminino ? 'obrigatória' : 'obrigatório'}.`;
   };
   req('name', 'Nome da empresa');
   req('responsible', 'Nome do responsável');
   req('email', 'E-mail');
-  req('category', 'Categoria');
+  req('category', 'Categoria', true);
   req('address', 'Endereço');
   req('number', 'Número');
   req('bairro', 'Bairro');
   req('cep', 'CEP');
-  req('description', 'Descrição comercial');
+  req('description', 'Descrição comercial', true);
   req('supplierType', 'Tipo de fornecedor');
 
+  // O banco exige nome com 2 a 120 caracteres: avisar aqui evita um erro técnico na hora de gravar.
+  const nome = String(data.name ?? '').trim();
+  if (nome && (nome.length < 2 || nome.length > 120)) e.name = 'O nome da empresa deve ter de 2 a 120 caracteres.';
   if (data.email && !isEmail(data.email)) e.email = 'Informe um e-mail válido.';
   if (data.whatsapp && !isBrazilPhone(data.whatsapp)) e.whatsapp = 'WhatsApp inválido. Use DDD + número.';
   if (data.whatsappUrl && !isUrl(data.whatsappUrl)) e.whatsappUrl = 'Link de WhatsApp inválido.';
@@ -131,7 +134,7 @@ export function validateSupplier(data, { requireTerms = true, required = true } 
 
 export function validateUser({ name = '', email = '', password = '', confirm = '' } = {}, { requirePassword = true } = {}) {
   const e = {};
-  if (!name.trim()) e.name = 'Informe seu nome.';
+  if (name.trim().length < 2) e.name = 'Informe seu nome.';
   if (!isEmail(email)) e.email = 'Informe um e-mail válido.';
   if (requirePassword) {
     if (password.length < 8) e.password = 'A senha deve ter pelo menos 8 caracteres.';

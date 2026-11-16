@@ -5,7 +5,11 @@ import { header, footer, toast, openPhotoViewer, skeletonCards } from './ui.js';
 import * as pub from './pages-public.js';
 import * as acc from './pages-account.js';
 import * as authPages from './pages-auth.js';
-import * as adm from './pages-admin.js';
+// O painel administrativo (e o que só ele usa: importação e backup) é baixado apenas quando um
+// administrador abre uma rota do painel. Visitantes e assinantes nunca baixam esses arquivos.
+let adm = null;
+let painelCarregando = null;
+const carregaPainel = () => (painelCarregando ||= import('./pages-admin.js').then((m) => (adm = m)).catch((err) => { painelCarregando = null; throw err; }));
 import { authReturn } from './api.js';
 import { openPaywall } from './paywall.js';
 import { go, currentLocation, normalizeTarget } from './nav.js';
@@ -187,6 +191,16 @@ async function render({ fromMemory = false } = {}) {
   }
 
   const isAdminRoute = Boolean(route?.[2]?.admin);
+  if (isAdminRoute && !adm) {
+    try {
+      await carregaPainel();
+    } catch (err) {
+      console.error('Falha ao carregar o painel:', err);
+      if (id === renderId) toast('Não foi possível abrir o painel. Verifique a conexão e tente de novo.', 'error');
+      return;
+    }
+    if (id !== renderId) return;
+  }
   const navKey = '/' + (path.split('/')[1] || '');
   headerHost.innerHTML = header({ session: store.session.get(), route: navKey });
   footerHost.innerHTML = isAdminRoute ? '' : footer();
@@ -198,10 +212,16 @@ async function render({ fromMemory = false } = {}) {
   const page = route ? route[1](match, query) : pub.notFound();
   if (page === null) return;
 
-  main.innerHTML = page.html;
+  // Cada tela nasce dentro de um elemento novo. Os ouvintes de clique que a tela registra ficam nele e
+  // somem junto quando a pessoa muda de página; registrados no <main> (que é fixo), eles se acumulavam
+  // a cada navegação e um clique passava a valer várias vezes.
+  const palco = document.createElement('div');
+  palco.className = 'pagina';
+  palco.innerHTML = page.html;
+  main.replaceChildren(palco);
   telaAtual = path;
   setMeta(page, path);
-  page.mount?.(main);
+  page.mount?.(palco);
   // "instant": a página sobe na hora, sem a animação de rolagem suave do CSS.
   window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
   main.focus({ preventScroll: true });
@@ -269,6 +289,15 @@ document.addEventListener('click', (ev) => {
   if (ev.target.closest('.main-nav a')) {
     document.getElementById('site-header')?.classList.remove('nav-open');
   }
+});
+// Esc fecha o menu do celular e devolve o foco ao botão.
+document.addEventListener('keydown', (ev) => {
+  const hdr = document.getElementById('site-header');
+  if (ev.key !== 'Escape' || !hdr?.classList.contains('nav-open')) return;
+  hdr.classList.remove('nav-open');
+  const botao = hdr.querySelector('.menu-toggle');
+  botao?.setAttribute('aria-expanded', 'false');
+  botao?.focus();
 });
 
 window.addEventListener('scroll', () => {

@@ -90,7 +90,7 @@ function categoriasDaHome(counts) {
 }
 
 // Mantém o botão de favorito sincronizado em toda a página.
-function wireFavorites(root) {
+function wireFavorites(root, { aoRemover } = {}) {
   root.addEventListener('click', (ev) => {
     const btn = ev.target.closest('[data-action="fav"]');
     if (!btn) return;
@@ -99,6 +99,7 @@ function wireFavorites(root) {
     btn.setAttribute('aria-pressed', String(on));
     btn.setAttribute('aria-label', on ? 'Remover dos favoritos' : 'Salvar nos favoritos');
     toast(on ? 'Fornecedor salvo nos favoritos.' : 'Removido dos favoritos.');
+    if (!on) aoRemover?.();
   });
 }
 
@@ -758,14 +759,15 @@ export function favoritesPage() {
     <section class="container section-tight">
       <h1>Meus fornecedores favoritos</h1>
       <p class="lead">${loggedIn
-        ? 'Seus favoritos ficam salvos na sua conta neste navegador.'
+        ? 'Seus favoritos ficam salvos na sua conta.'
         : 'Você não está logado. Os favoritos ficam salvos apenas neste navegador e não são sincronizados com uma conta.'}</p>
       ${list.length
         ? blurGate(`<div class="grid grid-3">${list.map((s) => supplierCard(s, { categoryName: catName[s.category], regionName: regName[s.bairro], favorite: true })).join('')}</div>`)
         : emptyState('Nenhum favorito ainda', 'Toque no coração de um fornecedor para salvá-lo aqui.',
           '<a class="btn btn-primary" href="/fornecedores">Ver fornecedores</a>')}
     </section>`,
-    mount: (root) => wireFavorites(root),
+    // Nesta tela, o fornecedor removido sai da lista na hora.
+    mount: (root) => wireFavorites(root, { aoRemover: () => go('/favoritos', { replace: true }) }),
   };
 }
 

@@ -22,7 +22,8 @@ export default async function handler(req, res) {
 
   const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
   const plano = planoOferecido(req.body?.planId);
-  if (!token || !plano) return res.status(400).json({ error: 'Plano inválido.' });
+  if (!token) return res.status(401).json({ error: 'Entre na sua conta para assinar.' });
+  if (!plano) return res.status(400).json({ error: 'Plano inválido.' });
 
   try {
     const usuario = await usuarioDaSessao(token, destino);

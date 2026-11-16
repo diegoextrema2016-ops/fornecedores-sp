@@ -4,7 +4,7 @@ import { authFrameHtml } from './visual.js';
 import { store } from './store.js';
 import { api, authReturn } from './api.js';
 import { go } from './nav.js';
-import { escapeHtml as e, formatDate } from './utils.js';
+import { escapeHtml as e, formatDate, isEmail } from './utils.js';
 import { toast, breadcrumbs } from './ui.js';
 import { authReturnErrorMessage, validateNewPassword, RECOVERY_MARK_KEY } from './auth-return.js';
 import { subscriptionInfo } from './access.js';
@@ -61,6 +61,7 @@ export function forgotPasswordPage() {
         ev.preventDefault();
         const { email = '' } = fieldsOf(form);
         if (!email.trim()) return showError(form, 'email', 'Informe seu e-mail.');
+        if (!isEmail(email)) return showError(form, 'email', 'Informe um e-mail válido.');
         const button = form.querySelector('button[type="submit"]');
         button.disabled = true;
         try {
