@@ -124,3 +124,12 @@ test('a função não devolve dado de fornecedor, só sim/não do banco', async 
     assert.ok(!r.corpo.includes('loja-exemplo'));
   } finally { rede.restaura(); }
 });
+
+test('migração 021: meus_cadastros só devolve o cadastro de quem está logado, sem owner_id', () => {
+  const sql = readFileSync(join(RAIZ, 'supabase', 'migration-021-meus-cadastros.sql'), 'utf8');
+  assert.match(sql, /where s\.owner_id = auth\.uid\(\)/);
+  assert.match(sql, /returns table \(name text, approval_status text\)/);
+  assert.match(sql, /grant execute on function public\.meus_cadastros\(\) to authenticated;/);
+  assert.match(sql, /revoke all on function public\.meus_cadastros\(\) from public, anon;/);
+  assert.doesNotMatch(sql, /owner_id\s*,/);
+});

@@ -341,7 +341,7 @@ export function accountPage(query) {
         approved: 'Aprovado e publicado no catálogo.',
         rejected: 'Não aprovado. Fale com a equipe pela página Contato para saber o motivo.',
       };
-      api.meusCadastros(user.id).then((lista) => {
+      api.meusCadastros().then((lista) => {
         const caixa = area.querySelector('[data-cadastro]');
         if (!caixa || !area.isConnected || !lista.length) return;
         caixa.innerHTML = `<div class="card"><h2>Seu cadastro de fornecedor</h2>${lista.map((c) => `
