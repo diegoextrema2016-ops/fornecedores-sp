@@ -172,6 +172,26 @@ export const api = {
     return (linhas || []).map((r) => r.termo);
   },
 
+  // ----- Contato: o envio é público; ler, marcar e excluir é só do administrador (migração 018) -----
+  async enviaContato({ nome, email, assunto, mensagem, site = '' }) {
+    check(await sb.rpc('envia_mensagem_contato', { p_nome: nome, p_email: email, p_assunto: assunto, p_mensagem: mensagem, p_site: site }));
+  },
+  async loadContactMessages(limite = 200) {
+    return check(await sb.from('contact_messages').select('id,name,email,subject,message,read_at,created_at').order('created_at', { ascending: false }).limit(limite));
+  },
+  async countUnreadMessages() {
+    const { count, error } = await sb.from('contact_messages').select('id', { count: 'exact', head: true }).is('read_at', null);
+    if (error) throw error;
+    return count || 0;
+  },
+  // .single(): se o banco não alterar nenhuma linha (sem permissão ou já excluída), vira erro em vez de sucesso falso.
+  async setContactMessageRead(id, lida) {
+    return check(await sb.from('contact_messages').update({ read_at: lida ? new Date().toISOString() : null }).eq('id', id).select('id,read_at').single());
+  },
+  async deleteContactMessage(id) {
+    check(await sb.from('contact_messages').delete().eq('id', id).select('id').single());
+  },
+
   // ----- Escrita: categorias e regiões (somente administrador, o banco confere) -----
   async upsertCategory(row, subcategoryNames = []) {
     const saved = check(await sb.from('categories').upsert(row, { onConflict: 'slug' }).select().single());

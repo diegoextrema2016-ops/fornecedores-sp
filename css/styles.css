@@ -752,6 +752,14 @@ fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
 }
 
+/* ---------- Painel: mensagens recebidas ---------- */
+.msg-list { display: grid; gap: .9rem; }
+.msg-card { display: grid; gap: .7rem; }
+.msg-card.is-nova { border-left: 4px solid var(--primary, #2457f5); }
+.msg-head h3 { margin: .45rem 0 .2rem; font-size: 1.05rem; }
+.msg-head p { margin: 0; }
+.msg-text { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+
 /* ---------- Destaques para visitantes (sem contatos) ---------- */
 .dp-card { display: flex; flex-direction: column; gap: .7rem; height: 100%; background: #fff; border: 1px solid #e5e7eb; border-radius: 16px; padding: 1.2rem; color: #111827; }
 .dp-head { display: flex; gap: .85rem; align-items: center; }

@@ -13,6 +13,7 @@ import {
 } from './ui.js';
 import { planosMainHtml, guiasIndexMainHtml, guiaMainHtml, guiaPorSlug, REGIAO_TEXTO, regiaoPrep } from './conteudo.js';
 import { icon as svg, iconeDaCategoria } from './visual.js';
+import { validaContato, erroDeContato, LIMITES_CONTATO } from './contato.js';
 
 // Planos, índice de guias e guias: o mesmo conteúdo que o build gera em HTML (js/conteudo.js).
 export function plansPage() {
@@ -801,22 +802,53 @@ export function contactPage() {
     <section class="container section-tight narrow">
       <h1>Contato</h1>
       <p class="lead">Dúvidas, sugestões ou problemas com o seu cadastro.</p>
+      <div id="contact-area">
       <form class="card form" id="contact-form" novalidate>
-        <div class="field"><label for="c-name">Nome</label><input id="c-name" name="name" required autocomplete="name"></div>
-        <div class="field"><label for="c-email">E-mail</label><input id="c-email" name="email" type="email" required autocomplete="email"></div>
-        <div class="field"><label for="c-msg">Mensagem</label><textarea id="c-msg" name="message" rows="5" required></textarea></div>
+        <div class="field"><label for="c-name">Nome</label><input id="c-name" name="nome" required maxlength="${LIMITES_CONTATO.nome.max}" autocomplete="name"><span class="field-error" id="err-nome" role="alert"></span></div>
+        <div class="field"><label for="c-email">E-mail</label><input id="c-email" name="email" type="email" required maxlength="${LIMITES_CONTATO.email.max}" autocomplete="email"><span class="field-error" id="err-email" role="alert"></span></div>
+        <div class="field"><label for="c-subject">Assunto</label><input id="c-subject" name="assunto" required maxlength="${LIMITES_CONTATO.assunto.max}"><span class="field-error" id="err-assunto" role="alert"></span></div>
+        <div class="field"><label for="c-msg">Mensagem</label><textarea id="c-msg" name="mensagem" rows="5" required maxlength="${LIMITES_CONTATO.mensagem.max}"></textarea><span class="field-error" id="err-mensagem" role="alert"></span></div>
+        <div class="sr-only" aria-hidden="true"><label for="c-site">Não preencha este campo</label><input id="c-site" name="site" tabindex="-1" autocomplete="off"></div>
         <button class="btn btn-primary" type="submit">Enviar</button>
-        <p class="muted small">Nesta versão, a mensagem não é enviada a nenhum servidor. Ligue a integração de e-mail ou o Supabase (ver README) para receber.</p>
+        <p class="muted small">Respondemos pelo e-mail informado. Seus dados são usados só para este atendimento.</p>
       </form>
+      </div>
       <p class="muted">Também: <a href="mailto:${e(SITE.contactEmail)}">${e(SITE.contactEmail)}</a></p>
     </section>`,
     mount: (root) => {
-      root.querySelector('#contact-form').addEventListener('submit', (ev) => {
+      const form = root.querySelector('#contact-form');
+      form.addEventListener('submit', async (ev) => {
         ev.preventDefault();
-        const f = ev.currentTarget;
-        if (!f.checkValidity()) return f.reportValidity();
-        toast('Mensagem registrada. Configure o envio para receber de fato.');
-        f.reset();
+        const { ok, errors, dados } = validaContato(Object.fromEntries(new FormData(form)));
+        form.querySelectorAll('.field-error').forEach((el) => (el.textContent = ''));
+        form.querySelectorAll('[aria-invalid]').forEach((el) => el.removeAttribute('aria-invalid'));
+        if (!ok) {
+          let primeiro = null;
+          for (const [campo, msg] of Object.entries(errors)) {
+            form.querySelector(`#err-${campo}`).textContent = msg;
+            const input = form.querySelector(`[name="${campo}"]`);
+            input.setAttribute('aria-invalid', 'true');
+            primeiro ||= input;
+          }
+          primeiro?.focus();
+          return;
+        }
+        const botao = form.querySelector('button[type="submit"]');
+        botao.disabled = true;
+        botao.textContent = 'Enviando…';
+        try {
+          await api.enviaContato(dados);
+          root.querySelector('#contact-area').innerHTML = `
+            <div class="card success" role="status">
+              <h2>Mensagem enviada</h2>
+              <p>Recebemos sua mensagem e vamos responder pelo e-mail <strong>${e(dados.email)}</strong>.</p>
+              <a class="btn btn-primary" href="/site">Voltar ao início</a>
+            </div>`;
+        } catch (err) {
+          toast(erroDeContato(err, SITE.contactEmail), 'error');
+          botao.disabled = false;
+          botao.textContent = 'Enviar';
+        }
       });
     },
   };
@@ -826,7 +858,7 @@ export function privacyPage() {
   return legalPage('Política de privacidade', `
     <p>Esta é uma política de modelo. Revise com um profissional jurídico antes de publicar (LGPD).</p>
     <h2>Dados coletados</h2>
-    <p>Nome e e-mail de contas; a senha é guardada pelo serviço de autenticação, nunca em texto puro; dados informados em cadastros de fornecedores; pedidos de assinatura; e os favoritos.</p>
+    <p>Nome e e-mail de contas; a senha é guardada pelo serviço de autenticação, nunca em texto puro; dados informados em cadastros de fornecedores; pedidos de assinatura; os favoritos; e as mensagens enviadas pelo formulário de contato (nome, e-mail, assunto e texto).</p>
     <h2>Armazenamento</h2>
     <p>Os dados ficam em banco de dados hospedado no Supabase, com regras de acesso por usuário. Os contatos completos dos fornecedores só são liberados a administradores, donos do cadastro e assinantes ativos. Os favoritos de quem não tem conta ficam apenas neste navegador.</p>
     <h2>Seus direitos</h2>

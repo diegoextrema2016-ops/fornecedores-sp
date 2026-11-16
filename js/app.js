@@ -61,6 +61,7 @@ const routes = [
   [/^\/admin\/fornecedores$/, (_p, q) => withMount(adm.adminSuppliers(q), (r) => adm.mountAdminSuppliers(r, renderLocal)), { admin: true }],
   [/^\/admin\/novo$/, () => withMount(adm.adminSupplierForm(null), (r) => adm.mountAdminSupplierForm(r, null)), { admin: true }],
   [/^\/admin\/fornecedor\/([^/]+)\/editar$/, (p) => withMount(adm.adminSupplierForm(p[1]), (r) => adm.mountAdminSupplierForm(r, p[1])), { admin: true }],
+  [/^\/admin\/mensagens$/, () => withMount(adm.adminMessages(), (r) => adm.mountAdminMessages(r)), { admin: true }],
   [/^\/admin\/categorias$/, () => withMount(adm.adminCategories(), (r) => adm.mountAdminCategories(r, renderLocal)), { admin: true }],
   [/^\/admin\/regioes$/, () => withMount(adm.adminRegions(), (r) => adm.mountAdminRegions(r, renderLocal)), { admin: true }],
   [/^\/admin\/usuarios$/, () => withMount(adm.adminUsers(), (r) => adm.mountAdminUsers(r, renderLocal)), { admin: true }],

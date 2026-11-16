@@ -8,7 +8,7 @@ import { escapeHtml as e, formatDate, formatCount, slugify } from './utils.js';
 import { toast, confirmDialog, emptyState, pagination } from './ui.js';
 import { PLANS } from './config.js';
 import { supplierFormHtml, checkSupplierForm, readImages, LIMITS } from './forms.js';
-import { sb } from './api.js';
+import { sb, api } from './api.js';
 import { parseCsv, planImport, applyImport } from './import.js';
 import { paginate, normalize, temSubcategoria, subcategoriasDoFornecedor } from './search.js';
 import { readLocalBackup, parseBackup, importBackup } from './backup.js';
@@ -39,8 +39,25 @@ function instant(gravacao, rerender, okMessage) {
   );
 }
 
+// Mensagens não lidas do formulário de contato: o número aparece no menu do painel.
+// Fica guardado entre as telas e é conferido de novo no máximo uma vez por minuto.
+let naoLidas = null;
+let naoLidasEm = 0;
+const rotuloMensagens = () => `Mensagens${naoLidas ? ` (${naoLidas})` : ''}`;
+function mostraNaoLidas(total) {
+  naoLidas = total;
+  naoLidasEm = Date.now();
+  document.querySelectorAll('[data-contador-mensagens]').forEach((el) => (el.textContent = rotuloMensagens()));
+}
+function confereNaoLidas() {
+  if (Date.now() - naoLidasEm < 60000) return;
+  naoLidasEm = Date.now();
+  api.countUnreadMessages().then(mostraNaoLidas).catch(() => {});
+}
+
 // Casca comum do painel: barra lateral + conteúdo.
 export function adminLayout(active, title, body) {
+  confereNaoLidas();
   const link = (href, key, label, icone) => `<a class="${active === key ? 'is-active' : ''}" href="${href}">${ico(icone, 18)}<span>${label}</span></a>`;
   const pending = store.suppliers.list({ status: 'pending' }).length;
   const payPending = store.subscriptions.adminList().filter((s) => s.status === 'pending').length;
@@ -56,6 +73,7 @@ export function adminLayout(active, title, body) {
         ${link('/admin/pendentes', 'pending', `Pendentes${pending ? ` (${pending})` : ''}`, 'clock')}
         ${link('/admin/fornecedores', 'suppliers', 'Fornecedores', 'store')}
         ${link('/admin/novo', 'new', 'Adicionar fornecedor', 'spark')}
+        <a class="${active === 'messages' ? 'is-active' : ''}" href="/admin/mensagens">${ico('mail', 18)}<span data-contador-mensagens>${rotuloMensagens()}</span></a>
         <span class="admin-group">Catálogo</span>
         ${link('/admin/categorias', 'categories', 'Categorias', 'grid')}
         ${link('/admin/regioes', 'regions', 'Bairros e cidades', 'map')}
@@ -857,6 +875,96 @@ export function mountAdminUsers(root, rerender) {
     if (!sel) return;
     instant(store.users.setType(sel.dataset.userType, sel.value), rerender, 'Tipo de usuário atualizado.');
     rerender();
+  });
+}
+
+// ---------- Mensagens recebidas (formulário de contato) ----------
+const dataHora = (iso) => {
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? '' : d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+};
+
+function mensagemHtml(m) {
+  const lida = Boolean(m.read_at);
+  return `
+    <article class="card msg-card${lida ? '' : ' is-nova'}" data-msg="${e(m.id)}">
+      <header class="msg-head">
+        <div>
+          <span class="badge ${lida ? 'badge-approved' : 'badge-pending'}">${lida ? 'Lida' : 'Não lida'}</span>
+          <h3>${e(m.subject)}</h3>
+          <p class="muted small"><strong>${e(m.name)}</strong> · <a href="mailto:${e(m.email)}">${e(m.email)}</a> · recebida em ${e(dataHora(m.created_at))}</p>
+        </div>
+      </header>
+      <p class="msg-text">${e(m.message)}</p>
+      <div class="pay-actions">
+        <button class="btn btn-ghost" type="button" data-msg-lida="${lida ? '0' : '1'}">${lida ? 'Marcar como não lida' : 'Marcar como lida'}</button>
+        <button class="btn btn-ghost" type="button" data-msg-excluir>Excluir</button>
+      </div>
+    </article>`;
+}
+
+function listaDeMensagensHtml(lista) {
+  if (!lista.length) return emptyState('Nenhuma mensagem recebida', 'As mensagens enviadas pelo formulário de contato aparecem aqui.');
+  const novas = lista.filter((m) => !m.read_at).length;
+  return `
+    <p class="muted">${lista.length} ${lista.length === 1 ? 'mensagem' : 'mensagens'}, ${novas} não ${novas === 1 ? 'lida' : 'lidas'}. As mais recentes aparecem primeiro.</p>
+    <div class="msg-list">${lista.map(mensagemHtml).join('')}</div>`;
+}
+
+export function adminMessages() {
+  return adminLayout('messages', 'Mensagens recebidas', `
+    <p class="muted">Mensagens enviadas pelo formulário de contato. Só administradores veem esta tela.</p>
+    <div data-mensagens aria-live="polite"><p class="muted">Carregando mensagens…</p></div>`);
+}
+
+export function mountAdminMessages(root) {
+  const box = root.querySelector('[data-mensagens]');
+  let lista = [];
+  const desenha = () => {
+    box.innerHTML = listaDeMensagensHtml(lista);
+    mostraNaoLidas(lista.filter((m) => !m.read_at).length);
+  };
+  const carrega = () => api.loadContactMessages().then(
+    (linhas) => { lista = linhas; desenha(); },
+    () => { box.innerHTML = `<div class="card"><p>Não foi possível carregar as mensagens.</p><button class="btn btn-primary" type="button" data-msg-recarregar>Tentar de novo</button></div>`; },
+  );
+  carrega();
+
+  // O ouvinte fica na área desta tela (recriada a cada desenho), não no elemento fixo da página.
+  root.querySelector('.admin-main').addEventListener('click', async (ev) => {
+    if (ev.target.closest('[data-msg-recarregar]')) {
+      box.innerHTML = '<p class="muted">Carregando mensagens…</p>';
+      return carrega();
+    }
+    const card = ev.target.closest('[data-msg]');
+    if (!card) return;
+    const m = lista.find((x) => x.id === card.dataset.msg);
+    if (!m) return;
+    const botaoLida = ev.target.closest('[data-msg-lida]');
+    if (botaoLida) {
+      const lida = botaoLida.dataset.msgLida === '1';
+      botaoLida.disabled = true;
+      const ok = await attempt(async () => {
+        const salvo = await api.setContactMessageRead(m.id, lida);
+        m.read_at = salvo.read_at;
+      }, lida ? 'Mensagem marcada como lida.' : 'Mensagem marcada como não lida.');
+      if (!ok) botaoLida.disabled = false;
+      else desenha();
+      return;
+    }
+    if (ev.target.closest('[data-msg-excluir]')) {
+      const sim = await confirmDialog({
+        title: 'Excluir a mensagem?',
+        text: `A mensagem de ${m.name} ("${m.subject}") será apagada de vez. Não dá para desfazer.`,
+        confirmLabel: 'Excluir',
+        danger: true,
+      });
+      if (!sim) return;
+      if (await attempt(() => api.deleteContactMessage(m.id), 'Mensagem excluída.')) {
+        lista = lista.filter((x) => x.id !== m.id);
+        desenha();
+      }
+    }
   });
 }
 
