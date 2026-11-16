@@ -6,6 +6,7 @@ import { validateUser, escapeHtml as e } from './utils.js';
 import { toast, breadcrumbs, fieldError } from './ui.js';
 import { authFrameHtml } from './visual.js';
 import { supplierFormHtml, checkSupplierForm, readImages, LIMITS } from './forms.js';
+import { guardaDestino, leDestino, limpaDestino, destinoDepoisDoLogin } from './retorno.js';
 
 const fieldsOf = (form) => Object.fromEntries(new FormData(form).entries());
 
@@ -51,7 +52,9 @@ export function loginPage() {
           await store.refresh();
           const session = store.session.get();
           toast(`Olá, ${(session?.name || '').split(' ')[0] || 'bem-vindo'}!`);
-          go(session?.role === 'admin' ? '/admin' : '/favoritos');
+          const destino = leDestino();
+          limpaDestino();
+          go(destinoDepoisDoLogin({ admin: session?.role === 'admin', assinante: store.subscriptions.isActive(), destino }));
         } catch (err) {
           showErrors(form, { password: err.message });
         } finally {
@@ -106,7 +109,9 @@ export function registerPage() {
           }
           await store.refresh();
           toast('Conta criada com sucesso.');
-          go('/favoritos');
+          const destino = leDestino();
+          limpaDestino();
+          go(destinoDepoisDoLogin({ destino }));
         } catch (err) {
           showErrors(form, err.message.includes('senha') ? { password: err.message } : { email: err.message });
         } finally {
@@ -132,6 +137,8 @@ export function cadastroPage() {
   const title = `Cadastre sua loja | ${SITE.shortName}`;
   const description = 'Cadastre seu negócio no Fornecedores Atacado SP e seja encontrado por compradores de todo o Brasil.';
   if (!session) {
+    // Depois de criar a conta ou entrar, a pessoa volta para este formulário.
+    guardaDestino('/cadastro');
     return {
       title,
       description,

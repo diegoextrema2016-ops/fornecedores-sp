@@ -27,3 +27,28 @@ export function novoVencimento({ agora, vencimentoAtual, dias }) {
   const base = atual && atual.getTime() > agora.getTime() ? atual : agora;
   return new Date(base.getTime() + dias * 24 * 60 * 60 * 1000);
 }
+
+// Pagamento devolvido por inteiro ou contestado no cartão: o acesso comprado com ele deve acabar.
+// Devolução parcial mantém o status "approved" no Mercado Pago e não entra aqui.
+export function pagamentoDesfeito(pagamento) {
+  return Boolean(pagamento) && (pagamento.status === 'refunded' || pagamento.status === 'charged_back');
+}
+
+// Texto mostrado quando a pessoa volta do checkout (?pagamento=aprovado|pendente|recusado).
+// O parâmetro do endereço só escolhe a mensagem: quem libera o acesso é o banco, depois do aviso do Mercado Pago.
+export function avisoDoRetorno(parametro, acessoAtivo = false) {
+  if (parametro === 'aprovado') {
+    return acessoAtivo
+      ? { tom: 'ok', titulo: 'Pagamento aprovado', texto: 'Seu acesso aos fornecedores está liberado.', aguardando: false }
+      : { tom: 'info', titulo: 'Pagamento aprovado', texto: 'Estamos confirmando com o Mercado Pago. O acesso é liberado em instantes, sem você precisar fazer nada.', aguardando: true };
+  }
+  if (parametro === 'pendente') {
+    return acessoAtivo
+      ? { tom: 'ok', titulo: 'Pagamento confirmado', texto: 'Seu acesso aos fornecedores está liberado.', aguardando: false }
+      : { tom: 'info', titulo: 'Pagamento em andamento', texto: 'O Mercado Pago ainda não confirmou o pagamento. Se você escolheu Pix, conclua o pagamento no aplicativo do seu banco. O acesso é liberado automaticamente depois da confirmação.', aguardando: true };
+  }
+  if (parametro === 'recusado') {
+    return { tom: 'erro', titulo: 'O pagamento não foi aprovado', texto: 'O acesso não foi liberado. Você pode tentar de novo, com Pix ou outro cartão.', aguardando: false };
+  }
+  return null;
+}

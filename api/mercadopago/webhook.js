@@ -1,6 +1,6 @@
 // Recebe as notificações do Mercado Pago e libera o acesso quando o pagamento é aprovado.
 // Não confia no corpo da requisição: confere a assinatura e consulta o pagamento direto na API do Mercado Pago.
-import { planoOferecido, pagamentoAprovadoValido, novoVencimento } from '../../js/pagamento.js';
+import { planoOferecido, pagamentoAprovadoValido, novoVencimento, pagamentoDesfeito } from '../../js/pagamento.js';
 import { destinoDoServidor, assinaturaMercadoPagoValida, buscarPagamento, supabaseServico } from '../../servidor/mercadopago.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -37,12 +37,30 @@ export default async function handler(req, res) {
     if (!UUID.test(assinaturaId)) return res.status(200).end();
 
     const [linha] = await supabaseServico(
-      `subscriptions?id=eq.${assinaturaId}&select=id,user_id,plan,amount,status`,
+      `subscriptions?id=eq.${assinaturaId}&select=id,user_id,plan,amount,status,mp_payment_id`,
       { destino },
     );
     if (!linha) return res.status(200).end();
-    // Já liberado: a notificação pode chegar mais de uma vez.
-    if (linha.status === 'active') return res.status(200).end();
+    if (linha.status === 'active') {
+      // Estorno total ou contestação do mesmo pagamento que liberou o acesso: o acesso acaba agora.
+      // O filtro status=eq.active faz a segunda entrega do aviso não mudar mais nada.
+      if (pagamentoDesfeito(pagamento) && String(linha.mp_payment_id || '') === String(pagamento.id)) {
+        await supabaseServico(`subscriptions?id=eq.${linha.id}&status=eq.active`, {
+          destino,
+          method: 'PATCH',
+          prefer: 'return=minimal',
+          corpo: {
+            status: 'cancelled',
+            mp_status: String(pagamento.status),
+            payment_note: pagamento.status === 'charged_back'
+              ? 'Mercado Pago: pagamento contestado no cartão; acesso encerrado'
+              : 'Mercado Pago: pagamento devolvido; acesso encerrado',
+          },
+        });
+      }
+      // Já liberado e sem estorno: a notificação pode chegar mais de uma vez.
+      return res.status(200).end();
+    }
 
     await supabaseServico(`subscriptions?id=eq.${linha.id}`, {
       destino,

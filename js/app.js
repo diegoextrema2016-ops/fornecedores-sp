@@ -9,6 +9,7 @@ import * as adm from './pages-admin.js';
 import { authReturn } from './api.js';
 import { openPaywall } from './paywall.js';
 import { go, currentLocation, normalizeTarget } from './nav.js';
+import { limpaDestino, ROTA_DE_ENTRADA } from './retorno.js';
 
 // Páginas que não devem aparecer no Google (também marcadas no HTML gerado pelo build).
 const NOINDEX_PATH = /^\/(admin|login|registro|cadastro|favoritos|sair|conta|esqueci-senha|redefinir-senha|reenviar-confirmacao)(\/|$)/;
@@ -44,11 +45,11 @@ const routes = [
   [/^\/redefinir-senha$/, () => authPages.resetPasswordPage()],
   [/^\/conta\/retorno$/, () => authPages.authReturnPage()],
   [/^\/reenviar-confirmacao$/, () => authPages.resendConfirmationPage()],
-  [/^\/conta$/, () => authPages.accountPage()],
+  [/^\/conta$/, (_p, q) => authPages.accountPage(q)],
   [/^\/sair$/, () => { acc.logout(); return null; }],
   [/^\/favoritos$/, () => pub.favoritesPage()],
   [/^\/sobre$/, () => pub.aboutPage()],
-  [/^\/planos$/, () => pub.plansPage()],
+  [/^\/planos$/, (_p, q) => pub.plansPage(q)],
   [/^\/guias$/, () => pub.guidesIndexPage()],
   [/^\/guias\/([^/]+)$/, (p) => pub.guidePage({ slug: p[1] })],
   [/^\/contato$/, () => pub.contactPage()],
@@ -191,6 +192,9 @@ async function render({ fromMemory = false } = {}) {
   footerHost.innerHTML = isAdminRoute ? '' : footer();
   document.body.classList.toggle('is-admin', isAdminRoute);
 
+  // O destino guardado para depois do login só vale enquanto a pessoa segue pelas telas de entrada.
+  // Saiu delas para outra página: o destino antigo é descartado (a própria página pode guardar um novo).
+  if (!ROTA_DE_ENTRADA.test(path)) limpaDestino();
   const page = route ? route[1](match, query) : pub.notFound();
   if (page === null) return;
 

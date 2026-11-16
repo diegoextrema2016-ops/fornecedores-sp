@@ -4,9 +4,12 @@ import { authFrameHtml } from './visual.js';
 import { store } from './store.js';
 import { api, authReturn } from './api.js';
 import { go } from './nav.js';
-import { escapeHtml as e } from './utils.js';
+import { escapeHtml as e, formatDate } from './utils.js';
 import { toast, breadcrumbs } from './ui.js';
 import { authReturnErrorMessage, validateNewPassword, RECOVERY_MARK_KEY } from './auth-return.js';
+import { subscriptionInfo } from './access.js';
+import { avisoDoRetorno } from './pagamento.js';
+import { guardaDestino } from './retorno.js';
 
 const fieldsOf = (form) => Object.fromEntries(new FormData(form).entries());
 
@@ -265,7 +268,32 @@ export function resendConfirmationPage() {
 }
 
 // ----- 4. Minha conta: troca de e-mail -----
-export function accountPage() {
+// Situação do acesso aos fornecedores, lida do banco (nunca do endereço da página).
+function acessoHtml() {
+  const sessao = store.session.get();
+  if (sessao?.role === 'admin') {
+    return '<div class="card"><h2>Acesso aos fornecedores</h2><p>Administradores têm acesso completo.</p></div>';
+  }
+  const sub = subscriptionInfo();
+  if (store.subscriptions.isActive()) {
+    return `<div class="card"><h2>Acesso aos fornecedores</h2>
+      <p>Seu acesso está <strong>ativo até ${e(formatDate(sub.expiresAt))}</strong>.</p>
+      <p class="auth-actions"><a class="btn btn-primary" href="/fornecedores">Ver fornecedores</a> <a class="btn btn-ghost" href="/planos">Renovar</a></p></div>`;
+  }
+  const pendente = sub?.status === 'pending';
+  return `<div class="card"><h2>Acesso aos fornecedores</h2>
+    <p>${pendente ? 'Você tem um pagamento aguardando confirmação do Mercado Pago. O acesso é liberado automaticamente quando ele for confirmado.' : 'Você ainda não tem acesso ativo aos contatos dos fornecedores.'}</p>
+    <p class="auth-actions"><a class="btn btn-primary" href="/planos">Ver planos de acesso</a></p></div>`;
+}
+
+function retornoHtml(aviso) {
+  if (!aviso) return '';
+  const classe = aviso.tom === 'erro' ? 'notice notice-warn' : 'notice notice-info';
+  return `<div class="${classe}" role="status"><span><strong>${e(aviso.titulo)}.</strong> ${e(aviso.texto)}</span></div>`;
+}
+
+export function accountPage(query) {
+  const parametro = query?.get('pagamento') || '';
   return {
     title: `Minha conta | ${SITE.shortName}`,
     description: 'Dados da sua conta.',
@@ -278,10 +306,16 @@ export function accountPage() {
     mount: async (root) => {
       const area = root.querySelector('#account-area');
       const user = await api.currentUser().catch(() => null);
-      if (!user) return go('/login', { replace: true });
+      if (!user) {
+        // Sessão expirada na volta do pagamento: depois de entrar, a pessoa retorna a esta tela com o aviso.
+        guardaDestino('/conta' + (avisoDoRetorno(parametro) ? `?pagamento=${parametro}` : ''));
+        return go('/login', { replace: true });
+      }
       area.removeAttribute('aria-busy');
       area.innerHTML = `
         <h1>Minha conta</h1>
+        <div data-retorno-pagamento></div>
+        <div data-acesso></div>
         <div class="card form">
           <p>E-mail atual: <strong>${e(user.email || '')}</strong></p>
           <form id="email-form" novalidate>
@@ -290,6 +324,27 @@ export function accountPage() {
             <p class="muted small">Enviaremos um link de confirmação para o novo endereço. A troca só vale depois que você clicar nele. Até lá, continue entrando com o e-mail atual.</p>
           </form>
         </div>`;
+      // Acesso e volta do checkout. Depois de "aprovado" ou "pendente", o site confere o banco algumas vezes
+      // (a confirmação do Mercado Pago chega por conta própria, em geral em poucos segundos).
+      const desenhaAcesso = () => {
+        if (!area.isConnected) return false;
+        area.querySelector('[data-retorno-pagamento]').innerHTML = retornoHtml(avisoDoRetorno(parametro, store.subscriptions.isActive()));
+        area.querySelector('[data-acesso]').innerHTML = acessoHtml();
+        return true;
+      };
+      desenhaAcesso();
+      if (avisoDoRetorno(parametro, store.subscriptions.isActive())?.aguardando) {
+        (async () => {
+          for (let i = 0; i < 10; i++) {
+            await new Promise((ok) => setTimeout(ok, 4000));
+            if (!area.isConnected) return;
+            await store.refresh().catch(() => {});
+            if (!desenhaAcesso()) return;
+            if (store.subscriptions.isActive()) return toast('Pagamento confirmado. Acesso liberado.');
+          }
+        })();
+      }
+
       const form = area.querySelector('#email-form');
       form.addEventListener('submit', async (ev) => {
         ev.preventDefault();

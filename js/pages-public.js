@@ -14,13 +14,16 @@ import {
 import { planosMainHtml, guiasIndexMainHtml, guiaMainHtml, guiaPorSlug, REGIAO_TEXTO, regiaoPrep } from './conteudo.js';
 import { icon as svg, iconeDaCategoria } from './visual.js';
 import { validaContato, erroDeContato, LIMITES_CONTATO } from './contato.js';
+import { avisoDoRetorno } from './pagamento.js';
 
 // Planos, índice de guias e guias: o mesmo conteúdo que o build gera em HTML (js/conteudo.js).
-export function plansPage() {
+export function plansPage(query) {
+  // Volta do checkout sem aprovação (?pagamento=recusado): avisa antes dos planos.
+  const aviso = avisoDoRetorno(query?.get('pagamento') === 'recusado' ? 'recusado' : '');
   return {
     title: 'Planos de acesso aos contatos | Fornecedores Atacado SP',
     description: 'Conheça os planos do Fornecedores Atacado SP e tenha acesso ao WhatsApp, Instagram e endereço dos fornecedores de São Paulo.',
-    html: planosMainHtml(),
+    html: (aviso ? `<div class="container"><div class="notice notice-warn" role="alert"><span><strong>${e(aviso.titulo)}.</strong> ${e(aviso.texto)}</span></div></div>` : '') + planosMainHtml(),
   };
 }
 

@@ -6,6 +6,7 @@ import { api } from './api.js';
 import { escapeHtml as e, formatDate } from './utils.js';
 import { toast } from './ui.js';
 import { subscriptionInfo } from './access.js';
+import { guardaDestino } from './retorno.js';
 
 const money = (v) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 
@@ -34,6 +35,8 @@ function frame(inner) {
 export function openPaywall() {
   const session = store.session.get();
   if (!session) {
+    // Depois de criar a conta ou entrar, a pessoa volta para os planos e conclui a assinatura.
+    guardaDestino('/planos');
     frame(`
       <h3 id="pw-title">Crie uma conta para liberar os contatos</h3>
       <p class="muted">Os contatos completos (WhatsApp, Instagram e endereço) são exibidos para assinantes. Crie uma conta e assine o acesso.</p>

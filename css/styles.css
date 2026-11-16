@@ -370,6 +370,9 @@ fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
 .card { background: #fff; border: 1px solid var(--border); border-radius: var(--radius); padding: 1.35rem; box-shadow: var(--shadow-sm); }
 .notice { padding: .95rem 1.05rem; border-radius: var(--radius-sm); margin-bottom: 1.25rem; font-size: .93rem; display: flex; gap: .6rem; align-items: flex-start; }
 .notice-warn { background: var(--warn-bg); border: 1px solid var(--warn-border); color: #5c4400; }
+.notice-info { background: var(--primary-50); border: 1px solid var(--primary-100); color: #17307a; }
+[data-acesso] .card { margin-bottom: 1.25rem; }
+[data-acesso] .card h2 { margin-top: 0; font-size: 1.15rem; }
 .demo-banner { background: var(--warn-bg); border-bottom: 1px solid var(--warn-border); color: #5c4400; text-align: center; font-size: .9rem; padding: .55rem 1rem; }
 .success { text-align: center; padding: 2.25rem 1.5rem; }
 .success .empty-ico { margin: 0 auto 1rem; }
