@@ -113,16 +113,33 @@ function blurGate(html) {
   </div>`;
 }
 
+// Logos dos destaques para visitantes. O banco libera a leitura só dos logos de fornecedores em destaque
+// e aprovados (migração 017); fotos e logos dos demais continuam restritos a assinantes.
+function carregaLogosDosDestaques(box, linhas) {
+  api.signImageUrls(linhas.map((s) => s.logo_url)).then((assinadas) => {
+    for (const s of linhas) {
+      const url = assinadas.get(s.logo_url);
+      const alvo = [...box.querySelectorAll('[data-logo-destaque]')].find((el) => el.dataset.logoDestaque === String(s.id));
+      if (!url || !alvo) continue;
+      const img = new Image(56, 56);
+      img.alt = '';
+      img.decoding = 'async';
+      img.onload = () => alvo.replaceChildren(img);
+      img.src = url;
+    }
+  }).catch(() => {});
+}
+
 // Card de destaque para visitantes: só dados públicos (migração 014). Sem WhatsApp, Instagram nem endereço.
 function cardDestaquePublico(s, nomeCategoria) {
-  const logo = s.logo_url
-    ? `<img src="${e(s.logo_url)}" alt="" loading="lazy" width="56" height="56">`
-    : `<span class="dp-inicial" aria-hidden="true">${e((s.name || '?').charAt(0).toUpperCase())}</span>`;
+  // O card nasce com a inicial do nome. O logo entra depois, por link assinado (o depósito de imagens é privado),
+  // e só troca a inicial quando a imagem carrega de fato: sem logo ou com falha, a inicial fica.
+  const logo = `<span class="dp-inicial" aria-hidden="true">${e((s.name || '?').trim().charAt(0).toUpperCase() || '?')}</span>`;
   const tags = (s.tags || []).slice(0, 3).map((x) => `<span class="dp-tag">${e(x)}</span>`).join('');
   const meta = [nomeCategoria, regName[s.bairro] || s.city].filter(Boolean).map((x) => e(x)).join(' · ');
   return `<article class="dp-card">
     <div class="dp-head">
-      <span class="dp-logo">${logo}</span>
+      <span class="dp-logo" data-logo-destaque="${e(s.id)}">${logo}</span>
       <div class="dp-title">
         <strong>${e(s.name)}</strong>
         ${s.verified ? '<span class="dp-verif">Verificado</span>' : ''}
@@ -240,6 +257,7 @@ export function home() {
             const categorias = store.categories.list();
             box.innerHTML = linhas.map((s) => `<div class="featured-item dp-item">${cardDestaquePublico(s, categorias.find((c) => c.id === s.category_id)?.name || '')}</div>`).join('');
             box.closest('[data-carousel]').querySelectorAll('[data-carousel-prev], [data-carousel-next]').forEach((b) => { b.hidden = linhas.length < 2; });
+            carregaLogosDosDestaques(box, linhas);
           }).catch(() => box.closest('section')?.remove());
         }
       }
