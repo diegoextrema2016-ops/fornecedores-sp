@@ -15,6 +15,8 @@ export const tokenize = (query = '') =>
 // Pontua um fornecedor pelos termos buscados. 0 = não encontrado.
 // Nome e tags pesam mais que descrição e localização.
 export function scoreSupplier(supplier, tokens, categoryName = '', regionName = '') {
+  // "@loja" busca o Instagram "loja"; um "@" sozinho não é termo de busca.
+  tokens = tokens.map((t) => t.replace(/^@+/, '')).filter(Boolean);
   if (tokens.length === 0) return 1;
   const fields = [
     { text: supplier.name, weight: 6 },
@@ -23,6 +25,8 @@ export function scoreSupplier(supplier, tokens, categoryName = '', regionName = 
     { text: categoryName, weight: 4 },
     { text: supplier.bairro, weight: 3 },
     { text: regionName, weight: 3 },
+    { text: supplier.instagram, weight: 5 },
+    { text: supplier.address, weight: 2 },
     { text: supplier.description, weight: 1 },
   ].map((f) => ({ text: normalize(f.text), weight: f.weight }));
 

@@ -70,7 +70,7 @@ function catalogGate({ title, description, crumbs, heading, intro = '' }) {
       ${intro ? `<p class="lead">${e(intro)}</p>` : ''}
       <div class="card blur-banner">
         <p><strong>O catálogo de fornecedores é exclusivo para assinantes.</strong></p>
-        <p class="small muted">Com a assinatura ativa você vê fornecedores, fotos, WhatsApp, Instagram e endereços. O pagamento é feito por Pix.</p>
+        <p class="small muted">Com a assinatura ativa você vê fornecedores, fotos, WhatsApp, Instagram e endereços. O pagamento é feito por Pix ou cartão.</p>
         <a class="btn btn-primary" href="/planos">Ver planos de acesso</a>
       </div>
     </section>`,
@@ -106,7 +106,7 @@ function blurGate(html) {
   return `<div class="blur-gate">
     <div class="card blur-banner">
       <p><strong>Assine para ver os contatos dos fornecedores</strong></p>
-      <p class="small muted">WhatsApp, Instagram e endereço completos são liberados após o pagamento via Pix.</p>
+      <p class="small muted">WhatsApp, Instagram e endereço completos são liberados após o pagamento por Pix ou cartão.</p>
       <button class="btn btn-primary" type="button" data-action="unlock">Ver planos de acesso</button>
     </div>
     <div class="blur-content" aria-hidden="true">${html}</div>
@@ -245,7 +245,8 @@ export function home() {
       }
       wireFavorites(root);
       // Troca a lista inicial pelas buscas mais feitas no site, quando houver buscas suficientes.
-      api.buscasPopulares(5).then((termos) => {
+      // O banco só libera essa lista para quem está logado: visitante fica com a lista inicial, sem chamada.
+      if (store.session.get()) api.buscasPopulares(5).then((termos) => {
         const box = root.querySelector('[data-populares]');
         if (!box || termos.length < 3) return;
         box.innerHTML = `<span class="muted small">Populares:</span>${termos.map((t) => chipPopular(t.charAt(0).toUpperCase() + t.slice(1))).join('')}`;

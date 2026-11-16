@@ -660,6 +660,12 @@ fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
   .header-actions .btn-cadastro, .header-actions .btn-ghost { display: none; }
   .header-actions .btn-entrar { display: inline-flex; }
   .site-header { backdrop-filter: none; -webkit-backdrop-filter: none; }
+  /* Sem a navegação no meio, as ações vão para a direita e a marca encolhe em vez de empurrar o menu para fora da tela. */
+  .header-inner { gap: .75rem; }
+  .header-actions { margin-left: auto; flex: none; }
+  .brand { flex: 0 1 auto; min-width: 0; }
+  .brand-text { min-width: 0; }
+  .brand-text strong, .brand-text small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .main-nav {
     position: fixed; top: var(--header-h); left: 0; right: 0; bottom: 0; margin: 0; flex-direction: column; align-items: stretch; gap: .25rem;
     background: rgba(11, 16, 32, .98); padding: 1.25rem 1.25rem 2rem; overflow-y: auto; display: none;
@@ -733,6 +739,14 @@ fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
   .mosaic-tile strong { font-size: .9rem; }
   .mosaic-ico { width: 34px; height: 34px; border-radius: 10px; }
   .eyebrow-pill { font-size: .76rem; }
+}
+@media (max-width: 480px) {
+  .header-inner { gap: .5rem; }
+  .brand { gap: .5rem; }
+  .brand-text strong { font-size: .8rem; letter-spacing: 0; }
+  .brand-text small { font-size: .5rem; letter-spacing: .04em; }
+  .header-actions { gap: .35rem; }
+  .header-actions .btn-entrar { padding-inline: .7rem; }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }

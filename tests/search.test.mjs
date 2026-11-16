@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { filterSuppliers, sortSuppliers, paginate, tokenize, normalize } from '../js/search.js';
 import { CATEGORIES, REGIONS } from '../js/data.js';
 import { DEMO_FIXTURES } from './fixtures-demo.mjs';
-import { slugify, mapsLink, whatsappLink, validateSupplier, isBrazilPhone, maskPhone, maskHandle, formatPhone } from '../js/utils.js';
+import { slugify, mapsLink, whatsappLink, validateSupplier, isBrazilPhone, maskPhone, maskHandle, formatPhone, instagramHandle, isInstagramHandle } from '../js/utils.js';
 
 const approved = DEMO_FIXTURES.map((s, i) => ({ ...s, id: `t${i}`, slug: slugify(s.name), status: 'approved' }));
 const ctx = {
@@ -92,7 +92,7 @@ test('telefone brasileiro: aceita 10 ou 11 dígitos, com ou sem DDI', () => {
 });
 
 test('admin não precisa aceitar termos (requireTerms: false)', () => {
-  const base = { name: 'X', responsible: 'R', email: 'a@b.com', category: 'bolsas', address: 'Rua', number: '1', bairro: 'bras', cep: '03000000', description: 'd', supplierType: 'fabricante', saleWholesale: true };
+  const base = { name: 'X', responsible: 'R', email: 'a@b.com', category: 'bolsas', address: 'Rua', number: '1', bairro: 'bras', cep: '03000000', description: 'd', supplierType: 'fabricante', saleWholesale: true, whatsapp: '11987654321' };
   assert.equal(validateSupplier({ ...base, acceptTerms: false }, { requireTerms: false }).ok, true);
   assert.equal(validateSupplier({ ...base, acceptTerms: false }).ok, false);
 });
@@ -156,4 +156,39 @@ test('rankCategoriesByAccess soma acessos por categoria e ordena do mais acessad
   assert.equal(ranked[1].accesses, 15);
   assert.equal(ranked[1].suppliers, 2);
   assert.deepEqual(rankCategoriesByAccess(cats, []), []);
+});
+
+// ---------- Auditoria de 16/11/2026 ----------
+test('busca encontra por Instagram (com e sem @) e por endereço', () => {
+  const lista = [
+    { id: 'a', status: 'approved', name: 'Ateliê Açaí', instagram: 'atelieacai', address: 'Rua Oriente 100', tags: [] },
+    { id: 'b', status: 'approved', name: 'Importadora Luz', instagram: 'luz.eletronicos', address: '', tags: [] },
+  ];
+  const ids = (query) => filterSuppliers(lista, { query }).map((s) => s.id);
+  assert.deepEqual(ids('atelieacai'), ['a']);
+  assert.deepEqual(ids('@luz.eletronicos'), ['b']);
+  assert.deepEqual(ids('oriente'), ['a']);
+  assert.deepEqual(ids('@'), ['a', 'b'], 'só o @ não filtra nada');
+  assert.deepEqual(ids('nao-existe'), []);
+});
+
+test('Instagram: extrai o nome de usuário de qualquer formato e recusa caracteres inválidos', () => {
+  assert.equal(instagramHandle('@loja_x'), 'loja_x');
+  assert.equal(instagramHandle('https://www.instagram.com/loja_x/?hl=pt'), 'loja_x');
+  assert.equal(instagramHandle('instagram.com/loja.x/'), 'loja.x');
+  assert.equal(instagramHandle('  loja  '), 'loja');
+  assert.equal(isInstagramHandle('loja.x_1'), true);
+  assert.equal(isInstagramHandle('loja x!!'), false);
+  assert.equal(isInstagramHandle('@'), false);
+});
+
+test('cadastro público exige pelo menos um contato; o administrador não', () => {
+  const base = { name: 'Loja', responsible: 'R', email: 'a@b.com', category: 'bolsas', address: 'Rua', number: '1', bairro: 'bras', cep: '03000000', description: 'd', supplierType: 'fabricante', saleWholesale: true, acceptTerms: true };
+  assert.equal(validateSupplier(base).ok, false);
+  assert.match(validateSupplier(base).errors.whatsapp, /pelo menos um contato/);
+  assert.equal(validateSupplier({ ...base, instagram: '@loja' }).ok, true);
+  assert.equal(validateSupplier({ ...base, whatsapp: '11987654321' }).ok, true);
+  assert.equal(validateSupplier({ ...base, whatsappUrl: 'https://wa.me/5511987654321' }).ok, true);
+  assert.equal(validateSupplier({ ...base, instagram: 'loja x!!' }).errors.instagram.startsWith('Instagram inválido'), true);
+  assert.equal(validateSupplier(base, { requireTerms: false, required: false }).ok, true);
 });

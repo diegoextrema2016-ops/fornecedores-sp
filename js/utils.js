@@ -79,9 +79,17 @@ export function normalizeUrl(v = '') {
   return /^https?:\/\//i.test(v) ? v : `https://${v}`;
 }
 
+// Aceita "@loja", "loja", "instagram.com/loja" e o link completo (com ou sem https, barra final ou ?parâmetros).
 export function instagramHandle(v = '') {
-  return String(v).trim().replace(/^@/, '').replace(/^https?:\/\/(www\.)?instagram\.com\//i, '').replace(/\/$/, '');
+  return String(v).trim()
+    .replace(/^(https?:\/\/)?(www\.)?instagram\.com\//i, '')
+    .replace(/^@/, '')
+    .split(/[/?#]/)[0]
+    .trim();
 }
+
+// Nome de usuário do Instagram: letras, números, ponto e sublinhado, até 30 caracteres.
+export const isInstagramHandle = (v = '') => /^[a-z0-9._]{1,30}$/i.test(instagramHandle(v));
 
 // Valida o cadastro de fornecedor. Retorna { ok, errors } com mensagens por campo.
 export function validateSupplier(data, { requireTerms = true, required = true } = {}) {
@@ -104,9 +112,13 @@ export function validateSupplier(data, { requireTerms = true, required = true } 
   if (data.whatsapp && !isBrazilPhone(data.whatsapp)) e.whatsapp = 'WhatsApp inválido. Use DDD + número.';
   if (data.whatsappUrl && !isUrl(data.whatsappUrl)) e.whatsappUrl = 'Link de WhatsApp inválido.';
   if (data.cep && !isCep(data.cep)) e.cep = 'CEP deve ter 8 dígitos.';
-  if (data.instagram && instagramHandle(data.instagram).length < 1) e.instagram = 'Instagram inválido.';
+  if (data.instagram && !isInstagramHandle(data.instagram)) e.instagram = 'Instagram inválido. Use só o nome de usuário, como @sualoja.';
   if (data.site && !isUrl(data.site)) e.site = 'Site inválido.';
   if (data.description && String(data.description).length > 600) e.description = 'Máximo de 600 caracteres.';
+  // Cadastro público: sem contato o comprador não tem como falar com a loja.
+  if (required && !e.whatsapp && !e.instagram && !(data.whatsapp || data.whatsappUrl || data.instagram)) {
+    e.whatsapp = 'Informe pelo menos um contato: WhatsApp ou Instagram.';
+  }
   if (required && !(data.saleWholesale || data.saleRetail || data.saleResellers)) {
     e.sale = 'Marque pelo menos um tipo de venda (atacado, varejo ou lojistas).';
   }
