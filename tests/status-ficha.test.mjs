@@ -133,3 +133,11 @@ test('migração 021: meus_cadastros só devolve o cadastro de quem está logado
   assert.match(sql, /revoke all on function public\.meus_cadastros\(\) from public, anon;/);
   assert.doesNotMatch(sql, /owner_id\s*,/);
 });
+
+test('sitemap traz lastmod em cada URL', async () => {
+  const { sitemapXml } = await import('../scripts/seo.mjs');
+  const xml = sitemapXml([{ path: '/sobre' }, { path: '/planos' }]);
+  const entradas = xml.match(/<url>.*<\/url>/g) || [];
+  assert.equal(entradas.length, 2);
+  for (const e of entradas) assert.match(e, /<lastmod>\d{4}-\d{2}-\d{2}<\/lastmod>/);
+});

@@ -361,7 +361,9 @@ export function notFoundPage() {
 // ---------- sitemap e robots ----------
 
 export function sitemapXml(urls) {
-  const body = urls.map((u) => `  <url><loc>${esc(absUrl(u.path))}</loc></url>`).join('\n');
+  // lastmod = data do build (a página muda quando o site é publicado); evita que o Google use datas antigas.
+  const hoje = new Date().toISOString().slice(0, 10);
+  const body = urls.map((u) => `  <url><loc>${esc(absUrl(u.path))}</loc><lastmod>${hoje}</lastmod></url>`).join('\n');
   return `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${body}
