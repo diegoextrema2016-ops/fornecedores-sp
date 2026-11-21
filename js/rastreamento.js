@@ -1,8 +1,9 @@
 // Meta Pixel: visitas, páginas de oferta, início de checkout e compra confirmada.
 //
 // Regras:
-// - Só funciona no domínio de produção (DOMINIO_PRODUCAO), com ID configurado e consentimento "aceito".
-//   Em localhost, previews da Vercel ou qualquer outro domínio, o SDK não é carregado e nenhum evento é enviado.
+// - Só funciona com ID configurado, consentimento "aceito" e no domínio autorizado pela própria build:
+//   o de produção (build de produção) ou somente o host exato da prévia (build de Preview). Localhost,
+//   outros previews da Vercel e qualquer outro domínio: o SDK não é carregado e nenhum evento é enviado.
 // - PageView sai da navegação da SPA (js/app.js). O carregamento do SDK não envia PageView sozinho.
 // - InitiateCheckout só dispara quando o servidor cria o pedido e devolve o link de pagamento (não ao abrir /planos).
 // - Purchase só dispara quando a assinatura desta tentativa aparece "active" no banco com a nota gravada pelo
@@ -18,10 +19,11 @@
 //
 // O módulo puro (funções sem efeito) fica no topo e é testado no Node. Os efeitos ficam embaixo e só
 // rodam no navegador.
-import { META } from './config.js';
+import { META, SITE } from './config.js';
 
-// Único domínio em que o pixel pode funcionar.
+// Único domínio de produção em que o pixel pode funcionar.
 export const DOMINIO_PRODUCAO = 'fornecedoresdesp.com.br';
+const WWW_PRODUCAO = `www.${DOMINIO_PRODUCAO}`;
 
 // Preferência de cookies (necessária para respeitar a escolha).
 export const CONSENTIMENTO_CHAVE = 'spf:rastreamento';
@@ -50,7 +52,26 @@ export function idDePixelValido(id) {
   return /^\d{10,20}$/.test(String(id || '').trim());
 }
 
-export const dominioAutorizado = (hostname) => hostname === DOMINIO_PRODUCAO;
+// Host do endereço base do site (SITE.url). Produção: www.fornecedoresdesp.com.br.
+// Na build de Preview, scripts/build.mjs (aplicarPrevia) troca SITE.url pelo endereço desta própria prévia.
+export function hostDoSite(endereco) {
+  try { return new URL(String(endereco || '')).hostname; } catch { return ''; }
+}
+
+// Endereço base de uma prévia da Vercel: só a build de Preview usa um host *.vercel.app.
+const ehHostDePrevia = (host) => host.endsWith('.vercel.app') && host !== WWW_PRODUCAO && host !== DOMINIO_PRODUCAO;
+
+// Regra de domínio, decidida pelo endereço base que esta build usa (nunca por lista de hosts):
+// - build de produção (endereço www.fornecedoresdesp.com.br): só o domínio de produção, como antes;
+// - build de Preview (endereço *.vercel.app da própria prévia): só esse host exato. Outros *.vercel.app,
+//   o domínio de produção e domínios externos continuam bloqueados;
+// - qualquer outro endereço base (desenvolvimento local, por exemplo): nada é autorizado.
+export function dominioAutorizado(hostname, endereco = SITE.url) {
+  const base = hostDoSite(endereco);
+  if (ehHostDePrevia(base)) return hostname === base;
+  if (base === WWW_PRODUCAO || base === DOMINIO_PRODUCAO) return hostname === DOMINIO_PRODUCAO;
+  return false;
+}
 
 const hostAtual = () => (typeof location !== 'undefined' ? location.hostname : '');
 
@@ -61,7 +82,7 @@ export function pixelHabilitado({ pixelId = META.pixelId, consentimento = null, 
 // Há ID configurado (independe do domínio): usado pelo texto da política.
 export const pixelConfigurado = () => idDePixelValido(META.pixelId);
 
-// Há ID configurado e estamos no domínio de produção: aqui o aviso aparece e o pixel pode carregar.
+// Há ID configurado e estamos no domínio autorizado desta build (produção, ou o host exato da prévia): aqui o aviso aparece.
 export const rastreamentoNesteSite = () => pixelConfigurado() && dominioAutorizado(hostAtual());
 
 // Evita PageView duplicado quando a mesma tela é desenhada duas vezes em sequência.
