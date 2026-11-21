@@ -522,6 +522,10 @@ const subscriptions = {
   isActive() {
     return hasActiveSubscription(state.subscriptions);
   },
+  // Todas as assinaturas da pessoa logada (da mais recente para a mais antiga).
+  list() {
+    return state.subscriptions.slice();
+  },
   // Administrador: todos os pedidos, com nome de quem pagou.
   adminList() {
     return state.allSubscriptions.slice();

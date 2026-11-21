@@ -14,6 +14,8 @@ import { authReturn } from './api.js';
 import { openPaywall } from './paywall.js';
 import { go, currentLocation, normalizeTarget } from './nav.js';
 import { limpaDestino, ROTA_DE_ENTRADA } from './retorno.js';
+import { iniciaRastreamento, paginaVista } from './rastreamento.js';
+import { mostraAvisoDeCookies } from './consentimento.js';
 
 // Páginas que não devem aparecer no Google (também marcadas no HTML gerado pelo build).
 const NOINDEX_PATH = /^\/(admin|login|registro|cadastro|favoritos|sair|conta|esqueci-senha|redefinir-senha|reenviar-confirmacao)(\/|$)/;
@@ -222,6 +224,8 @@ async function render({ fromMemory = false } = {}) {
   telaAtual = path;
   setMeta(page, path);
   page.mount?.(palco);
+  // PageView só em navegação real (não na atualização da tela com dados da memória).
+  if (!fromMemory) paginaVista(path);
   // "instant": a página sobe na hora, sem a animação de rolagem suave do CSS.
   window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
   main.focus({ preventScroll: true });
@@ -334,5 +338,8 @@ document.addEventListener('click', (ev) => {
 window.addEventListener('popstate', render);
 
 migrateLegacyHash();
+// Meta Pixel: só carrega com ID configurado e consentimento (ver js/rastreamento.js).
+iniciaRastreamento();
+mostraAvisoDeCookies();
 render();
 

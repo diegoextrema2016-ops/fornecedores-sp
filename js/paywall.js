@@ -7,8 +7,14 @@ import { escapeHtml as e, formatDate } from './utils.js';
 import { toast } from './ui.js';
 import { subscriptionInfo } from './access.js';
 import { guardaDestino } from './retorno.js';
+import { iniciaCheckout, guardaCheckout, aguardaRastreamento } from './rastreamento.js';
 
 const money = (v) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
+
+// Rastreamento nunca interrompe o pagamento: qualquer erro dele é ignorado aqui.
+function sem(fn) {
+  try { return fn(); } catch { return undefined; }
+}
 
 function close() {
   document.getElementById('modal-root').innerHTML = '';
@@ -87,7 +93,13 @@ async function pagar(botao) {
   botao.disabled = true;
   botao.textContent = 'Abrindo pagamento…';
   try {
-    const url = await api.criarPagamento(plano.id);
+    const { url, id, sandbox } = await api.criarPagamento(plano.id);
+    // Rastreamento isolado: qualquer falha dele (SDK, adblock, storage) não pode impedir o pagamento.
+    // Início de checkout de verdade: o pedido já existe no servidor e o link foi criado.
+    const token = sem(() => guardaCheckout({ id, valor: plano.price, sandbox }));
+    sem(() => iniciaCheckout({ token, valor: plano.price }));
+    // Com o pixel ativo, espera o SDK (até 1,2 s) para o evento sair antes do redirecionamento.
+    await sem(() => aguardaRastreamento(1200));
     window.location.href = url;
   } catch (err) {
     toast(err.message || 'Não foi possível iniciar o pagamento. Tente de novo.', 'error');

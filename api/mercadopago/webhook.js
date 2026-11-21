@@ -33,6 +33,9 @@ export default async function handler(req, res) {
 
   try {
     const pagamento = await buscarPagamento(dataId, process.env.MP_ACCESS_TOKEN);
+    // Em produção, pagamento de teste (live_mode falso, por exemplo com token TEST-) nunca libera acesso.
+    // A prévia (sandbox) continua recebendo pagamentos de teste normalmente.
+    if (!destino.sandbox && pagamento.live_mode === false) return res.status(200).end();
     const assinaturaId = String(pagamento.external_reference || '');
     if (!UUID.test(assinaturaId)) return res.status(200).end();
 

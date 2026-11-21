@@ -241,7 +241,8 @@ export const api = {
     });
     const corpo = await r.json().catch(() => ({}));
     if (!r.ok || !corpo.url) throw new Error(corpo.error || 'Não foi possível iniciar o pagamento.');
-    return corpo.url;
+    // Sem o indicador (resposta antiga), trata como teste: o Purchase não é enviado.
+    return { url: corpo.url, id: corpo.id || '', sandbox: corpo.sandbox !== false };
   },
   // Administrador: todos os pedidos e assinaturas, com nome e e-mail de quem pagou.
   async loadAllSubscriptions() {

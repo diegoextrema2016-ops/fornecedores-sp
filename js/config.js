@@ -29,6 +29,9 @@ export const SUPABASE = {
 // Planos de acesso aos contatos (WhatsApp, Instagram, endereço completo).
 // O preço é exibido ao cliente antes do pagamento.
 // offered: false = plano antigo, mantido só para assinaturas já existentes (renovação e nomes), sem venda.
+// Meta Pixel (rastreamento de anúncios). Vazio = nada é carregado. Preencha só com o ID numérico do Pixel.
+export const META = { pixelId: '1825652548675496' };
+
 export const PLANS = [
   {
     id: 'mensal',
