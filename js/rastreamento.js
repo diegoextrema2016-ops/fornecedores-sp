@@ -264,10 +264,26 @@ export function decideConsentimento(valor, { caminho = '/' } = {}) {
   }, false);
 }
 
+// Stub oficial da Meta: cria window.fbq antes do SDK chegar. As chamadas feitas nesse intervalo ficam em
+// fbq.queue e o próprio SDK, ao carregar, passa a usar o mesmo window.fbq (fbq.callMethod).
+function criaStubDoPixel() {
+  if (typeof window.fbq === 'function') return;
+  const n = function () { n.callMethod ? n.callMethod.apply(n, arguments) : n.queue.push(arguments); };
+  if (!window._fbq) window._fbq = n;
+  n.push = n;
+  n.loaded = true;
+  n.version = '2.0';
+  n.queue = [];
+  window.fbq = n;
+}
+
 // Carrega o SDK oficial da Meta de forma assíncrona. Nenhuma URL é enviada antes do carregamento.
 function carregaSdk() {
   protegido(() => {
-    if (typeof window.fbq === 'function') { sdkCarregado(window.fbq); return; }
+    const atual = window.fbq;
+    // SDK real já presente (tem callMethod) ou função de teste sem fila: usa direto, sem novo script.
+    if (typeof atual === 'function' && (atual.callMethod || !atual.queue)) { sdkCarregado(atual); return; }
+    criaStubDoPixel();
     const script = document.createElement('script');
     script.async = true;
     script.src = SDK_URL;

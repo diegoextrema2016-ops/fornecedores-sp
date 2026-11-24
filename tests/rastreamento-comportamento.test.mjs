@@ -366,3 +366,27 @@ test('Purchase: aceita o indicador de teste só em "sandbox: false" explícito',
   assert.equal(R.confirmaCompra([ativa('sub-1')]), null);
   assert.equal(nomes(s.chamadas).filter((n) => n === 'Purchase').length, 0);
 });
+
+// ---------- Stub do Pixel (window.fbq antes do SDK) ----------
+
+test('stub do Pixel: window.fbq existe antes do SDK e enfileira as chamadas até ele chegar', async () => {
+  const R = await fresco();
+  const m = mundo({ url: `${PROD}/planos` });
+  localStorage.setItem(CONSENTIMENTO, 'aceito');
+  assert.equal(R.iniciaRastreamento(), true);
+  assert.equal(m.scripts.length, 1, 'o SDK ainda é carregado uma vez');
+  assert.equal(typeof window.fbq, 'function', 'window.fbq criado pelo stub');
+  window.fbq('track', 'PageView');
+  assert.equal(window.fbq.queue.length, 1, 'chamada antes do SDK fica na fila');
+});
+
+test('SDK real já presente (callMethod): não adiciona o script de novo', async () => {
+  const R = await fresco();
+  const m = mundo({ url: `${PROD}/planos` });
+  localStorage.setItem(CONSENTIMENTO, 'aceito');
+  const real = () => {};
+  real.callMethod = () => {};
+  window.fbq = real;
+  assert.equal(R.iniciaRastreamento(), true);
+  assert.equal(m.scripts.length, 0, 'nenhum script novo quando o SDK já está presente');
+});
