@@ -39,7 +39,7 @@ test('Preview: outros hosts *.vercel.app, subdomínios e prefixos enganosos são
 test('externos: nenhum domínio fora da regra é autorizado, em nenhuma build', () => {
   for (const h of ['localhost', '127.0.0.1', 'evil.com', 'fornecedoresdesp.com.br.evil.test', 'www.fornecedoresdesp.com.br', '']) {
     assert.equal(R.dominioAutorizado(h, PREVIA), false, `preview: ${h}`);
-    assert.equal(R.dominioAutorizado(h, PRODUCAO), h === 'fornecedoresdesp.com.br' ? true : false, `produção: ${h}`);
+    assert.equal(R.dominioAutorizado(h, PRODUCAO), ['fornecedoresdesp.com.br', 'www.fornecedoresdesp.com.br'].includes(h), `produção: ${h}`);
   }
 });
 
@@ -49,7 +49,8 @@ test('Produção: só o domínio de produção; o host da prévia e os *.vercel.
   assert.equal(R.dominioAutorizado('fornecedoresdesp.com.br', PRODUCAO), true);
   assert.equal(R.dominioAutorizado(PREVIA_HOST, PRODUCAO), false, 'prévia não ganha acesso no site de produção');
   assert.equal(R.dominioAutorizado('fornecedores-sp.vercel.app', PRODUCAO), false);
-  assert.equal(R.dominioAutorizado('www.fornecedoresdesp.com.br', PRODUCAO), false);
+  assert.equal(R.dominioAutorizado('www.fornecedoresdesp.com.br', PRODUCAO), true, 'www é o host real do site de produção');
+  assert.equal(R.dominioAutorizado('www.fornecedoresdesp.com.br.evil.test', PRODUCAO), false, 'sufixo falso não passa');
 });
 
 test('endereço base sem host de produção nem de prévia: nada é autorizado (falha fechada)', () => {

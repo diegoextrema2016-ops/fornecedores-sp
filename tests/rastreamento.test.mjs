@@ -21,9 +21,10 @@ test('Pixel ID: configurado com o ID real da Meta', () => {
   assert.equal(R.idDePixelValido('abc123'), false);
 });
 
-test('domínio: só o domínio de produção é autorizado', () => {
+test('domínio: o domínio de produção e seu www são autorizados; o resto não', () => {
   assert.equal(R.dominioAutorizado('fornecedoresdesp.com.br'), true);
-  for (const h of ['localhost', '127.0.0.1', 'fornecedores-pr-12.vercel.app', 'www.fornecedoresdesp.com.br', 'fornecedoresdesp.com.br.evil.test', '']) {
+  assert.equal(R.dominioAutorizado('www.fornecedoresdesp.com.br'), true);
+  for (const h of ['localhost', '127.0.0.1', 'fornecedores-pr-12.vercel.app', 'fornecedoresdesp.com.br.evil.test', '']) {
     assert.equal(R.dominioAutorizado(h), false, h);
   }
 });
@@ -209,7 +210,7 @@ const nomeDoEvento = (c) => (c.args[0] === 'track' ? c.args[1] : c.args[0]);
 let SDK = null;
 
 test('fora do domínio de produção nada inicia, mesmo com consentimento aceito', () => {
-  for (const url of ['http://localhost:8091/planos', 'https://fornecedores-pr-12.vercel.app/planos', 'https://www.fornecedoresdesp.com.br/planos']) {
+  for (const url of ['http://localhost:8091/planos', 'https://fornecedores-pr-12.vercel.app/planos', 'https://www.fornecedoresdesp.com.br.evil.test/planos']) {
     ambiente({ url });
     localStorage.setItem('spf:rastreamento', 'aceito');
     assert.equal(R.iniciaRastreamento(), false, url);
