@@ -69,7 +69,7 @@ const ehHostDePrevia = (host) => host.endsWith('.vercel.app') && host !== WWW_PR
 export function dominioAutorizado(hostname, endereco = SITE.url) {
   const base = hostDoSite(endereco);
   if (ehHostDePrevia(base)) return hostname === base;
-  if (base === WWW_PRODUCAO || base === DOMINIO_PRODUCAO) return hostname === DOMINIO_PRODUCAO;
+  if (base === WWW_PRODUCAO || base === DOMINIO_PRODUCAO) return hostname === DOMINIO_PRODUCAO || hostname === WWW_PRODUCAO;
   return false;
 }
 
