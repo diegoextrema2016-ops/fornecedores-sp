@@ -781,3 +781,20 @@ fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
 .dp-ficha { margin-top: auto; align-self: flex-start; }
 .featured-item > .dp-card { flex: 1; }
 .dp-item { flex: 0 0 320px; }
+
+/* Aviso de cookies (js/consentimento.js). Fundo branco, texto à esquerda, botões à direita no desktop. */
+.aviso-cookies { position: fixed; left: 0; right: 0; bottom: 0; z-index: 140; background: #fff; border-top: 1px solid var(--border); box-shadow: 0 -8px 24px -12px rgba(11, 16, 32, .18); padding: 12px 16px; display: flex; flex-direction: column; gap: 10px; font-family: var(--font); }
+.aviso-cookies-titulo { margin: 0 0 2px; font-family: var(--font-display); font-weight: 700; font-size: .95rem; color: var(--text); }
+.aviso-cookies-texto p:not(.aviso-cookies-titulo) { margin: 0; font-size: .82rem; line-height: 1.45; color: var(--muted); }
+.aviso-cookies-texto a { color: var(--primary); text-decoration: underline; text-underline-offset: 2px; }
+.aviso-cookies-acoes { display: flex; gap: 8px; }
+.aviso-cookies-acoes .btn { flex: 1; padding: .55rem .9rem; font-size: .88rem; box-shadow: none; }
+.aviso-cookies-acoes .btn-primary { box-shadow: 0 6px 18px -8px rgba(36, 87, 245, .6); }
+@media (min-width: 720px) {
+  .aviso-cookies { flex-direction: row; align-items: center; justify-content: space-between; gap: 24px; padding: 14px 32px; }
+  .aviso-cookies-texto { flex: 1; max-width: 760px; }
+  .aviso-cookies-titulo { font-size: 1rem; }
+  .aviso-cookies-texto p:not(.aviso-cookies-titulo) { font-size: .88rem; }
+  .aviso-cookies-acoes { flex: none; }
+  .aviso-cookies-acoes .btn { flex: none; min-width: 132px; padding: .6rem 1.1rem; }
+}

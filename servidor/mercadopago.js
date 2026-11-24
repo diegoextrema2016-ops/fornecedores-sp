@@ -10,7 +10,9 @@ import { ehPrevia, configuracaoDePrevia } from '../scripts/preview-config.mjs';
 // e a rota responde 503 sem tocar em nada.
 export function destinoDoServidor(env = process.env) {
   if (!ehPrevia(env)) {
-    return { supabaseUrl: SUPABASE.url, anonKey: SUPABASE.anonKey, siteUrl: SITE.url, sandbox: env.MP_AMBIENTE === 'sandbox' };
+    // Produção nunca usa sandbox: uma configuração assim falha alto (503), em vez de aceitar pagamento de teste.
+    if (env.MP_AMBIENTE === 'sandbox') throw new Error('produção: MP_AMBIENTE não pode ser sandbox.');
+    return { supabaseUrl: SUPABASE.url, anonKey: SUPABASE.anonKey, siteUrl: SITE.url, sandbox: false };
   }
   const dev = configuracaoDePrevia(env, SUPABASE.anonKey);
   if (env.MP_AMBIENTE !== 'sandbox') throw new Error('prévia: MP_AMBIENTE deve ser sandbox.');

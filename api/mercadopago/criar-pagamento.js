@@ -69,7 +69,10 @@ export default async function handler(req, res) {
     });
 
     const url = destino.sandbox ? preferencia.sandbox_init_point : preferencia.init_point;
-    return res.status(200).json({ url });
+    // O id do pedido é do próprio cliente: identifica a tentativa para o rastreamento (InitiateCheckout e Purchase).
+    // "sandbox" é só informativo para o rastreamento: não autoriza pagamento nem acesso. Token de teste começa com TEST-.
+    const sandbox = destino.sandbox === true || String(process.env.MP_ACCESS_TOKEN).startsWith('TEST-');
+    return res.status(200).json({ url, id: assinatura.id, sandbox });
   } catch (err) {
     console.error('criar-pagamento: falha', err?.message);
     return res.status(502).json({ error: 'Não foi possível iniciar o pagamento. Tente de novo em instantes.' });

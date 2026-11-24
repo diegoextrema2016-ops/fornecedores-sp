@@ -10,6 +10,7 @@ import { authReturnErrorMessage, validateNewPassword, RECOVERY_MARK_KEY } from '
 import { subscriptionInfo } from './access.js';
 import { avisoDoRetorno } from './pagamento.js';
 import { guardaDestino } from './retorno.js';
+import { confirmaCompra } from './rastreamento.js';
 
 const fieldsOf = (form) => Object.fromEntries(new FormData(form).entries());
 
@@ -332,6 +333,9 @@ export function accountPage(query) {
         if (!area.isConnected) return false;
         area.querySelector('[data-retorno-pagamento]').innerHTML = retornoHtml(avisoDoRetorno(parametro, store.subscriptions.isActive()));
         area.querySelector('[data-acesso]').innerHTML = acessoHtml();
+        // Purchase só para assinatura ativa criada neste navegador (ver js/rastreamento.js).
+        // Isolado: uma falha do rastreamento não pode impedir a tela da conta de aparecer.
+        try { confirmaCompra(store.subscriptions.list()); } catch { /* rastreamento não interfere na conta */ }
         return true;
       };
       desenhaAcesso();

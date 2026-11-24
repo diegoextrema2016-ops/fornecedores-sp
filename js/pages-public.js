@@ -15,6 +15,7 @@ import { planosMainHtml, guiasIndexMainHtml, guiaMainHtml, guiaPorSlug, REGIAO_T
 import { icon as svg, iconeDaCategoria } from './visual.js';
 import { validaContato, erroDeContato, LIMITES_CONTATO } from './contato.js';
 import { avisoDoRetorno } from './pagamento.js';
+import { rastreamentoNesteSite } from './rastreamento.js';
 
 // Planos, índice de guias e guias: o mesmo conteúdo que o build gera em HTML (js/conteudo.js).
 export function plansPage(query) {
@@ -876,7 +877,20 @@ export function privacyPage() {
     <h2>Dados coletados</h2>
     <p>Nome e e-mail de contas; a senha é guardada pelo serviço de autenticação, nunca em texto puro; dados informados em cadastros de fornecedores; pedidos de assinatura; os favoritos; e as mensagens enviadas pelo formulário de contato (nome, e-mail, assunto e texto).</p>
     <h2>Armazenamento</h2>
-    <p>Os dados ficam em banco de dados hospedado no Supabase, com regras de acesso por usuário. Os contatos completos dos fornecedores só são liberados a administradores, donos do cadastro e assinantes ativos. Os favoritos de quem não tem conta ficam apenas neste navegador.</p>
+    <p>Os dados ficam em banco de dados hospedado no Supabase, com regras de acesso por usuário. Os contatos completos dos fornecedores só são liberados a administradores, donos do cadastro e assinantes ativos. Os favoritos de quem não tem conta ficam apenas neste navegador. O site carrega fontes do Google Fonts, que recebe o endereço IP do seu navegador.</p>
+    <h2>Cookies e armazenamento no seu navegador</h2>
+    <p>Este site usa dois tipos de armazenamento no seu navegador: o necessário, que não depende de consentimento, e o de medição e publicidade, que só é usado se você aceitar.</p>
+    <h3>Necessários</h3>
+    <p>A sessão de login, guardada pelo serviço de autenticação, mantém você conectado à sua conta. A preferência de cookies registra a sua escolha. Sem eles, o login e a escolha de cookies não funcionam.</p>
+    <h3>Medição e publicidade (Meta Pixel)</h3>
+    <p>Com o seu aceite, usamos o Meta Pixel, da Meta, para medir as visitas ao site e o resultado dos nossos anúncios: páginas visitadas, visualização dos planos, início de pagamento e assinatura aprovada. A Meta pode usar esses dados para entregar e otimizar anúncios, conforme a política dela.</p>
+    <p>Os eventos enviados não contêm nome, e-mail, CPF, telefone, dados de pagamento nem o número do pedido. Antes de cada envio, o site remove do endereço da página os termos de busca, os parâmetros e os tokens. Além disso, o navegador envia à Meta o endereço IP e informações técnicas do navegador, e a Meta grava cookies, como o _fbp, neste site e em facebook.com. Os eventos incluem o valor, a moeda e o nome do produto (Assinatura Fornecedores de SP). Cada tentativa de compra recebe um identificador aleatório, que não é o número do pedido.</p>
+    <p>Também guardamos neste navegador a tentativa de pagamento para reconhecer a compra quando ela for aprovada. A tentativa é apagada depois de 48 horas ou quando você rejeita os cookies. Depois que a compra é registrada, guardamos o identificador dela neste navegador para não contá-la duas vezes, até você rejeitar os cookies ou apagar os dados do site.</p>
+    <p>Os pagamentos são processados pelo Mercado Pago. O site não envia dados de pagamento à Meta. Estornos e contestações feitos depois da compra não são informados à Meta.</p>
+    <h3>Sua escolha</h3>
+    <p>No aviso de cookies, você pode aceitar todos os cookies ou rejeitar os não essenciais. Se rejeitar, o Meta Pixel não é carregado, nenhum evento é enviado, os dados de medição guardados neste navegador são apagados e os cookies _fbp e _fbc que o site consegue apagar são removidos. Cookies gravados pela Meta em facebook.com não podem ser removidos pelo site: use as configurações do seu navegador para isso. O site continua funcionando normalmente.</p>
+    <p>Você pode alterar a sua escolha a qualquer momento${rastreamentoNesteSite() ? ' pelo botão abaixo' : ''}, ou apagando os dados do site no seu navegador.</p>
+    ${rastreamentoNesteSite() ? '<p><button class="btn btn-ghost" type="button" data-abrir-cookies>Alterar preferências de cookies</button></p>' : ''}
     <h2>Seus direitos</h2>
     <p>Você pode solicitar acesso, correção ou exclusão dos seus dados pelo contato do portal.</p>`);
 }
