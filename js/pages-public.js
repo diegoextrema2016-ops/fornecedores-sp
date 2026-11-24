@@ -873,7 +873,6 @@ export function contactPage() {
 
 export function privacyPage() {
   return legalPage('Política de privacidade', `
-    <p>Esta é uma política de modelo. Revise com um profissional jurídico antes de publicar (LGPD).</p>
     <h2>Dados coletados</h2>
     <p>Nome e e-mail de contas; a senha é guardada pelo serviço de autenticação, nunca em texto puro; dados informados em cadastros de fornecedores; pedidos de assinatura; os favoritos; e as mensagens enviadas pelo formulário de contato (nome, e-mail, assunto e texto).</p>
     <h2>Armazenamento</h2>

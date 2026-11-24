@@ -421,5 +421,5 @@ test('política: descreve o Meta Pixel, o que é enviado, os cookies, a escolha 
   assert.ok(politica.includes('Mercado Pago'));
   assert.ok(politica.includes('rejeitar os não essenciais'));
   assert.ok(politica.includes('data-abrir-cookies'), 'botão para alterar a escolha');
-  assert.ok(politica.includes('Esta é uma política de modelo'), 'aviso de revisão jurídica mantido');
+  assert.ok(!politica.includes('política de modelo'), 'aviso de modelo removido da política publicada');
 });
