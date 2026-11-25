@@ -9,7 +9,8 @@ const BOM = {
   VERCEL_ENV: 'preview',
   SUPABASE_DEV_URL: `https://${DEV_REF}.supabase.co`,
   SUPABASE_DEV_ANON_KEY: 'sb_publishable_dev_exemplo_123',
-  VERCEL_URL: 'sp-fornecedores-git-feat-layout-premium-equipe.vercel.app',
+  VERCEL_URL: 'sp-fornecedores-8k2j1x-equipe.vercel.app',
+  VERCEL_BRANCH_URL: 'sp-fornecedores-git-feat-layout-premium-equipe.vercel.app',
 };
 
 test('só o ambiente Preview ativa a regra de prévia', () => {
@@ -22,7 +23,18 @@ test('com as variáveis DEV corretas, devolve a configuração de teste', () => 
   const cfg = configuracaoDePrevia(BOM, PROD_KEY);
   assert.equal(cfg.supabaseUrl, `https://${DEV_REF}.supabase.co`);
   assert.equal(cfg.anonKey, BOM.SUPABASE_DEV_ANON_KEY);
-  assert.equal(cfg.siteUrl, `https://${BOM.VERCEL_URL}`);
+  assert.equal(cfg.siteUrl, `https://${BOM.VERCEL_BRANCH_URL}`);
+});
+
+test('o site da prévia usa o endereço fixo da branch, não o endereço desta implantação', () => {
+  const cfg = configuracaoDePrevia(BOM, PROD_KEY);
+  assert.notEqual(cfg.siteUrl, `https://${BOM.VERCEL_URL}`);
+  assert.equal(cfg.siteUrl, 'https://sp-fornecedores-git-feat-layout-premium-equipe.vercel.app');
+});
+
+test('recusa a prévia sem o endereço fixo da branch', () => {
+  const env = { ...BOM, VERCEL_BRANCH_URL: '' };
+  assert.throws(() => configuracaoDePrevia(env, PROD_KEY), /VERCEL_BRANCH_URL/);
 });
 
 test('recusa a prévia sem a URL do DEV', () => {
@@ -56,7 +68,7 @@ test('recusa URL que não é um projeto Supabase', () => {
 });
 
 test('recusa endereço de prévia que não seja *.vercel.app', () => {
-  const env = { ...BOM, VERCEL_URL: 'www.fornecedoresdesp.com.br' };
+  const env = { ...BOM, VERCEL_BRANCH_URL: 'www.fornecedoresdesp.com.br' };
   assert.throws(() => configuracaoDePrevia(env, PROD_KEY), /vercel\.app/);
 });
 

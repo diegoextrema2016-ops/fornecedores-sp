@@ -9,11 +9,11 @@ import criarPagamento from '../api/mercadopago/criar-pagamento.js';
 
 const DEV_URL = 'https://pptjmgrsukucnvyolnvn.supabase.co';
 const DEV_CHAVE = 'sb_publishable_teste_dev_0000';
-const PREVIA = { VERCEL_ENV: 'preview', VERCEL_URL: 'fornecedores-sp-git-teste.vercel.app', SUPABASE_DEV_URL: DEV_URL, SUPABASE_DEV_ANON_KEY: DEV_CHAVE, MP_AMBIENTE: 'sandbox', MP_ACCESS_TOKEN: 'TEST-token' };
+const PREVIA = { VERCEL_ENV: 'preview', VERCEL_URL: 'fornecedores-sp-8k2j1x-teste.vercel.app', VERCEL_BRANCH_URL: 'fornecedores-sp-git-teste.vercel.app', SUPABASE_DEV_URL: DEV_URL, SUPABASE_DEV_ANON_KEY: DEV_CHAVE, MP_AMBIENTE: 'sandbox', MP_ACCESS_TOKEN: 'TEST-token' };
 const UUID = '9f1c2b3a-1111-4222-8333-444455556666';
 const SEGREDO = 'segredo-de-teste';
 
-const ENV_LIMPO = ['VERCEL_ENV', 'VERCEL_URL', 'SUPABASE_DEV_URL', 'SUPABASE_DEV_ANON_KEY', 'MP_AMBIENTE', 'MP_ACCESS_TOKEN', 'MP_WEBHOOK_SECRET', 'SUPABASE_SERVICE_ROLE_KEY'];
+const ENV_LIMPO = ['VERCEL_ENV', 'VERCEL_URL', 'VERCEL_BRANCH_URL', 'SUPABASE_DEV_URL', 'SUPABASE_DEV_ANON_KEY', 'MP_AMBIENTE', 'MP_ACCESS_TOKEN', 'MP_WEBHOOK_SECRET', 'SUPABASE_SERVICE_ROLE_KEY'];
 function ambiente(extra) {
   for (const k of ENV_LIMPO) delete process.env[k];
   Object.assign(process.env, extra);
