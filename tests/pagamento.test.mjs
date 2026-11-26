@@ -84,7 +84,7 @@ test('acesso vencido não soma prazo: conta a partir de agora', () => {
 import { destinoDoServidor } from '../servidor/mercadopago.js';
 const DEV_URL = 'https://pptjmgrsukucnvyolnvn.supabase.co';
 const DEV_CHAVE = 'sb_publishable_teste_dev_0000';
-const PREVIA = { VERCEL_ENV: 'preview', VERCEL_URL: 'fornecedores-sp-git-teste.vercel.app', SUPABASE_DEV_URL: DEV_URL, SUPABASE_DEV_ANON_KEY: DEV_CHAVE, MP_AMBIENTE: 'sandbox', MP_ACCESS_TOKEN: 'TEST-token' };
+const PREVIA = { VERCEL_ENV: 'preview', VERCEL_URL: 'fornecedores-sp-8k2j1x-teste.vercel.app', VERCEL_BRANCH_URL: 'fornecedores-sp-git-teste.vercel.app', SUPABASE_DEV_URL: DEV_URL, SUPABASE_DEV_ANON_KEY: DEV_CHAVE, MP_AMBIENTE: 'sandbox', MP_ACCESS_TOKEN: 'TEST-token' };
 
 test('produção usa o projeto e o site de produção', () => {
   const d = destinoDoServidor({ MP_AMBIENTE: 'producao' });
