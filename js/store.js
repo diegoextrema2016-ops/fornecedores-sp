@@ -157,16 +157,15 @@ async function doRefresh() {
     }
   }
 
+  // Espera as URLs das fotos antes de liberar os dados: a primeira tela já sai com as imagens,
+  // em vez de desenhar os cartões vazios e redesenhar depois. A assinatura começou lá em cima,
+  // em paralelo; se ela falhar, o mapa vem vazio e a tela segue sem foto.
+  signedImages = await signing;
   Object.assign(state, { session, categories, suppliers, favorites, subscriptions, users, allSubscriptions, regions: catalog.regions.map(M.regionFromRow) });
   lastRefreshAt = Date.now();
   everLoaded = true;
   saveAdminSnapshot();
   saveSessionCache();
-  signing.then((signed) => {
-    signedImages = signed;
-    saveSessionCache();
-    if (typeof window !== 'undefined') window.dispatchEvent(new Event('spf:imagens'));
-  });
 }
 
 // ---------- Autenticação ----------
@@ -580,6 +579,7 @@ function saveAdminSnapshot() {
     sessionStorage.setItem(ADMIN_SNAPSHOT_KEY, JSON.stringify({
       session: state.session, categories: state.categories, regions: state.regions, suppliers: state.suppliers,
       favorites: state.favorites, subscriptions: state.subscriptions, users: state.users, allSubscriptions: state.allSubscriptions,
+      signed: [...signedImages.entries()], signedAt: Date.now(),
     }));
   } catch {
     // Espaço cheio ou armazenamento bloqueado: segue sem a cópia.
@@ -602,6 +602,10 @@ function restoreAdminSnapshot() {
       session: snap.session, categories: snap.categories || [], regions: snap.regions || [], suppliers: snap.suppliers || [],
       favorites: snap.favorites || [], subscriptions: snap.subscriptions || [], users: snap.users || [], allSubscriptions: snap.allSubscriptions || [],
     });
+    // As fotos do painel também vêm da cópia, enquanto as URLs assinadas ainda têm validade (1 hora).
+    if (Array.isArray(snap.signed) && Date.now() - (Number(snap.signedAt) || 0) < 45 * 60 * 1000) {
+      signedImages = new Map(snap.signed);
+    }
     everLoaded = true;
   } catch {
     clearAdminSnapshot();
