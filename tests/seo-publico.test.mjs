@@ -118,9 +118,9 @@ test('redirecionamentos 301 das URLs de exemplo apontam para as regiões', () =>
   for (const r of cfg.redirects) assert.equal(r.permanent, true);
 });
 
-test('página de entrada: divulga "Mais de 600 fornecedores" e não cita 5.000', async () => {
+test('página de entrada: divulga "Mais de 1000 fornecedores" e não cita 5.000', async () => {
   const { readFile } = await import('node:fs/promises');
   const html = await readFile(new URL('../apresentacao/index.html', import.meta.url), 'utf8');
   assert.ok(!/5\.?000/.test(html), 'a página de entrada não pode citar 5.000 fornecedores');
-  assert.equal((html.match(/Mais de 600 fornecedores/g) || []).length, 4, 'texto, meta description, Open Graph e dados estruturados');
+  assert.equal((html.match(/Mais de 1000 fornecedores/g) || []).length, 4, 'texto, meta description, Open Graph e dados estruturados');
 });
